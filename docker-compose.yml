@@ -1,0 +1,37 @@
+# Local development services. Ports are offset from the defaults so this runs beside other projects.
+services:
+  postgres:
+    image: postgres:16
+    container_name: ai_staff_postgres
+    environment:
+      POSTGRES_USER: ai_staff_admin
+      POSTGRES_PASSWORD: ai_staff_admin_password
+      POSTGRES_DB: ai_staff
+    ports:
+      - '5460:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-roles.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ai_staff_admin -d ai_staff']
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai_staff_redis
+    ports:
+      - '6390:6379'
+    volumes:
+      - redis_data:/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ai_staff_mailpit
+    ports:
+      - '1030:1025'
+      - '8030:8025'
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,47 @@
+{
+  "name": "@ai-staff/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "node --env-file-if-exists=.env --watch-path=dist --enable-source-maps dist/main.js",
+    "dev:build": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "start": "node --enable-source-maps dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src test",
+    "test": "node scripts/test.mjs run"
+  },
+  "dependencies": {
+    "@ai-staff/config": "workspace:*",
+    "@ai-staff/contracts": "workspace:*",
+    "@ai-staff/db": "workspace:*",
+    "@nestjs/common": "^12.3.0",
+    "@nestjs/core": "^12.3.0",
+    "@nestjs/jwt": "^12.0.3",
+    "@nestjs/platform-express": "^12.3.0",
+    "@node-rs/argon2": "^2.2.2",
+    "ioredis": "^6.0.0",
+    "nestjs-pino": "^5.3.1",
+    "nodemailer": "^10.3.1",
+    "otpauth": "^9.5.2",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "uuid": "^14.0.3",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^12.3.0",
+    "@swc/core": "^1.16.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/nodemailer": "^7.0.0",
+    "@types/supertest": "^7.0.0",
+    "pg": "^8.16.0",
+    "supertest": "^7.3.1",
+    "unplugin-swc": "^2.0.0",
+    "vitest": "^4.0.0"
+  }
+}

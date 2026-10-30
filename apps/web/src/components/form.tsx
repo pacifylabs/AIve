@@ -1,0 +1,148 @@
+'use client';
+
+import { type InputHTMLAttributes, type ReactNode, useId, useState } from 'react';
+import { useFormStatus } from 'react-dom';
+import type { FormState } from '@/lib/form-state';
+
+const inputClass =
+  'w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger';
+
+interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
+  label: string;
+  name: string;
+  error?: string | undefined;
+  hint?: ReactNode;
+}
+
+export function TextField({ label, error, hint, ...input }: FieldProps) {
+  const id = useId();
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-sm font-medium">
+        {label}
+      </label>
+      <input
+        id={id}
+        className={inputClass}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        {...input}
+      />
+      {hint && !error ? (
+        <p id={`${id}-hint`} className="text-xs text-muted">
+          {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** The one password field used everywhere, with a show/hide toggle. */
+export function PasswordField({ label, error, hint, ...input }: FieldProps) {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-sm font-medium">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          id={id}
+          type={visible ? 'text' : 'password'}
+          className={`${inputClass} pr-10`}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          {...input}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((value) => !value)}
+          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted hover:text-foreground"
+          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-pressed={visible}
+        >
+          {visible ? <EyeOff /> : <Eye />}
+        </button>
+      </div>
+      {hint && !error ? (
+        <p id={`${id}-hint`} className="text-xs text-muted">
+          {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function SubmitButton({ children, pendingLabel }: { children: ReactNode; pendingLabel?: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-60"
+    >
+      {pending ? (pendingLabel ?? 'Working…') : children}
+    </button>
+  );
+}
+
+export function FormMessages({ state }: { state: FormState }) {
+  return (
+    <div aria-live="polite">
+      {state.error ? (
+        <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{state.error}</p>
+      ) : null}
+      {state.notice ? (
+        <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm">{state.notice}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function Eye() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOff() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M3 3l18 18" />
+      <path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.3M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a10.6 10.6 0 0 0 5.4-1.5" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </svg>
+  );
+}
