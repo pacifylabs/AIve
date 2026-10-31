@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { APP_CONFIG, type AppConfig, ConfigModule } from './config/config.module.js';
 import { CryptoModule } from './crypto/crypto.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { EarlyAccessModule } from './early-access/early-access.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
 import { RedisModule } from './redis/redis.module.js';
@@ -39,6 +40,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module.js';
     MailModule,
     AuthModule,
     WorkspacesModule,
+    EarlyAccessModule,
   ],
   controllers: [HealthController],
 })

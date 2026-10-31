@@ -1,12 +1,14 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { EmailToken, RefreshToken, User } from './entities/identity.entities.js';
+import { EarlyAccessSignup } from './entities/early-access.entity.js';
 import { Invitation, Membership, Workspace } from './entities/workspace.entities.js';
 import { IdentityAndWorkspaces1793318400000 } from './migrations/0001-identity-and-workspaces.js';
+import { EarlyAccess1793404800000 } from './migrations/0002-early-access.js';
 import { SnakeNamingStrategy } from './naming.js';
 
-export const entities = [User, EmailToken, RefreshToken, Workspace, Membership, Invitation];
-export const migrations = [IdentityAndWorkspaces1793318400000];
+export const entities = [User, EmailToken, RefreshToken, Workspace, Membership, Invitation, EarlyAccessSignup];
+export const migrations = [IdentityAndWorkspaces1793318400000, EarlyAccess1793404800000];
 
 export interface ConnectionOptions {
   host: string;
