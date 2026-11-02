@@ -2,6 +2,7 @@
 export { DataSource, EntityManager, In, IsNull, LessThan, MoreThan, QueryFailedError } from 'typeorm';
 export * from './data-source.js';
 export * from './entities/base.entity.js';
+export * from './entities/early-access.entity.js';
 export * from './entities/identity.entities.js';
 export * from './entities/workspace.entities.js';
 export * from './tenant.js';

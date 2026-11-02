@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'AI Staff', template: '%s · AI Staff' },
+  metadataBase: SITE_URL,
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
   description: 'Hire AI staff who do real work inside the limits you set.',
+  openGraph: { siteName: SITE_NAME, type: 'website' },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
