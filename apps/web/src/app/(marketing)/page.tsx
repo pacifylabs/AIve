@@ -248,9 +248,7 @@ export default function HomePage() {
               {OVERNIGHT.map((item, i) => (
                 <li key={item.place} className={`globe-card glass hc-${i + 1} ${['bob', 'bob-2', 'bob-3'][i]}`}>
                   <div className="gc-top">
-                    <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
-                      {item.place}
-                    </span>
+                    <span className="mono gc-place">{item.place}</span>
                     <Badge tone={item.tone}>{item.status}</Badge>
                   </div>
                   <div className="gc-row">
