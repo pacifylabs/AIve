@@ -41,7 +41,7 @@ export default function SalesManagerStaffPage() {
       <section aria-labelledby="sales-caps" className="section" style={{ paddingTop: 48 }}>
         <div className="wrap stack" style={{ gap: 40 }}>
           <div className="center-head">
-            <Eyebrow>WHAT IT DOES</Eyebrow>
+            <Eyebrow>What it does</Eyebrow>
             <h2 id="sales-caps" className="h2">
               The follow-up you never have time for.
             </h2>
@@ -59,7 +59,7 @@ export default function SalesManagerStaffPage() {
                   >
                     <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <span className="eyebrow" style={{ fontSize: 11 }}>
-                        RESEARCH · NORTHFIELD STUDIO
+                        Research · Northfield Studio
                       </span>
                       <span style={{ fontSize: 14, lineHeight: 1.55 }}>
                         “We onboard 30+ new clients every quarter.”
@@ -135,19 +135,19 @@ export default function SalesManagerStaffPage() {
                           alignItems: 'center',
                           gap: 10,
                           padding: '16px 18px',
-                          borderBottom: '1px solid #EDEDE9',
+                          borderBottom: '1px solid var(--line-soft)',
                         }}
                       >
                         <StaffTile who="sales" />
                         <span className="stack" style={{ flexGrow: 1 }}>
                           <span style={{ fontSize: 14, fontWeight: 500 }}>+1 (415) 555-0118</span>
-                          <span className="mono" style={{ fontSize: 11, color: '#5E5E5B' }}>
+                          <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
                             ANSWERS 9:00 TO 18:00
                           </span>
                         </span>
                         <Badge tone="wait">Transferring to you</Badge>
                       </div>
-                      <div style={{ padding: '16px 18px', fontSize: 14, lineHeight: 1.55, color: '#2E2E2C' }}>
+                      <div style={{ padding: '16px 18px', fontSize: 14, lineHeight: 1.55, color: 'var(--text)' }}>
                         “That&apos;s one for the team. I&apos;m connecting you now, one moment.”
                       </div>
                     </div>
@@ -178,7 +178,7 @@ export default function SalesManagerStaffPage() {
       <section aria-labelledby="sales-hire" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap grid2" style={{ alignItems: 'stretch' }}>
           <div className="card" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Eyebrow>YOU BRING THE LEADS</Eyebrow>
+            <Eyebrow>You bring the leads</Eyebrow>
             <h2 id="sales-hire" className="h3" style={{ fontSize: 26 }}>
               Import a list, add leads by hand, or let Social Media Staff pass them on.
             </h2>

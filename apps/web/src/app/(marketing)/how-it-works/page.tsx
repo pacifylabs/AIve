@@ -42,13 +42,13 @@ function CardHead({ title, sub, badge }: { title: string; sub: string; badge: Re
         alignItems: 'center',
         gap: 10,
         padding: '16px 18px',
-        borderBottom: '1px solid #EDEDE9',
+        borderBottom: '1px solid var(--line-soft)',
       }}
     >
       <StaffTile who="sales" />
       <span className="stack" style={{ gap: 1, flexGrow: 1, minWidth: 0 }}>
         <span style={{ fontSize: 14, fontWeight: 500 }}>{title}</span>
-        <span className="mono" style={{ fontSize: 11, color: '#5E5E5B' }}>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
           {sub}
         </span>
       </span>
@@ -67,8 +67,8 @@ const EMAIL_STEPS: DemoStep[] = [
           style={{
             alignSelf: 'flex-end',
             maxWidth: 400,
-            background: '#111111',
-            color: '#FFFFFF',
+            background: 'var(--band)',
+            color: 'var(--on-band)',
             borderRadius: '18px 18px 4px 18px',
             padding: '14px 16px',
             fontSize: 14,
@@ -81,7 +81,7 @@ const EMAIL_STEPS: DemoStep[] = [
           <StaffTile who="sales" />
           <div className="stack" style={{ gap: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 500 }}>Sales Manager Staff</span>
-            <span style={{ fontSize: 14, lineHeight: 1.55, color: '#2E2E2C' }}>
+            <span style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text)' }}>
               On it. I&apos;ll read each company&apos;s site and draft 12 emails for your approval. Nothing goes out
               until you say so.
             </span>
@@ -105,11 +105,11 @@ const EMAIL_STEPS: DemoStep[] = [
         />
         <div className="stack" style={{ padding: 18, gap: 10, fontSize: 14, lineHeight: 1.6 }}>
           <span style={{ fontWeight: 500 }}>Subject: Tuesday&apos;s webinar recording</span>
-          <span style={{ color: '#2E2E2C' }}>
+          <span style={{ color: 'var(--text)' }}>
             Hi Dana, thanks for joining on Tuesday. Here&apos;s the recording. Your site mentions onboarding 30+ clients
             a quarter; would a 15-minute look at how teams that size cut status emails be useful?
           </span>
-          <span style={{ color: '#2E2E2C' }}>
+          <span style={{ color: 'var(--text)' }}>
             If this isn&apos;t for you, just say so and I won&apos;t write again.
           </span>
         </div>
@@ -119,10 +119,10 @@ const EMAIL_STEPS: DemoStep[] = [
             margin: '0 18px 18px',
             padding: '10px 12px',
             borderRadius: 10,
-            background: '#F6F6F4',
+            background: 'var(--subtle)',
             fontSize: 11,
             lineHeight: 1.7,
-            color: '#5E5E5B',
+            color: 'var(--muted)',
           }}
         >
           SOURCE northfield.studio/about · read 09:02
@@ -138,13 +138,14 @@ const EMAIL_STEPS: DemoStep[] = [
     scene: (
       <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
         <CardHead title="Draft 1 of 12" sub="TO DANA OKAFOR" badge={<Badge tone="ok">Approved</Badge>} />
-        <div style={{ padding: 18, fontSize: 14, lineHeight: 1.6, color: '#2E2E2C' }}>
-          …would <del style={{ color: '#8A4B05' }}>a 15-minute look at how teams that size cut status emails</del>{' '}
+        <div style={{ padding: 18, fontSize: 14, lineHeight: 1.6, color: 'var(--text)' }}>
+          …would{' '}
+          <del style={{ color: 'var(--amber-text)' }}>a 15-minute look at how teams that size cut status emails</del>{' '}
           <ins
             style={{
               textDecoration: 'none',
-              background: '#EAF3EE',
-              color: '#17643F',
+              background: 'var(--accent-soft)',
+              color: 'var(--ok-text)',
               padding: '0 3px',
               borderRadius: 4,
             }}
@@ -161,7 +162,7 @@ const EMAIL_STEPS: DemoStep[] = [
             gap: 8,
             padding: '0 18px 18px',
             fontSize: 12,
-            color: '#5E5E5B',
+            color: 'var(--muted)',
           }}
         >
           <span>Your edit is remembered for the next 11.</span>
@@ -176,7 +177,7 @@ const EMAIL_STEPS: DemoStep[] = [
     scene: (
       <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <span className="eyebrow" style={{ fontSize: 11 }}>
-          TRACK RECORD · FIRST EMAILS · LAST 30 DAYS
+          Track record · first emails · last 30 days
         </span>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontSize: 40, fontWeight: 500, letterSpacing: '-0.03em' }}>18</span>
@@ -195,8 +196,8 @@ const EMAIL_STEPS: DemoStep[] = [
     scene: (
       <div
         style={{
-          background: '#111111',
-          color: '#FFFFFF',
+          background: 'var(--band)',
+          color: 'var(--on-band)',
           borderRadius: 18,
           padding: 24,
           display: 'flex',
@@ -205,18 +206,18 @@ const EMAIL_STEPS: DemoStep[] = [
           boxShadow: '0 20px 50px rgba(17,17,17,.25)',
         }}
       >
-        <span className="mono" style={{ fontSize: 11, letterSpacing: '0.08em', color: '#BFE3CF' }}>
+        <span className="mono" style={{ fontSize: 11, letterSpacing: '0.08em', color: 'var(--band-accent)' }}>
           PROMOTION AVAILABLE
         </span>
         <span style={{ fontSize: 20, lineHeight: 1.35, fontWeight: 500 }}>
           First emails have a clean record. Let your Sales Manager Staff send them on its own?
         </span>
-        <span style={{ fontSize: 13, lineHeight: 1.55, color: '#C9C9C4' }}>
+        <span style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--on-band-muted)' }}>
           Replies about pricing, contracts or complaints still come to you, promoted or not.
         </span>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} aria-hidden="true">
           <span className="btn btn-sm btn-white">Promote</span>
-          <span className="btn btn-sm" style={{ color: '#C9C9C4', border: '1px solid #3A3A38' }}>
+          <span className="btn btn-sm" style={{ color: 'var(--on-band-muted)', border: '1px solid var(--band-line)' }}>
             Not yet
           </span>
         </div>
@@ -282,8 +283,8 @@ const CALL_STEPS: DemoStep[] = [
       <>
         <div
           style={{
-            background: '#111111',
-            color: '#FFFFFF',
+            background: 'var(--band)',
+            color: 'var(--on-band)',
             borderRadius: 18,
             padding: 22,
             display: 'flex',
@@ -291,7 +292,7 @@ const CALL_STEPS: DemoStep[] = [
             gap: 12,
           }}
         >
-          <span className="mono" style={{ fontSize: 11, letterSpacing: '0.08em', color: '#F2C98A' }}>
+          <span className="mono" style={{ fontSize: 11, letterSpacing: '0.08em', color: 'var(--amber-text)' }}>
             WHISPERED TO YOU BEFORE CONNECTING
           </span>
           <span style={{ fontSize: 16, lineHeight: 1.5 }}>
@@ -323,7 +324,7 @@ export default function HowItWorksPage() {
       <section aria-labelledby="how-hero" className="page-hero" style={{ paddingBottom: 64 }}>
         <LiveGrid />
         <div className="wrap center-head enter" style={{ position: 'relative', zIndex: 2 }}>
-          <Eyebrow>HOW IT WORKS</Eyebrow>
+          <Eyebrow>How it works</Eyebrow>
           <h1 id="how-hero" className="h1-sm">
             From task to done, <span className="muted-head">with you in charge.</span>
           </h1>
@@ -360,14 +361,21 @@ export default function HowItWorksPage() {
                     key={node.n}
                     className={`gnode ${node.cls}`}
                     style={
-                      'accent' in node ? { borderColor: node.accent === 'amber' ? '#C27A12' : '#111111' } : undefined
+                      'accent' in node
+                        ? { borderColor: node.accent === 'amber' ? 'var(--amber)' : 'var(--ink)' }
+                        : undefined
                     }
                   >
                     <span
                       className="mono"
                       style={{
                         fontSize: 11,
-                        color: 'accent' in node ? (node.accent === 'amber' ? '#8A4B05' : '#111111') : '#1E7A52',
+                        color:
+                          'accent' in node
+                            ? node.accent === 'amber'
+                              ? 'var(--amber-text)'
+                              : 'var(--ink)'
+                            : 'var(--accent)',
                       }}
                     >
                       {node.n}
@@ -384,7 +392,7 @@ export default function HowItWorksPage() {
 
       <section id="demo" aria-labelledby="demo-title" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap stack" style={{ gap: 22 }}>
-          <Eyebrow>TRY IT</Eyebrow>
+          <Eyebrow>Try it</Eyebrow>
           <h2 id="demo-title" className="h2">
             Watch a morning&apos;s work.
           </h2>
@@ -400,7 +408,7 @@ export default function HowItWorksPage() {
       <section aria-labelledby="day-title" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap stack" style={{ gap: 40 }}>
           <div className="center-head">
-            <Eyebrow>YOUR FIRST DAY</Eyebrow>
+            <Eyebrow>Your first day</Eyebrow>
             <h2 id="day-title" className="h2">
               Real drafts before you close the tab.
             </h2>
@@ -415,10 +423,10 @@ export default function HowItWorksPage() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
-                  border: i === 3 ? '1px solid #111111' : undefined,
+                  border: i === 3 ? '1px solid var(--accent)' : undefined,
                 }}
               >
-                <span className="mono" style={{ fontSize: 12, color: i === 3 ? '#111111' : '#1E7A52' }}>
+                <span className="mono" style={{ fontSize: 12, color: i === 3 ? 'var(--ink)' : 'var(--accent)' }}>
                   STEP {i + 1}
                 </span>
                 <span style={{ fontSize: 16, fontWeight: 500 }}>{title}</span>

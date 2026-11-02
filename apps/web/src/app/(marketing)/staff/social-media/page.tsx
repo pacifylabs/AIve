@@ -71,7 +71,7 @@ export default function SocialMediaStaffPage() {
       <section aria-labelledby="caps-title" className="section" style={{ paddingTop: 48 }}>
         <div className="wrap stack" style={{ gap: 40 }}>
           <div className="center-head">
-            <Eyebrow>WHAT IT DOES</Eyebrow>
+            <Eyebrow>What it does</Eyebrow>
             <h2 id="caps-title" className="h2">
               Four jobs, done the way you&apos;d do them.
             </h2>
@@ -89,7 +89,7 @@ export default function SocialMediaStaffPage() {
                   >
                     <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <span className="eyebrow" style={{ fontSize: 11 }}>
-                        PLAN · NEXT WEEK
+                        Plan · next week
                       </span>
                       <span style={{ fontSize: 14 }}>5 posts · 1 video · 3 topics from your company record</span>
                       <div style={{ display: 'flex', gap: 8 }} aria-hidden="true">
@@ -177,7 +177,7 @@ export default function SocialMediaStaffPage() {
                             width: 44,
                             height: 44,
                             borderRadius: '50%',
-                            background: '#FFFFFF',
+                            background: 'var(--surface)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -189,7 +189,7 @@ export default function SocialMediaStaffPage() {
                         </span>
                       </div>
                       <div className="meter" aria-hidden="true">
-                        <span style={{ background: '#111111' }} />
+                        <span style={{ background: 'var(--band)' }} />
                       </div>
                       <span className="small">Watched 0:18 of 0:30. Finish to approve.</span>
                     </div>
@@ -235,7 +235,7 @@ export default function SocialMediaStaffPage() {
       <section aria-labelledby="net-title" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap grid2" style={{ gap: 24, alignItems: 'stretch' }}>
           <div className="card" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <Eyebrow>WHERE IT POSTS</Eyebrow>
+            <Eyebrow>Where it posts</Eyebrow>
             <h2 id="net-title" className="h3" style={{ fontSize: 26 }}>
               Your accounts, connected in one click.
             </h2>
@@ -249,7 +249,12 @@ export default function SocialMediaStaffPage() {
                 <li
                   key={network}
                   className="badge"
-                  style={{ justifyContent: 'center', padding: 12, border: '1px dashed #CFCFCA', color: '#5E5E5B' }}
+                  style={{
+                    justifyContent: 'center',
+                    padding: 12,
+                    border: '1px dashed var(--line-dash)',
+                    color: 'var(--muted)',
+                  }}
                 >
                   {network} · coming
                 </li>

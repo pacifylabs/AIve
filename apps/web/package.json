@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-staff/contracts": "workspace:*",
+    "globe.gl": "^2.46.2",
     "next": "16.4.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",

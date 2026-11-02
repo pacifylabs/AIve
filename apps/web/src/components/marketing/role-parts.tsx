@@ -85,7 +85,7 @@ export function StatusList({
             gap: 12,
             alignItems: 'center',
             padding: '12px 0',
-            borderBottom: i < rows.length - 1 ? '1px solid #F0F0EC' : undefined,
+            borderBottom: i < rows.length - 1 ? '1px solid var(--line-soft)' : undefined,
             fontSize: 13,
           }}
         >
@@ -130,11 +130,11 @@ export function WeekPlan({
             gap: 12,
             alignItems: 'center',
             padding: '12px 0',
-            borderBottom: i < rows.length - 1 ? '1px solid #F0F0EC' : undefined,
+            borderBottom: i < rows.length - 1 ? '1px solid var(--line-soft)' : undefined,
             fontSize: 13,
           }}
         >
-          <span className="mono" style={{ color: '#5E5E5B' }}>
+          <span className="mono" style={{ color: 'var(--muted)' }}>
             {row.day}
           </span>
           <span>{row.network}</span>
@@ -164,7 +164,7 @@ export function AutonomySection({ intro, rows }: { intro: string; rows: Autonomy
     <section aria-labelledby="earn-title" className="section" style={{ paddingTop: 0 }}>
       <div className="wrap split">
         <div className="stack" style={{ gap: 16 }}>
-          <Eyebrow>WHAT IT CAN EARN</Eyebrow>
+          <Eyebrow>What it can earn</Eyebrow>
           <h2 id="earn-title" className="h2">
             Trust is earned per task.
           </h2>
@@ -179,9 +179,9 @@ export function AutonomySection({ intro, rows }: { intro: string; rows: Autonomy
                 style={{
                   ...grid,
                   padding: '14px 0',
-                  borderBottom: '1px solid #EDEDE9',
+                  borderBottom: '1px solid var(--line-soft)',
                   fontSize: 11,
-                  color: '#5E5E5B',
+                  color: 'var(--muted)',
                   textAlign: 'left',
                 }}
               >
@@ -203,7 +203,7 @@ export function AutonomySection({ intro, rows }: { intro: string; rows: Autonomy
                   style={{
                     ...grid,
                     padding: '16px 0',
-                    borderBottom: i < rows.length - 1 ? '1px solid #F0F0EC' : undefined,
+                    borderBottom: i < rows.length - 1 ? '1px solid var(--line-soft)' : undefined,
                     fontSize: 14,
                     alignItems: 'center',
                   }}
@@ -236,7 +236,7 @@ export function NumberedQuestions({ heading, questions }: { heading: string; que
       <ol className="list">
         {questions.map((question, i) => (
           <li key={question}>
-            <span className="mono" style={{ color: '#1E7A52', fontSize: 12, paddingTop: 2 }}>
+            <span className="mono" style={{ color: 'var(--accent)', fontSize: 12, paddingTop: 2 }}>
               {String(i + 1).padStart(2, '0')}
             </span>
             {question}

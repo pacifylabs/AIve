@@ -23,7 +23,7 @@ function Submit() {
 
 function FieldError({ id, message }: { id: string; message: string | undefined }) {
   return message ? (
-    <span id={id} style={{ fontSize: 13, color: '#B42318' }}>
+    <span id={id} style={{ fontSize: 13, color: 'var(--danger)' }}>
       {message}
     </span>
   ) : null;
@@ -43,7 +43,7 @@ export function EarlyAccessForm({ role }: { role: 'social' | 'sales' | 'both' })
             height="20"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#1E7A52"
+            style={{ stroke: 'var(--ok)' }}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -73,8 +73,8 @@ export function EarlyAccessForm({ role }: { role: 'social' | 'sales' | 'both' })
           style={{
             margin: 0,
             fontSize: 14,
-            color: '#B42318',
-            background: '#FEF3F2',
+            color: 'var(--danger)',
+            background: 'var(--danger-soft)',
             borderRadius: 12,
             padding: '12px 14px',
           }}
@@ -127,7 +127,7 @@ export function EarlyAccessForm({ role }: { role: 'social' | 'sales' | 'both' })
       </fieldset>
       <div className="field">
         <label htmlFor="ea-next">
-          What would you hand over first? <span style={{ fontWeight: 400, color: '#5E5E5B' }}>(optional)</span>
+          What would you hand over first? <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span>
         </label>
         <input
           id="ea-next"

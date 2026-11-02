@@ -91,17 +91,17 @@ export default function SafetyPage() {
         >
           <path
             className="signal"
-            style={{ stroke: '#2E2E2C' }}
+            style={{ stroke: 'var(--band-line)' }}
             d="M-40 480 C 300 360, 520 560, 760 440 S 1180 300, 1480 400"
           />
           <path
             className="signal-strong"
-            style={{ stroke: '#BFE3CF' }}
+            style={{ stroke: 'var(--band-accent)' }}
             d="M-40 480 C 300 360, 520 560, 760 440 S 1180 300, 1480 400"
           />
         </svg>
         <div className="wrap center-head enter" style={{ position: 'relative', zIndex: 2 }}>
-          <Eyebrow>SAFETY</Eyebrow>
+          <Eyebrow>Safety</Eyebrow>
           <h1 id="safety-hero" className="h1-sm">
             The rules that never <span style={{ color: '#8F8F8A' }}>get promoted away.</span>
           </h1>
@@ -117,7 +117,7 @@ export default function SafetyPage() {
       <section aria-labelledby="rules-title" className="dark section" style={{ paddingTop: 24 }}>
         <div className="wrap stack" style={{ gap: 32 }}>
           <h2 id="rules-title" className="eyebrow">
-            THE RULES
+            The rules
           </h2>
           <ul className="safety-grid" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {RULES.map((rule) => (
@@ -150,7 +150,7 @@ export default function SafetyPage() {
       <section aria-labelledby="pause-title" className="section">
         <div className="wrap split">
           <div className="stack" style={{ gap: 16 }}>
-            <Eyebrow>ALWAYS IN CONTROL</Eyebrow>
+            <Eyebrow>Always in control</Eyebrow>
             <h2 id="pause-title" className="h2">
               One switch stops everything.
             </h2>
@@ -166,7 +166,7 @@ export default function SafetyPage() {
       <section aria-labelledby="data-title" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap stack" style={{ gap: 40 }}>
           <div className="center-head">
-            <Eyebrow>YOUR DATA</Eyebrow>
+            <Eyebrow>Your data</Eyebrow>
             <h2 id="data-title" className="h2">
               Kept apart, kept short, yours to delete.
             </h2>

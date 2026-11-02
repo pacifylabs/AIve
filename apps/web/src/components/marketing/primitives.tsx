@@ -3,13 +3,13 @@ import type { ReactNode } from 'react';
 
 /** Small building blocks shared by every marketing page. Styles live in app/(marketing)/marketing.css. */
 
-export function Tick({ stroke = '#1E7A52' }: { stroke?: string }) {
+export function Tick({ stroke = 'var(--ok)' }: { stroke?: string }) {
   return (
     <svg
       className="tick"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={stroke}
+      style={{ stroke }}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -46,7 +46,7 @@ export function PillLink({ href, children, dark = false }: { href: string; child
     <Link
       href={href}
       className="pill-link"
-      style={dark ? { background: 'transparent', color: '#FFFFFF', borderColor: '#3A3A38' } : undefined}
+      style={dark ? { background: 'transparent', color: 'var(--on-band)', borderColor: 'var(--band-line)' } : undefined}
     >
       {children}
     </Link>
@@ -55,6 +55,44 @@ export function PillLink({ href, children, dark = false }: { href: string; child
 
 export type StaffKey = 'social' | 'sales';
 
+const ROLE_NAMES = { social: 'Social Media Staff', sales: 'Sales Manager Staff', you: 'You' } as const;
+
+/** Line icons standing in for each role: a megaphone for social, a briefcase for sales, a person for you. */
+export function RoleIcon({ who }: { who: StaffKey | 'you' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {who === 'social' ? (
+        <>
+          <path d="M3 10.5v3a1 1 0 0 0 1 1h2.5l5.5 4V5.5l-5.5 4H4a1 1 0 0 0-1 1z" />
+          <path d="M15.5 9a3.5 3.5 0 0 1 0 6" />
+          <path d="M18.5 6.5a7 7 0 0 1 0 11" />
+        </>
+      ) : who === 'sales' ? (
+        <>
+          <rect x="3" y="7.5" width="18" height="12.5" rx="2.5" />
+          <path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5" />
+          <path d="M3 13h18" />
+          <path d="M11 13v1.5h2V13" />
+        </>
+      ) : (
+        <>
+          <circle cx="12" cy="8.5" r="3.8" />
+          <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** A role's icon in its coloured tile. Decorative: the role's name is always written next to it. */
 export function StaffTile({
   who,
   large = false,
@@ -65,15 +103,33 @@ export function StaffTile({
   small?: boolean;
 }) {
   const cls = who === 'social' ? 'tile-sm' : who === 'sales' ? 'tile-sl' : 'tile-you';
-  const label = who === 'social' ? 'SM' : who === 'sales' ? 'SL' : 'YOU';
   return (
     <span
       className={`tile ${cls}${large ? ' tile-lg' : ''}`}
-      style={small ? { width: 22, height: 22, borderRadius: 6, fontSize: 9 } : undefined}
+      style={small ? { width: 22, height: 22, borderRadius: 6 } : undefined}
+      title={ROLE_NAMES[who]}
       aria-hidden="true"
     >
-      {label}
+      <RoleIcon who={who} />
     </span>
+  );
+}
+
+/** The logo: a small Earth with an orbit, drawn in theme colours. */
+export function BrandMark() {
+  return (
+    <svg className="brand-mark" viewBox="0 0 28 28" aria-hidden="true">
+      <circle cx="14" cy="14" r="7" style={{ fill: 'var(--accent)' }} />
+      <ellipse
+        cx="14"
+        cy="14"
+        rx="12"
+        ry="4.6"
+        transform="rotate(-22 14 14)"
+        style={{ fill: 'none', stroke: 'var(--ink)', strokeWidth: 1.6 }}
+      />
+      <circle cx="24.6" cy="9.8" r="1.9" style={{ fill: 'var(--ink)' }} />
+    </svg>
   );
 }
 
@@ -87,8 +143,8 @@ export function LiveGrid() {
 
 /** Dashed signal paths with a travelling marker, behind hero content. */
 export function SignalLines({ dark = false }: { dark?: boolean }) {
-  const quiet = dark ? { stroke: '#2E2E2C' } : undefined;
-  const strong = dark ? { stroke: '#BFE3CF' } : undefined;
+  const quiet = dark ? { stroke: 'var(--band-line)' } : undefined;
+  const strong = dark ? { stroke: 'var(--band-accent)' } : undefined;
   return (
     <svg
       className="live-bg"

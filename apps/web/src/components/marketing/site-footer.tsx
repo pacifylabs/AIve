@@ -1,92 +1,93 @@
 import Link from 'next/link';
+import { Arrow, BrandMark } from './primitives';
+
+const CONTACT = 'pacifylabs@gmail.com';
 
 const COLUMNS = [
   {
-    heading: 'STAFF',
-    label: 'Staff',
+    heading: 'Staff',
     links: [
       ['/staff/social-media', 'Social Media Staff'],
       ['/staff/sales-manager', 'Sales Manager Staff'],
     ],
+    note: 'More roles coming',
   },
   {
-    heading: 'PRODUCT',
-    label: 'Product',
+    heading: 'Product',
     links: [
       ['/how-it-works', 'How it works'],
       ['/safety', 'Safety'],
       ['/pricing', 'Pricing'],
+      ['/pricing#faq-title', 'Questions'],
     ],
   },
   {
-    heading: 'LEGAL',
-    label: 'Legal',
+    heading: 'Company',
+    links: [
+      [`mailto:${CONTACT}`, 'Contact us'],
+      ['/early-access', 'Join early access'],
+      ['/login', 'Log in'],
+    ],
+  },
+  {
+    heading: 'Legal',
     links: [
       ['/privacy', 'Privacy'],
       ['/terms', 'Terms'],
       ['/acceptable-use', 'Acceptable use'],
     ],
   },
-  {
-    heading: 'ACCOUNT',
-    label: 'Account',
-    links: [
-      ['/login', 'Log in'],
-      ['/early-access', 'Join early access'],
-      ['mailto:pacifylabs@gmail.com', 'pacifylabs@gmail.com'],
-    ],
-  },
 ] as const;
 
 export function SiteFooter() {
   return (
-    <footer style={{ borderTop: '1px solid #E6E6E2', padding: '56px 0 48px' }}>
-      <div className="wrap footer-row">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 6,
-                background: '#111111',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: 2, background: '#F6F6F4' }} />
-            </span>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>AI as a Staff</span>
+    <footer className="site-footer">
+      <div className="wrap">
+        <div className="footer-grid">
+          <div className="footer-brand">
+            <Link href="/" className="brand" aria-label="AI as a Staff, home">
+              <BrandMark />
+              <span className="brand-word">AI as a Staff</span>
+            </Link>
+            <p className="body" style={{ maxWidth: 340 }}>
+              AI staff for social media and sales. They start on probation and earn the right to act on their own.
+            </p>
+            <div className="footer-cta glass">
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
+                <span className="live-dot" />
+                Early access is open
+              </span>
+              <span className="small">
+                Invites go out in small groups. Questions? <a href={`mailto:${CONTACT}`}>{CONTACT}</a>
+              </span>
+              <Link href="/early-access" className="btn btn-dark btn-sm" style={{ alignSelf: 'flex-start' }}>
+                Join early access <Arrow />
+              </Link>
+            </div>
           </div>
-          <span className="small">AI staff that start on probation and earn the right to act on their own.</span>
+          {COLUMNS.map((column) => (
+            <nav key={column.heading} aria-label={column.heading} className="footer-col">
+              <span className="footer-head">{column.heading}</span>
+              {column.links.map(([href, label]) =>
+                href.startsWith('mailto:') ? (
+                  <a key={href} href={href}>
+                    {label}
+                  </a>
+                ) : (
+                  <Link key={href} href={href}>
+                    {label}
+                  </Link>
+                ),
+              )}
+              {'note' in column ? <span className="footer-note">{column.note}</span> : null}
+            </nav>
+          ))}
         </div>
-        {COLUMNS.map((column) => (
-          <nav
-            key={column.heading}
-            aria-label={column.label}
-            style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}
-          >
-            <span className="eyebrow" style={{ fontSize: 11 }}>
-              {column.heading}
-            </span>
-            {column.links.map(([href, label]) =>
-              href.startsWith('mailto:') ? (
-                <a key={href} href={href} style={{ textDecoration: 'none', color: '#3A3A38' }}>
-                  {label}
-                </a>
-              ) : (
-                <Link key={href} href={href} style={{ textDecoration: 'none', color: '#3A3A38' }}>
-                  {label}
-                </Link>
-              ),
-            )}
-          </nav>
-        ))}
-      </div>
-      <div className="wrap" style={{ marginTop: 40 }}>
-        <span className="small">© 2026 AI as a Staff</span>
+        <div className="footer-bottom">
+          <span>© 2026 AI as a Staff</span>
+          <span>Earth imagery: NASA</span>
+          <a href={`mailto:${CONTACT}`}>{CONTACT}</a>
+        </div>
       </div>
     </footer>
   );

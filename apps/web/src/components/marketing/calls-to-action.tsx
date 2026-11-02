@@ -12,7 +12,7 @@ export function CtaBand({ title, sub }: { title: string; sub: string }) {
             position: 'relative',
             overflow: 'hidden',
             borderRadius: 28,
-            padding: '88px 32px',
+            padding: '96px 32px 210px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -20,33 +20,16 @@ export function CtaBand({ title, sub }: { title: string; sub: string }) {
             gap: 24,
           }}
         >
-          <svg
-            className="live-bg"
-            width="100%"
-            height="100%"
-            viewBox="0 0 1200 420"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <path
-              className="signal"
-              style={{ stroke: '#3A3A38' }}
-              d="M-20 320 C 240 200, 420 380, 640 260 S 1000 120, 1240 220"
-            />
-            <path
-              className="signal"
-              style={{ stroke: '#3A3A38', animationDuration: '9s' }}
-              d="M-20 120 C 200 220, 460 60, 700 140 S 1040 300, 1240 90"
-            />
-            <path
-              className="signal-strong"
-              style={{ stroke: '#BFE3CF' }}
-              d="M-20 320 C 240 200, 420 380, 640 260 S 1000 120, 1240 220"
-            />
-          </svg>
+          {/* The night side of the Earth rising from the bottom edge. */}
+          <div className="cta-horizon" aria-hidden="true" />
           <span
             className="cta-note"
-            style={{ position: 'relative', background: '#1C1C1B', borderColor: '#2E2E2C', color: '#E4E4E0' }}
+            style={{
+              position: 'relative',
+              background: 'rgba(255,255,255,.08)',
+              borderColor: 'rgba(255,255,255,.16)',
+              color: 'var(--on-band)',
+            }}
           >
             <span className="live-dot" />
             Early access is open
@@ -64,7 +47,7 @@ export function CtaBand({ title, sub }: { title: string; sub: string }) {
           >
             Join early access <Arrow />
           </Link>
-          <Link href="/how-it-works" style={{ position: 'relative', fontSize: 14, color: '#C9C9C4' }}>
+          <Link href="/how-it-works" style={{ position: 'relative', fontSize: 14, color: 'var(--on-band-muted)' }}>
             or see how it works first
           </Link>
         </div>

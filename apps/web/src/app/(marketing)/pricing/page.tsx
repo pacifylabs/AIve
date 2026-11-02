@@ -70,7 +70,7 @@ export default function PricingPage() {
       <section aria-labelledby="pricing-hero" className="page-hero" style={{ paddingBottom: 56 }}>
         <LiveGrid />
         <div className="wrap center-head enter" style={{ position: 'relative', zIndex: 2 }}>
-          <Eyebrow>PRICING</Eyebrow>
+          <Eyebrow>Pricing</Eyebrow>
           <h1 id="pricing-hero" className="h1-sm">
             Pay per staff member. <span className="muted-head">Never more than your cap.</span>
           </h1>
@@ -109,7 +109,7 @@ export default function PricingPage() {
       <section aria-labelledby="plans-title" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap stack" style={{ gap: 32 }}>
           <h2 id="plans-title" className="eyebrow">
-            THE PLANS
+            The plans
           </h2>
           <div className="grid3">
             {PLANS.map((plan) => (
@@ -121,7 +121,7 @@ export default function PricingPage() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 18,
-                  ...(plan.featured ? { outline: '1.5px solid #111111', outlineOffset: -1.5 } : {}),
+                  ...(plan.featured ? { outline: '1.5px solid var(--ink)', outlineOffset: -1.5 } : {}),
                 }}
               >
                 {plan.featured ? (
@@ -140,7 +140,7 @@ export default function PricingPage() {
                     <span className="small">{plan.line}</span>
                   </div>
                 )}
-                <span style={{ fontSize: 28, fontWeight: 500, letterSpacing: '-0.02em', color: '#7C7C78' }}>
+                <span style={{ fontSize: 28, fontWeight: 500, letterSpacing: '-0.02em', color: 'var(--muted-head)' }}>
                   Price at launch
                 </span>
                 <span className="small">{plan.per}</span>
@@ -165,7 +165,7 @@ export default function PricingPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <caption className="sr-only">What each plan includes</caption>
               <thead>
-                <tr className="plan-row mono" style={{ fontSize: 11, color: '#5E5E5B' }}>
+                <tr className="plan-row mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
                   <th scope="col">WHAT&apos;S INCLUDED</th>
                   <th scope="col">ASSISTANT</th>
                   <th scope="col">MANAGER</th>
@@ -197,7 +197,7 @@ export default function PricingPage() {
               flexWrap: 'wrap',
               gap: '10px 28px',
               fontSize: 13,
-              color: '#5E5E5B',
+              color: 'var(--muted)',
             }}
           >
             <span>7-day trial, no card</span>
@@ -216,7 +216,7 @@ export default function PricingPage() {
       <section aria-labelledby="faq-title" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap stack" style={{ gap: 40, maxWidth: 920 }}>
           <div className="stack" style={{ gap: 16 }}>
-            <Eyebrow>QUESTIONS</Eyebrow>
+            <Eyebrow>Questions</Eyebrow>
             <h2 id="faq-title" className="h2">
               Questions owners ask first.
             </h2>
@@ -226,7 +226,7 @@ export default function PricingPage() {
               <details key={question} open={i === 0}>
                 <summary>
                   {question}
-                  <span aria-hidden="true" className="mono" style={{ fontSize: 18, color: '#5E5E5B' }}>
+                  <span aria-hidden="true" className="mono" style={{ fontSize: 18, color: 'var(--muted)' }}>
                     +
                   </span>
                 </summary>

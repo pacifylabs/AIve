@@ -9,7 +9,7 @@ export function LegalPage({ title, children }: { title: string; children: ReactN
   return (
     <section aria-labelledby="legal-title" className="section" style={{ paddingTop: 96 }}>
       <div className="wrap stack" style={{ gap: 20, maxWidth: 760 }}>
-        <Eyebrow>LEGAL</Eyebrow>
+        <Eyebrow>Legal</Eyebrow>
         <h1 id="legal-title" className="h1-sm">
           {title}
         </h1>

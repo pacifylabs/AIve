@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Arrow } from './primitives';
+import { Arrow, BrandMark } from './primitives';
+import { ThemeToggle } from './theme-toggle';
 
 const LINKS = [
   { href: '/staff/social-media', label: 'Social Media Staff' },
@@ -23,25 +24,9 @@ export function SiteNav() {
   return (
     <header className="nav">
       <div className="wrap nav-inner">
-        <Link
-          href="/"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: '#111111' }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 6,
-              background: '#111111',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: '#F6F6F4' }} />
-          </span>
-          <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em' }}>AI as a Staff</span>
+        <Link href="/" className="brand" aria-label="AI as a Staff, home">
+          <BrandMark />
+          <span className="brand-word">AI as a Staff</span>
         </Link>
         <nav aria-label="Main" className="nav-links">
           {LINKS.map((link) => (
@@ -50,8 +35,13 @@ export function SiteNav() {
             </Link>
           ))}
         </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/login" className="nav-login" style={{ fontSize: 13, textDecoration: 'none', color: '#3A3A38' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <ThemeToggle />
+          <Link
+            href="/login"
+            className="nav-login"
+            style={{ fontSize: 14, textDecoration: 'none', color: 'var(--text-2)' }}
+          >
             Log in
           </Link>
           <Link href="/early-access" className="btn btn-dark btn-sm nav-cta">
@@ -82,7 +72,7 @@ export function SiteNav() {
         </div>
       </div>
       {open ? (
-        <nav id="mobile-menu" aria-label="Mobile" style={{ borderTop: '1px solid #E6E6E2', background: '#FFFFFF' }}>
+        <nav id="mobile-menu" aria-label="Mobile" style={{ borderTop: '1px solid var(--glass-line)' }}>
           <div className="wrap" style={{ display: 'flex', flexDirection: 'column', paddingTop: 8, paddingBottom: 16 }}>
             {[...LINKS, { href: '/early-access', label: 'Join early access' }, { href: '/login', label: 'Log in' }].map(
               (link) => (
@@ -90,7 +80,12 @@ export function SiteNav() {
                   key={link.href}
                   href={link.href}
                   aria-current={pathname === link.href ? 'page' : undefined}
-                  style={{ fontSize: 17, textDecoration: 'none', padding: '14px 0', borderBottom: '1px solid #EDEDE9' }}
+                  style={{
+                    fontSize: 17,
+                    textDecoration: 'none',
+                    padding: '14px 0',
+                    borderBottom: '1px solid var(--line-soft)',
+                  }}
                 >
                   {link.label}
                 </Link>

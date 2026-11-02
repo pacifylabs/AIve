@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import type { CSSProperties, ReactNode } from 'react';
 import { CtaBand, Dock } from '@/components/marketing/calls-to-action';
 import { Carousel } from '@/components/marketing/interactive';
-import { Arrow, Badge, Eyebrow, PillLink, SignalLines, StaffTile, TickList } from '@/components/marketing/primitives';
+import { EarthGlobe } from '@/components/marketing/earth-globe';
+import { Arrow, Badge, Eyebrow, PillLink, RoleIcon, StaffTile, TickList } from '@/components/marketing/primitives';
 
 export const metadata: Metadata = {
   title: { absolute: 'AI as a Staff — AI staff that earn your trust' },
@@ -11,28 +11,6 @@ export const metadata: Metadata = {
     'Hire AI staff for social media and sales. They start on probation, work only from facts you confirm, and act on their own once you promote them.',
   alternates: { canonical: '/' },
 };
-
-function FloatCard({
-  style,
-  className,
-  tone,
-  children,
-}: {
-  style: CSSProperties;
-  className: string;
-  tone?: 'dark';
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={`float ${className}`}
-      style={{ ...style, ...(tone === 'dark' ? { background: '#111111' } : {}) }}
-      aria-hidden="true"
-    >
-      {children}
-    </div>
-  );
-}
 
 const WORK = [
   ['social', 'ok', 'Posted', 'Why onboarding stalls in week two', 'LINKEDIN · MON 10:00'],
@@ -43,6 +21,37 @@ const WORK = [
   ['social', 'grey', 'Draft', 'Reply to a question on Facebook', 'COMMENT · 2 MIN AGO'],
   ['sales', 'ok', 'Call transferred', 'Jane Mensah, 40-seat enquiry', 'VOICE · 02:31'],
   ['social', 'ok', 'Lead created', '“How much for 10 seats?”', 'INSTAGRAM → SALES'],
+] as const;
+
+const PROOF = [
+  ['M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0M8 12h8M12 8v8', 'Posts to Facebook, Instagram, LinkedIn and X'],
+  [
+    'M5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9A2.5 2.5 0 0 1 5.5 5zM3.5 7l8.5 6 8.5-6',
+    'Emails from your own mailbox',
+  ],
+  [
+    'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2',
+    'Answers your phone line',
+  ],
+] as const;
+
+/** Example overnight work shown on the glass cards over the globe. */
+const OVERNIGHT = [
+  {
+    place: 'TORONTO · 02:15',
+    who: 'social',
+    tone: 'grey',
+    status: 'Drafted',
+    text: 'Three LinkedIn posts for next week',
+  },
+  { place: 'LONDON · 07:40', who: 'sales', tone: 'wait', status: 'Reply drafted', text: '“Yes, Thursday works.”' },
+  {
+    place: 'LAGOS · 09:02',
+    who: 'sales',
+    tone: 'ok',
+    status: 'Researched',
+    text: "Read a new lead's website before writing",
+  },
 ] as const;
 
 const STEPS = [
@@ -148,11 +157,15 @@ export default function HomePage() {
         gap: 20,
         height: '100%',
         boxSizing: 'border-box',
-        border: '1px dashed #CFCFCA',
+        border: '1px dashed var(--line-dash)',
         borderRadius: 18,
       }}
     >
-      <span className="tile tile-lg" style={{ background: '#EDEDE9', color: '#5E5E5B' }} aria-hidden="true">
+      <span
+        className="tile tile-lg"
+        style={{ background: 'var(--grey-soft)', color: 'var(--muted)' }}
+        aria-hidden="true"
+      >
         +
       </span>
       <h3 className="h3">Your next hire</h3>
@@ -165,84 +178,111 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Hero with live background */}
-      <section aria-labelledby="hero-title" className="page-hero" style={{ paddingBottom: 72 }}>
-        <div className="live-bg" aria-hidden="true">
-          <div className="live-grid" />
-          <SignalLines />
-        </div>
-
-        <FloatCard className="bob" style={{ left: '6%', top: 120 }}>
-          <StaffTile who="social" />
-          <span className="float-text">
-            <span style={{ fontSize: 13, fontWeight: 500 }}>LinkedIn post drafted</span>
-            <span style={{ fontSize: 12, color: '#5E5E5B' }}>Waiting for you · 09:12</span>
-          </span>
-        </FloatCard>
-        <FloatCard className="bob-2" style={{ left: '3%', top: 300 }}>
-          <StaffTile who="sales" />
-          <span className="float-text">
-            <span style={{ fontSize: 13, fontWeight: 500 }}>First email to Dana Okafor</span>
-            <span style={{ fontSize: 12, color: '#17643F' }}>Approved with one edit</span>
-          </span>
-        </FloatCard>
-        <FloatCard className="bob-3" style={{ right: '6%', top: 140 }}>
-          <StaffTile who="sales" />
-          <span className="float-text">
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Call · 2 min 14 s</span>
-            <span style={{ fontSize: 12, color: '#8A4B05' }}>Handed to you: volume pricing</span>
-          </span>
-        </FloatCard>
-        <FloatCard className="bob" tone="dark" style={{ right: '3%', top: 320 }}>
-          <span className="tile" style={{ background: '#2A2A28', color: '#BFE3CF' }}>
-            SL
-          </span>
-          <span className="float-text">
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#FFFFFF' }}>Promoted after 20 approvals</span>
-            <span style={{ fontSize: 12, color: '#C9C9C4' }}>Now sends first emails on its own</span>
-          </span>
-        </FloatCard>
-
-        <div
-          className="wrap"
-          style={{
-            position: 'relative',
-            zIndex: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            gap: 24,
-          }}
-        >
-          <span className="cta-note enter">
-            <span className="live-dot" />
-            Early access is open · Social Media and Sales staff
-          </span>
-          <h1 id="hero-title" className="h1 enter" style={{ maxWidth: 760 }}>
-            Staff that earn
-            <br />
-            <span className="muted-head">your trust.</span>
-          </h1>
-          <p className="lead enter-2" style={{ maxWidth: 560 }}>
-            Hire AI staff for social media and sales. They start on probation, work only from facts you confirm, and act
-            on their own once you promote them.
-          </p>
-          <div className="cta-row enter-2" style={{ marginTop: 4 }}>
-            <Link href="/early-access" className="btn btn-dark btn-xl">
-              Join early access <Arrow />
-            </Link>
-            <a href="#floor" className="btn btn-light btn-xl">
-              Watch them work
-            </a>
+      {/* Hero: copy on the left, the real Earth on the right */}
+      <section aria-labelledby="hero-title" className="page-hero hero">
+        <div className="hero-atmos" aria-hidden="true" />
+        <div className="wrap hero-grid">
+          <div className="stack enter" style={{ gap: 26 }}>
+            <span className="hero-kicker">
+              <span className="live-dot" />
+              Early access is open
+            </span>
+            <h1 id="hero-title" className="h1">
+              Staff that earn your trust.
+            </h1>
+            <p className="lead" style={{ maxWidth: 520 }}>
+              Hire AI staff for social media and sales. They start on probation, work only from facts you confirm, and
+              act on their own once you promote them.
+            </p>
+            <div className="cta-row" style={{ justifyContent: 'flex-start' }}>
+              <Link href="/early-access" className="btn btn-dark btn-xl">
+                Join early access <Arrow />
+              </Link>
+              <a href="#floor" className="btn btn-light btn-xl">
+                Watch them work
+              </a>
+            </div>
+            <ul className="hero-proof">
+              {PROOF.map(([icon, text]) => (
+                <li key={text}>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d={icon} />
+                  </svg>
+                  {text}
+                </li>
+              ))}
+            </ul>
+            <p className="small" style={{ margin: 0 }}>
+              Free 7-day trial at launch. No card needed.
+            </p>
           </div>
-          <p className="small" style={{ margin: 0 }}>
-            Free 7-day trial at launch. No card needed.
-          </p>
-        </div>
 
-        {/* Live staff floor */}
-        <div id="floor" className="wrap" style={{ position: 'relative', zIndex: 2, marginTop: 72 }}>
+          <div className="globe-stage hero-globe enter-2">
+            <div className="globe" role="img" aria-label="The Earth turning slowly, with two staff markers circling it">
+              <div className="globe-orbit" />
+              <div className="globe-glow" />
+              <EarthGlobe />
+              <div className="earth" />
+              {(['social', 'sales'] as const).map((who, i) => (
+                <div key={who} className="globe-track">
+                  <div className="globe-arm" style={i ? { animationDelay: '-7s' } : undefined}>
+                    <span
+                      className={`globe-staff ${who === 'social' ? 'tile-sm' : 'tile-sl'}`}
+                      style={i ? { animationDelay: '-7s' } : undefined}
+                    >
+                      <RoleIcon who={who} />
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <ul className="globe-list" aria-label="Example activity overnight">
+              {OVERNIGHT.map((item, i) => (
+                <li key={item.place} className={`globe-card glass hc-${i + 1} ${['bob', 'bob-2', 'bob-3'][i]}`}>
+                  <div className="gc-top">
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
+                      {item.place}
+                    </span>
+                    <Badge tone={item.tone}>{item.status}</Badge>
+                  </div>
+                  <div className="gc-row">
+                    <StaffTile who={item.who} />
+                    <span>{item.text}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="globe-inbox glass">
+              <span className="live-dot" />
+              <span style={{ fontSize: 14, fontWeight: 500 }}>Your morning inbox</span>
+              <Badge tone="wait">9 drafts waiting for you</Badge>
+              <span className="small hide-sm">example</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The staff floor: what a day looks like */}
+      <section id="floor" aria-labelledby="floor-title" className="section" style={{ paddingTop: 56 }}>
+        <div className="wrap stack" style={{ gap: 44 }}>
+          <div className="center-head">
+            <Eyebrow>Around the world, around the clock</Eyebrow>
+            <h2 id="floor-title" className="h2">
+              Your customers are everywhere. <span className="muted-head">Your staff keep up.</span>
+            </h2>
+            <p className="lead">
+              While you sleep, your staff read new leads, sort replies and draft posts for every time zone you sell to.
+              It all waits in your inbox, ready for your morning.
+            </p>
+          </div>
           <div
             className="floor"
             role="img"
@@ -266,10 +306,10 @@ export default function HomePage() {
                     <StaffTile who="social" />
                     <span className="stack">
                       <span style={{ fontSize: 13, fontWeight: 500 }}>Social Media Staff</span>
-                      <span style={{ fontSize: 12, color: '#17643F' }}>Working</span>
+                      <span style={{ fontSize: 12, color: 'var(--ok-text)' }}>Working</span>
                     </span>
                   </div>
-                  <span className="mono" style={{ fontSize: 11, color: '#5E5E5B' }}>
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
                     PLANNING THIS WEEK
                   </span>
                   <div className="meter">
@@ -291,10 +331,10 @@ export default function HomePage() {
                     <StaffTile who="sales" />
                     <span className="stack">
                       <span style={{ fontSize: 13, fontWeight: 500 }}>Sales Manager Staff</span>
-                      <span style={{ fontSize: 12, color: '#17643F' }}>Drafting</span>
+                      <span style={{ fontSize: 12, color: 'var(--ok-text)' }}>Drafting</span>
                     </span>
                   </div>
-                  <span className="mono" style={{ fontSize: 11, color: '#5E5E5B' }}>
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
                     12 FOLLOW-UPS FROM TUESDAY
                   </span>
                   <div className="meter meter-amber">
@@ -303,12 +343,12 @@ export default function HomePage() {
                   <span className="small typing">Hi Dana, thanks for joining on Tuesday</span>
                 </div>
                 <div className="wire w3" />
-                <div className="node" style={{ borderColor: '#111111' }}>
+                <div className="node" style={{ borderColor: 'var(--ink)' }}>
                   <div className="node-head">
                     <StaffTile who="you" />
                     <span className="stack">
                       <span style={{ fontSize: 13, fontWeight: 500 }}>Your approval inbox</span>
-                      <span style={{ fontSize: 12, color: '#8A4B05' }}>4 waiting</span>
+                      <span style={{ fontSize: 12, color: 'var(--amber-text)' }}>4 waiting</span>
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -329,25 +369,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="wrap">
-        <p className="strip">
-          <span>Posts to Facebook, Instagram, LinkedIn and X</span>
-          <span aria-hidden="true" className="hide-sm">
-            ·
-          </span>
-          <span>Emails from your own mailbox</span>
-          <span aria-hidden="true" className="hide-sm">
-            ·
-          </span>
-          <span>Answers your phone line</span>
-        </p>
-      </div>
-
       {/* Staff slider */}
       <section aria-labelledby="staff-title" className="section">
         <div className="wrap stack" style={{ gap: 40 }}>
           <div className="stack" style={{ gap: 14, maxWidth: 600 }}>
-            <Eyebrow>01 · THE STAFF</Eyebrow>
+            <Eyebrow>The staff</Eyebrow>
             <h2 id="staff-title" className="h2">
               Meet your staff.
             </h2>
@@ -372,7 +398,7 @@ export default function HomePage() {
             }}
           >
             <div className="stack" style={{ gap: 14, maxWidth: 620 }}>
-              <Eyebrow>02 · HOW IT WORKS</Eyebrow>
+              <Eyebrow>How it works</Eyebrow>
               <h2 id="how-title" className="h2">
                 Brief once. Hire. Approve. Promote.
               </h2>
@@ -386,7 +412,7 @@ export default function HomePage() {
                 className="card"
                 style={{ padding: 26, display: 'flex', flexDirection: 'column', gap: 12 }}
               >
-                <span className="mono" style={{ fontSize: 12, color: '#1E7A52' }}>
+                <span className="mono" style={{ fontSize: 12, color: 'var(--accent)' }}>
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <h3 className="h3" style={{ fontSize: 19 }}>
@@ -404,7 +430,7 @@ export default function HomePage() {
       {/* Week of work marquee */}
       <section aria-labelledby="week-title" className="section" style={{ paddingTop: 0 }}>
         <div className="wrap stack" style={{ gap: 14, marginBottom: 40 }}>
-          <Eyebrow>03 · A WEEK OF WORK</Eyebrow>
+          <Eyebrow>A week of work</Eyebrow>
           <h2 id="week-title" className="h2">
             Work that shows its working.
           </h2>
@@ -423,7 +449,7 @@ export default function HomePage() {
                     <Badge tone={tone}>{status}</Badge>
                   </div>
                   <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4 }}>{title}</span>
-                  <span className="mono" style={{ fontSize: 11, color: '#5E5E5B' }}>
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
                     {meta}
                   </span>
                 </div>
@@ -446,7 +472,7 @@ export default function HomePage() {
             }}
           >
             <div className="stack" style={{ gap: 14, maxWidth: 640 }}>
-              <Eyebrow>04 · SAFETY</Eyebrow>
+              <Eyebrow>Safety</Eyebrow>
               <h2 id="safety-title" className="h2">
                 What always comes to you.
               </h2>
@@ -469,7 +495,7 @@ export default function HomePage() {
               ],
             ].map(([title, text], i) => (
               <div key={title} className="safety-item">
-                <span className="mono" style={{ fontSize: 12, color: '#BFE3CF' }}>
+                <span className="mono" style={{ fontSize: 12, color: 'var(--band-accent)' }}>
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <h3 className="h3" style={{ fontSize: 18 }}>
@@ -501,7 +527,7 @@ export default function HomePage() {
               }}
             >
               <div className="stack" style={{ gap: 14, maxWidth: 560 }}>
-                <Eyebrow>05 · PRICING</Eyebrow>
+                <Eyebrow>Pricing</Eyebrow>
                 <h2 id="pricing-title" className="h2" style={{ fontSize: 38 }}>
                   Pay per staff member. Never more than your cap.
                 </h2>
@@ -519,7 +545,11 @@ export default function HomePage() {
                 <div
                   key={name as string}
                   className="stack"
-                  style={{ gap: 6, borderTop: featured ? '2px solid #111111' : '1px solid #EDEDE9', paddingTop: 18 }}
+                  style={{
+                    gap: 6,
+                    borderTop: featured ? '2px solid var(--accent)' : '1px solid var(--line-soft)',
+                    paddingTop: 18,
+                  }}
                 >
                   <span style={{ fontSize: 17, fontWeight: 500 }}>{name}</span>
                   <span className="small">{text}</span>

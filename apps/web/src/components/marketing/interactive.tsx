@@ -1,116 +1,118 @@
 'use client';
 
 import Link from 'next/link';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Arrow } from './primitives';
 
 /** Selected/unselected styling shared by every pill tab group. */
-const tabStyle = (on: boolean) => ({ background: on ? '#111111' : 'transparent', color: on ? '#FFFFFF' : '#3A3A38' });
+const tabStyle = (on: boolean) => ({
+  background: on ? 'var(--btn-bg)' : 'transparent',
+  color: on ? 'var(--btn-fg)' : 'var(--text-2)',
+});
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+const chevron = (d: string) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d={d} />
+  </svg>
+);
+
 /**
- * Carousel that advances every 6 seconds. Visitors can pause it, and it never moves on its own for people who ask for
- * reduced motion (WCAG 2.2.2). Any manual step pauses it.
+ * Carousel that advances every 6 seconds. It holds still while the pointer or keyboard focus is on it, and never
+ * moves on its own for people who ask for reduced motion (WCAG 2.2.2). Previous/next arrows appear on hover or focus;
+ * touch screens swipe instead.
  */
 export function Carousel({ label, slides, positions }: { label: string; slides: ReactNode[]; positions: number }) {
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const touchStart = useRef<number | null>(null);
+  const holding = reduced || hovered || focused;
 
-  useEffect(() => {
-    if (prefersReducedMotion()) setPaused(true);
-  }, []);
+  useEffect(() => setReduced(prefersReducedMotion()), []);
 
+  // Restarting the interval on every step means a manual move always gets a full 6 seconds on screen.
   useEffect(() => {
-    if (paused) return;
+    if (holding) return;
     const timer = window.setInterval(() => setIndex((current) => (current + 1) % positions), 6000);
     return () => window.clearInterval(timer);
-  }, [paused, positions]);
+  }, [holding, positions, index]);
 
-  const go = (next: number) => {
-    setIndex((next + positions) % positions);
-    setPaused(true);
-  };
+  const go = (next: number) => setIndex((next + positions) % positions);
 
   return (
-    <div className="stack" style={{ gap: 28 }}>
-      <div className="slider" role="region" aria-roledescription="carousel" aria-label={label}>
-        <div className="slides" style={{ ['--i' as string]: index }}>
-          {slides.map((slide, i) => (
-            <div
-              key={i}
-              className="slide"
-              role="group"
-              aria-roledescription="slide"
-              aria-label={`${i + 1} of ${slides.length}`}
-            >
-              {slide}
-            </div>
-          ))}
+    <div
+      className="carousel stack"
+      style={{ gap: 28 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+      }}
+    >
+      <div className="carousel-frame">
+        <div
+          className="slider"
+          role="region"
+          aria-roledescription="carousel"
+          aria-label={label}
+          onTouchStart={(event) => {
+            touchStart.current = event.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(event) => {
+            const start = touchStart.current;
+            const end = event.changedTouches[0]?.clientX;
+            touchStart.current = null;
+            if (start === null || end === undefined || Math.abs(end - start) < 40) return;
+            go(index + (end < start ? 1 : -1));
+          }}
+        >
+          <div className="slides" style={{ ['--i' as string]: index }}>
+            {slides.map((slide, i) => (
+              <div
+                key={i}
+                className="slide"
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${i + 1} of ${slides.length}`}
+              >
+                {slide}
+              </div>
+            ))}
+          </div>
         </div>
+        <button type="button" className="slider-nav prev glass" aria-label="Previous" onClick={() => go(index - 1)}>
+          {chevron('M15 6l-6 6 6 6')}
+        </button>
+        <button type="button" className="slider-nav next glass" aria-label="Next" onClick={() => go(index + 1)}>
+          {chevron('M9 6l6 6-6 6')}
+        </button>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-        <div className="dots" role="group" aria-label="Choose position">
-          {Array.from({ length: positions }, (_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`dot${i === index ? ' dot-on' : ''}`}
-              aria-label={`Position ${i + 1}`}
-              aria-current={i === index}
-              onClick={() => go(i)}
-            />
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+      <div className="dots" role="group" aria-label="Choose position">
+        {Array.from({ length: positions }, (_, i) => (
           <button
+            key={i}
             type="button"
-            className="icon-btn"
-            aria-label={paused ? 'Play slides' : 'Pause slides'}
-            onClick={() => setPaused((value) => !value)}
-          >
-            {paused ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M7 5v14l12-7z" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M7 5h3v14H7zM14 5h3v14h-3z" />
-              </svg>
-            )}
-          </button>
-          <button type="button" className="icon-btn" aria-label="Previous" onClick={() => go(index - 1)}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </button>
-          <button type="button" className="icon-btn" aria-label="Next" onClick={() => go(index + 1)}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </button>
-        </div>
+            className={`dot${i === index ? ' dot-on' : ''}`}
+            aria-label={`Position ${i + 1}`}
+            aria-current={i === index}
+            onClick={() => go(i)}
+          />
+        ))}
       </div>
     </div>
   );
@@ -196,21 +198,21 @@ export function DemoStepper({ stories }: { stories: { key: string; label: string
                 aria-current={i === step ? 'step' : undefined}
                 onClick={() => setStep(i)}
                 style={{
-                  background: i === step ? '#FFFFFF' : 'transparent',
-                  borderColor: i === step ? '#E6E6E2' : 'transparent',
+                  background: i === step ? 'var(--surface)' : 'transparent',
+                  borderColor: i === step ? 'var(--line)' : 'transparent',
                 }}
               >
                 <span
                   className="mono"
-                  style={{ fontSize: 12, color: i === step ? '#1E7A52' : '#7C7C78', paddingTop: 3 }}
+                  style={{ fontSize: 12, color: i === step ? 'var(--accent)' : 'var(--muted-head)', paddingTop: 3 }}
                 >
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <span className="stack" style={{ gap: 3 }}>
-                  <span style={{ fontSize: 15, fontWeight: 500, color: i === step ? '#111111' : '#3A3A38' }}>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: i === step ? 'var(--ink)' : 'var(--text-2)' }}>
                     {s.title}
                   </span>
-                  <span style={{ fontSize: 13, lineHeight: 1.5, color: '#5E5E5B' }}>{s.text}</span>
+                  <span style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--muted)' }}>{s.text}</span>
                 </span>
               </button>
             </li>
@@ -271,7 +273,7 @@ export function PauseSwitch() {
           aria-labelledby="pause-label"
           onClick={() => setPaused((value) => !value)}
           className="switch"
-          style={{ background: paused ? '#B4B4AE' : '#1E7A52' }}
+          style={{ background: paused ? 'var(--line-dash)' : 'var(--ok)' }}
         >
           <span className="knob" style={{ left: paused ? 4 : 32 }} />
         </button>
@@ -286,7 +288,7 @@ export function PauseSwitch() {
               alignItems: 'center',
               padding: '12px 14px',
               borderRadius: 12,
-              background: '#F6F6F4',
+              background: 'var(--subtle)',
             }}
           >
             <span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 14 }}>
@@ -371,18 +373,18 @@ export function PlanPicker() {
           alignItems: 'center',
           gap: 20,
           flexWrap: 'wrap',
-          background: '#111111',
-          color: '#FFFFFF',
+          background: 'var(--band)',
+          color: 'var(--on-band)',
           borderRadius: 16,
           padding: '22px 24px',
         }}
       >
         <div className="stack" style={{ gap: 4 }}>
-          <span className="mono" style={{ fontSize: 11, letterSpacing: '0.08em', color: '#BFE3CF' }}>
+          <span className="mono" style={{ fontSize: 11, letterSpacing: '0.08em', color: 'var(--band-accent)' }}>
             YOUR PLAN
           </span>
           <span style={{ fontSize: 22, fontWeight: 500 }}>{plan.name}</span>
-          <span style={{ fontSize: 14, color: '#C9C9C4' }}>{plan.why}</span>
+          <span style={{ fontSize: 14, color: 'var(--on-band-muted)' }}>{plan.why}</span>
         </div>
         <Link href={`/early-access?role=${role}`} className="btn btn-white btn-xl">
           Join early access <Arrow />
