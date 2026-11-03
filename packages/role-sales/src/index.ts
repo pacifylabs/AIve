@@ -7,3 +7,5 @@ export * from './settings.js';
 export { researchUrl } from './tasks/research.js';
 export { CLASSIFICATIONS, type Triage, triageSchema } from './tasks/triage.js';
 export type { WeeklyReport } from './tasks/weekly-report.js';
+export { OUTREACH_FIXTURES, type OutreachFixture } from './eval/outreach.js';
+export { REPLY_FIXTURES, type ReplyFixture } from './eval/replies.js';
