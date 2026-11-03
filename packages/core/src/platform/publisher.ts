@@ -12,6 +12,7 @@ import {
 } from '@ai-staff/db';
 import { ProviderError, type SocialProviders } from '@ai-staff/social';
 import type { Keyring } from '../crypto/keyring.js';
+import { AccountTokens } from './account-tokens.js';
 
 export type PublishOutcome = 'sent' | 'failed' | 'uncertain' | 'held' | 'blocked' | 'skipped';
 
@@ -20,15 +21,6 @@ export interface PublisherOptions {
   providers: SocialProviders;
   now?: () => Date;
 }
-
-interface AccountSecrets {
-  accessToken: string;
-  refreshToken?: string | null;
-}
-
-/** Binding for a connected account's encrypted tokens, so they only decrypt on their own row. */
-export const accountBinding = (account: Pick<ConnectedAccount, 'workspaceId' | 'id'>) =>
-  `${account.workspaceId}:${account.id}`;
 
 /** The parts of an intent the settle steps need. */
 type IntentRef = Pick<PublishIntent, 'id' | 'accountId' | 'attempts'>;
@@ -39,8 +31,6 @@ const STUCK_AFTER_MS = 10 * MINUTE;
 /** How long an uncertain publish is checked against the network before a person is asked. */
 const CHECK_FOR_MS = 30 * MINUTE;
 const MAX_ATTEMPTS = 5;
-/** Refresh a token this long before it expires, so a publish never meets an expired one. */
-const REFRESH_AHEAD_MS = 10 * MINUTE;
 
 /** Waits 5 minutes after the first rate limit, doubling, up to an hour. */
 export const rateLimitBackoffMs = (attempt: number) =>
@@ -58,12 +48,14 @@ export const rateLimitBackoffMs = (attempt: number) =>
  */
 export class PostPublisher {
   private readonly now: () => Date;
+  private readonly tokens: AccountTokens;
 
   constructor(
     private readonly db: DataSource,
     private readonly options: PublisherOptions,
   ) {
     this.now = options.now ?? (() => new Date());
+    this.tokens = new AccountTokens(db, options.keyring, options.providers, this.now);
   }
 
   /** Pending publishes whose time has come, on accounts that are healthy. */
@@ -158,7 +150,7 @@ export class PostPublisher {
     const { intent, account, post, staff } = claim;
     const provider = this.options.providers.get(account.network);
     try {
-      const secrets = await this.freshSecrets(account, provider);
+      const secrets = await this.tokens.fresh(account);
       const result = await provider.publishPost({
         accessToken: secrets.accessToken,
         externalId: account.externalId,
@@ -206,7 +198,7 @@ export class PostPublisher {
     const since = new Date((intent.claimedAt ?? this.now()).getTime() - MINUTE);
     if (provider.findRecentPost) {
       try {
-        const secrets = await this.freshSecrets(account, provider);
+        const secrets = await this.tokens.fresh(account);
         const found = await provider.findRecentPost({
           accessToken: secrets.accessToken,
           externalId: account.externalId,
@@ -363,42 +355,6 @@ export class PostPublisher {
       );
       return 'failed' as const;
     });
-  }
-
-  /** Decrypts the account's tokens, refreshing them first if they are about to expire. */
-  private async freshSecrets(
-    account: ConnectedAccount,
-    provider: {
-      refreshToken(
-        token: string,
-      ): Promise<{ accessToken: string; refreshToken?: string | null; expiresInSeconds?: number | null }>;
-    },
-  ): Promise<AccountSecrets> {
-    const secrets = JSON.parse(
-      this.options.keyring.decrypt(account.secretEnc, accountBinding(account)),
-    ) as AccountSecrets;
-    const expiring =
-      account.tokenExpiresAt && account.tokenExpiresAt.getTime() - this.now().getTime() < REFRESH_AHEAD_MS;
-    if (!expiring) return secrets;
-    const refreshed = await provider.refreshToken(secrets.refreshToken ?? secrets.accessToken);
-    // Some networks rotate the refresh token, so what comes back is always what gets stored.
-    const next: AccountSecrets = {
-      accessToken: refreshed.accessToken,
-      refreshToken: refreshed.refreshToken ?? secrets.refreshToken ?? null,
-    };
-    await withTenant(this.db, { workspaceId: account.workspaceId, userId: null }, (m) =>
-      m.update(
-        ConnectedAccount,
-        { id: account.id },
-        {
-          secretEnc: this.options.keyring.encrypt(JSON.stringify(next), accountBinding(account)),
-          tokenExpiresAt: refreshed.expiresInSeconds
-            ? new Date(this.now().getTime() + refreshed.expiresInSeconds * 1000)
-            : null,
-        },
-      ),
-    );
-    return next;
   }
 
   private async activity(

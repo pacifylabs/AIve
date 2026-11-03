@@ -10,7 +10,7 @@ import {
 } from '@ai-staff/db';
 import { APPROVED_PAYLOAD, type AutonomyLevel, type Effect, EXTERNAL_EFFECTS } from '../roles/types.js';
 import { createSendIntent, recordResearch, suppress, updateConversation } from './mail-effects.js';
-import { createPublishIntent } from './social-effects.js';
+import { createLead, createPublishIntent, recordMetrics, updateEngagement } from './social-effects.js';
 import { insertRun } from './triggers.js';
 
 /** Where effects came from: a task run, or a person approving a work item. */
@@ -58,6 +58,13 @@ export function withApprovedPayload(effects: Effect[], approved: Record<string, 
         ...effect,
         body: effect.body === APPROVED_PAYLOAD ? text('body') : effect.body,
         firstComment: effect.firstComment === APPROVED_PAYLOAD ? optionalText('firstComment') : effect.firstComment,
+        media:
+          effect.media === APPROVED_PAYLOAD
+            ? (optionalText('mediaUrls') ?? '')
+                .split(/\s+/)
+                .map((url) => url.trim())
+                .filter(Boolean)
+            : effect.media,
         scheduledFor: effect.scheduledFor === APPROVED_PAYLOAD ? text('scheduledFor') : effect.scheduledFor,
       };
     }
@@ -172,11 +179,15 @@ export class EffectExecutor {
           if (
             effect.body === APPROVED_PAYLOAD ||
             effect.firstComment === APPROVED_PAYLOAD ||
-            effect.scheduledFor === APPROVED_PAYLOAD
+            effect.scheduledFor === APPROVED_PAYLOAD ||
+            effect.media === APPROVED_PAYLOAD
           ) {
             throw new Error('A publish uses the approved draft outside an approval.');
           }
-          const result = await createPublishIntent(m, origin.workspaceId, origin.staffId, effect);
+          const result = await createPublishIntent(m, origin.workspaceId, origin.staffId, {
+            ...effect,
+            media: effect.media,
+          });
           await this.activity(
             m,
             origin,
@@ -186,6 +197,25 @@ export class EffectExecutor {
           );
           break;
         }
+        case 'createLead': {
+          const result = await createLead(m, origin.workspaceId, effect);
+          await this.activity(
+            m,
+            origin,
+            result.created ? 'lead.created' : 'lead.not_created',
+            result.created
+              ? `Passed ${effect.name ?? 'someone'} to your Sales Manager as a lead.`
+              : `Did not pass ${effect.name ?? 'someone'} on as a lead: ${result.reason}`,
+            result.created ? { leadId: result.leadId } : {},
+          );
+          break;
+        }
+        case 'updateEngagement':
+          await updateEngagement(m, origin.workspaceId, effect);
+          break;
+        case 'recordMetrics':
+          await recordMetrics(m, origin.workspaceId, effect, this.now());
+          break;
         case 'suppress':
           await suppress(m, origin.workspaceId, effect.value, effect.reason, effect.note);
           await this.activity(

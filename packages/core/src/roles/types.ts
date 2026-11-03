@@ -2,6 +2,7 @@ import type {
   CompanyFact,
   CompanyProfile,
   ConversationState,
+  EngagementClass,
   EntityManager,
   LeadState,
   ReplyClassification,
@@ -23,6 +24,12 @@ export type AutonomyLevel = 'off' | 'draft' | 'act';
 
 export type TaskTriggerDefinition = { schedule: string } | { event: string } | { person: true };
 
+/** What a task may ask the connected networks for. Implemented by the platform, which holds the tokens. */
+export interface SocialAccess {
+  /** Numbers for one published post, as the network reports them now. */
+  fetchMetrics(postId: string): Promise<Record<string, number>>;
+}
+
 /** Everything a task may read while it runs. Writes go through effects, not through `db`. */
 export interface TaskContext {
   workspaceId: string;
@@ -38,6 +45,8 @@ export interface TaskContext {
    */
   read<T>(work: (m: EntityManager) => Promise<T>): Promise<T>;
   now: Date;
+  /** Read-only access to the connected networks, where the deployment has them. Tasks never hold tokens. */
+  social?: SocialAccess;
   /**
    * Untrusted text the prompt showed the model (a lead's web page, their reply). `buildPrompt` adds to it. Plain
    * figures in it may be repeated back ("your team of 40"); prices and percentages must still come from facts.
@@ -123,12 +132,27 @@ export type Effect =
       body: string;
       linkUrl?: string | null;
       firstComment?: string | null;
-      media: string[];
+      /** Public picture or video URLs, or `$approved`: the approved item's `mediaUrls`, one per line. */
+      media: string[] | typeof APPROVED_PAYLOAD;
       /** ISO time. Work items store effects as JSON, so this is text, not a Date. */
       scheduledFor: string;
       idempotencyKey: string;
     }
   | { type: 'updateLead'; leadId: string; state: LeadState }
+  | {
+      /** A person who showed buying intent on social: becomes a lead for the workspace's Sales Manager. */
+      type: 'createLead';
+      name: string | null;
+      sourceRef: string;
+      notes: string | null;
+    }
+  | {
+      type: 'updateEngagement';
+      engagementId: string;
+      classification: EngagementClass;
+      state: 'triaged' | 'replied' | 'dismissed';
+    }
+  | { type: 'recordMetrics'; postId: string; capture: '24h' | '7d'; metrics: Record<string, number> }
   | {
       type: 'recordResearch';
       leadId: string;

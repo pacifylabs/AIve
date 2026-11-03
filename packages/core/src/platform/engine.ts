@@ -18,6 +18,7 @@ import type { RoleRegistry } from '../roles/registry.js';
 import type { AutonomyLevel, Effect, TaskContext, TaskDefinition } from '../roles/types.js';
 import { BudgetService } from './budget.js';
 import { assertAllowedAtAutonomy, EffectExecutor } from './effects.js';
+import type { SocialGateway } from './social-gateway.js';
 
 export interface EngineLogger {
   info(detail: Record<string, unknown>, message: string): void;
@@ -25,6 +26,8 @@ export interface EngineLogger {
 }
 
 export interface EngineOptions {
+  /** The door to connected networks, for tasks that read from them (post metrics). Omit where there are none. */
+  social?: SocialGateway;
   /** How long a claimed run is ours. A worker that dies mid-run loses it after this, and the reaper requeues it. */
   leaseMs?: number;
   now?: () => Date;
@@ -57,6 +60,7 @@ export class TaskEngine {
   private readonly leaseMs: number;
   private readonly now: () => Date;
   private readonly logger: EngineLogger;
+  private readonly social: SocialGateway | undefined;
   private readonly budget: BudgetService;
   private readonly effects: EffectExecutor;
 
@@ -70,6 +74,7 @@ export class TaskEngine {
     this.now = options.now ?? (() => new Date());
     this.effects = new EffectExecutor(this.now);
     this.logger = options.logger ?? silent;
+    this.social = options.social;
     this.budget = new BudgetService(this.now);
   }
 
@@ -215,6 +220,7 @@ export class TaskEngine {
       autonomy: loaded.autonomy,
       now: this.now(),
       evidence: [],
+      social: this.social?.forWorkspace(workspaceId),
       read: (work) => withTenant(this.db, { workspaceId, userId: null }, work),
     };
     return { task: task as TaskDefinition<unknown, unknown>, ctx };
