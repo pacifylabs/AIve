@@ -16,6 +16,8 @@ export const configSchema = z
     /** Proxies in front of the API (load balancer = 1). The client IP used for rate limits comes from X-Forwarded-For only when set. */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     APP_URL: z.url(),
+    /** The API's own public origin, shown in mailbox forwarding URLs. Defaults to localhost on API_PORT for development. */
+    API_PUBLIC_URL: z.url().optional(),
     WEB_ORIGIN: z.url(),
 
     DB_HOST: z.string().min(1),

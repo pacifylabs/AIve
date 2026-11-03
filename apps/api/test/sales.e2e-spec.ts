@@ -68,7 +68,7 @@ describe('mailboxes', () => {
       .send({ address: 'Sales@MB1.test', displayName: 'Dee', provider: 'fixture' })
       .expect(201);
     expect(created.body).toMatchObject({ address: 'sales@mb1.test', status: 'pending' });
-    expect(created.body.forwardingUrl).toMatch(/\/api\/v1\/inbound\/mail\/[0-9a-f-]{36}\/[\w-]{20,}$/);
+    expect(created.body.forwardingUrl).toMatch(/\/v1\/inbound\/mail\/[0-9a-f-]{36}\/[\w-]{20,}$/);
     expect(JSON.stringify(created.body)).not.toMatch(/credentials|inboundSecretHash/i);
 
     const list = await t.http().get('/v1/mailboxes').set(w.as).expect(200);
@@ -196,7 +196,7 @@ describe('inbound mail and unsubscribe', () => {
 
   it('accepts mail on the real forwarding URL', async () => {
     const w = await hired('in2');
-    const path = new URL(w.mailbox.forwardingUrl).pathname.replace('/api', '');
+    const path = new URL(w.mailbox.forwardingUrl).pathname;
     const res = await t
       .http()
       .post(path)

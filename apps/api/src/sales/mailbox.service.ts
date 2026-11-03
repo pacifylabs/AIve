@@ -125,7 +125,7 @@ export class MailboxService {
     return {
       ...publicMailbox(mailbox),
       // Shown once: only a hash is stored.
-      forwardingUrl: `${this.config.APP_URL.replace(/\/+$/, '')}/api/v1/inbound/mail/${mailbox.id}/${secret}`,
+      forwardingUrl: `${(this.config.API_PUBLIC_URL ?? `http://localhost:${this.config.API_PORT}`).replace(/\/+$/, '')}/v1/inbound/mail/${mailbox.id}/${secret}`,
     };
   }
 
