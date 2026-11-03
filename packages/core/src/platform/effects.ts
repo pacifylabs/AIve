@@ -10,7 +10,13 @@ import {
 } from '@ai-staff/db';
 import { APPROVED_PAYLOAD, type AutonomyLevel, type Effect, EXTERNAL_EFFECTS } from '../roles/types.js';
 import { createSendIntent, recordResearch, suppress, updateConversation } from './mail-effects.js';
-import { createLead, createPublishIntent, recordMetrics, updateEngagement } from './social-effects.js';
+import {
+  createLead,
+  createPublishIntent,
+  createReplyIntent,
+  recordMetrics,
+  updateEngagement,
+} from './social-effects.js';
 import { insertRun } from './triggers.js';
 
 /** Where effects came from: a task run, or a person approving a work item. */
@@ -67,6 +73,9 @@ export function withApprovedPayload(effects: Effect[], approved: Record<string, 
             : effect.media,
         scheduledFor: effect.scheduledFor === APPROVED_PAYLOAD ? text('scheduledFor') : effect.scheduledFor,
       };
+    }
+    if (effect.type === 'createReplyIntent') {
+      return { ...effect, message: effect.message === APPROVED_PAYLOAD ? text('reply') : effect.message };
     }
     if (effect.type === 'createSendIntent') {
       return {
@@ -207,6 +216,19 @@ export class EffectExecutor {
               ? `Passed ${effect.name ?? 'someone'} to your Sales Manager as a lead.`
               : `Did not pass ${effect.name ?? 'someone'} on as a lead: ${result.reason}`,
             result.created ? { leadId: result.leadId } : {},
+          );
+          break;
+        }
+        case 'createReplyIntent': {
+          if (effect.message === APPROVED_PAYLOAD)
+            throw new Error('A reply uses the approved draft outside an approval.');
+          const result = await createReplyIntent(m, origin.workspaceId, origin.staffId, effect, this.now());
+          await this.activity(
+            m,
+            origin,
+            result.created ? 'reply.queued' : 'reply.not_queued',
+            result.created ? 'Queued a reply to send.' : `Did not queue a reply: ${result.reason}`,
+            result.created ? { intentId: result.intentId } : {},
           );
           break;
         }

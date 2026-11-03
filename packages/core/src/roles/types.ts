@@ -138,6 +138,17 @@ export type Effect =
       scheduledFor: string;
       idempotencyKey: string;
     }
+  | {
+      /**
+       * Promise to answer one comment or private message. A person approved the wording; the sender checks the network's
+       * reply window and the account again at the moment of sending. `message` may be `$approved`: the approved item's
+       * `reply`, edits included.
+       */
+      type: 'createReplyIntent';
+      engagementId: string;
+      message: string;
+      idempotencyKey: string;
+    }
   | { type: 'updateLead'; leadId: string; state: LeadState }
   | {
       /** A person who showed buying intent on social: becomes a lead for the workspace's Sales Manager. */

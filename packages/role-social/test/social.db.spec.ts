@@ -7,17 +7,20 @@ import {
   hireStaff,
   Keyring,
   PostPublisher,
+  ReplySender,
   RoleRegistry,
   SocialGateway,
   TaskEngine,
   Triggers,
 } from '@ai-staff/core';
 import {
+  ActivityEvent,
   asSystem,
   ConnectedAccount,
   createDataSource,
   type DataSource,
   Lead,
+  ReplyIntent,
   SocialEngagement,
   SocialMetric,
   SocialPost,
@@ -152,6 +155,7 @@ async function setup() {
   const triggers = new Triggers(db, registry, now);
   const approvals = new ApprovalService(db, registry, now);
   const publisher = new PostPublisher(db, { keyring, providers, now });
+  const replySender = new ReplySender(db, { providers, tokens, now });
 
   /** Runs everything due in this workspace until nothing is left: events, task runs, then publishes. */
   const settle = async () => {
@@ -161,7 +165,9 @@ async function setup() {
       for (const run of due) await engine.run(workspaceId, run.id);
       const posts = (await publisher.due()).filter((send) => send.workspaceId === workspaceId);
       for (const send of posts) await publisher.dispatch(workspaceId, send.id);
-      if (!due.length && !posts.length) return;
+      const replies = (await replySender.due()).filter((reply) => reply.workspaceId === workspaceId);
+      for (const reply of replies) await replySender.dispatch(workspaceId, reply.id);
+      if (!due.length && !posts.length && !replies.length) return;
     }
   };
   const pending = () =>
@@ -178,8 +184,28 @@ async function setup() {
       taskInput: {},
     });
   const posts = () => inWs((m) => m.find(SocialPost, { where: { workspaceId }, order: { scheduledFor: 'ASC' } }));
+  const publishedPost = () =>
+    inWs((m) =>
+      m.save(
+        m.create(SocialPost, {
+          workspaceId,
+          staffId: staff.id,
+          accountId: facebook.id,
+          body: 'Hello',
+          linkUrl: null,
+          firstComment: null,
+          media: [],
+          state: 'published',
+          scheduledFor: new Date('2026-11-09T09:00:00Z'),
+          publishedAt: new Date('2026-11-09T09:00:00Z'),
+          externalPostId: 'fx-1',
+          permalink: null,
+        }),
+      ),
+    );
   return {
     time,
+    publishedPost,
     workspaceId,
     actor,
     staff,
@@ -387,5 +413,109 @@ describe('Social Media Staff, end to end', () => {
     const items = await s.pending();
     expect(items.map((item) => item.kind)).toEqual(['escalation']);
     expect(await s.inWs((m) => m.find(Lead, { where: { workspaceId: s.workspaceId } }))).toHaveLength(0);
+  });
+
+  it('an approved reply is sent with the wording the person left, once', async () => {
+    const s = await setup();
+    await s.publishedPost();
+    s.networks.facebook.incoming = [
+      {
+        externalId: 'c1',
+        authorName: 'Ada Buyer',
+        message: 'How do I book a call?',
+        receivedAt: new Date('2026-11-09T11:00:00Z'),
+      },
+    ];
+    s.time.now = new Date('2026-11-09T12:00:00Z');
+    await s.gateway.syncComments();
+    await s.settle();
+    const [draft] = await s.pending();
+    expect(s.networks.facebook.comments).toHaveLength(0);
+
+    await s.approvals.approve(s.actor, draft!.id, { ...draft!.payload, reply: 'Book a call on our website, Ada.' });
+    await s.settle();
+    expect(s.networks.facebook.comments).toEqual([
+      expect.objectContaining({ externalPostId: 'c1', message: 'Book a call on our website, Ada.' }),
+    ]);
+    const engagement = await s.inWs((m) => m.findOneByOrFail(SocialEngagement, { workspaceId: s.workspaceId }));
+    expect(engagement.state).toBe('replied');
+    await s.settle();
+    expect(s.networks.facebook.comments).toHaveLength(1);
+  });
+
+  it('answers a private message by the sender id, inside the reply window', async () => {
+    const s = await setup();
+    s.time.now = new Date('2026-11-09T12:00:00Z');
+    s.script.triage = { classification: 'question', reply: 'We are open nine to five.', reason: 'Asked hours.' };
+    await s.gateway.receiveMessage(s.workspaceId, s.staff.id, {
+      accountId: s.facebook.id,
+      externalId: 'm1',
+      senderId: 'psid-77',
+      authorName: 'Bob',
+      text: 'When are you open?',
+      receivedAt: new Date('2026-11-09T11:30:00Z'),
+    });
+    await s.settle();
+    const queued = await s.pending();
+    expect(queued.map((item) => [item.kind, item.flaggedReason])).toEqual([['reply_draft', null]]);
+    await s.approveAll();
+    const intents = await s.inWs((m) => m.find(ReplyIntent, { where: { workspaceId: s.workspaceId } }));
+    expect(intents.map((intent) => [intent.state, intent.error])).toEqual([['pending', null]]);
+    await s.settle();
+    expect(s.networks.facebook.messages).toEqual([
+      expect.objectContaining({ recipientId: 'psid-77', message: 'We are open nine to five.' }),
+    ]);
+  });
+
+  it('a reply approved too late, after the reply window closes, is never sent', async () => {
+    const s = await setup();
+    s.time.now = new Date('2026-11-09T12:00:00Z');
+    await s.gateway.receiveMessage(s.workspaceId, s.staff.id, {
+      accountId: s.facebook.id,
+      externalId: 'm2',
+      senderId: 'psid-9',
+      authorName: 'Cy',
+      text: 'Do you ship?',
+      receivedAt: new Date('2026-11-08T13:00:00Z'),
+    });
+    // Received 23 hours ago: still open for one more hour, so a draft is made.
+    s.script.triage = { classification: 'question', reply: 'Yes, we ship.', reason: 'Asked.' };
+    await s.settle();
+    const [draft] = await s.pending();
+    expect(draft?.kind).toBe('reply_draft');
+    // The person gets to it two hours later: too late.
+    s.time.now = new Date('2026-11-09T14:00:00Z');
+    await s.approvals.approve(s.actor, draft!.id);
+    await s.settle();
+    expect(s.networks.facebook.messages).toHaveLength(0);
+    const types = (await s.inWs((m) => m.find(ActivityEvent, { where: { workspaceId: s.workspaceId } }))).map(
+      (e) => e.type,
+    );
+    expect(types).toContain('reply.not_queued');
+  });
+
+  it('a reply on an account that needs reconnecting waits, and a dropped connection is never resent', async () => {
+    const s = await setup();
+    await s.publishedPost();
+    s.networks.facebook.incoming = [
+      {
+        externalId: 'c3',
+        authorName: 'Di',
+        message: 'Do you do weddings?',
+        receivedAt: new Date('2026-11-09T11:00:00Z'),
+      },
+    ];
+    s.script.triage = { classification: 'question', reply: 'Not yet.', reason: 'Asked.' };
+    s.time.now = new Date('2026-11-09T12:00:00Z');
+    await s.gateway.syncComments();
+    await s.settle();
+    s.networks.facebook.nextReply = 'drop';
+    await s.approveAll();
+    await s.settle();
+    expect(await s.inWs((m) => m.find(ReplyIntent, { where: { workspaceId: s.workspaceId } }))).toEqual([
+      expect.objectContaining({ state: 'uncertain' }),
+    ]);
+    await s.settle();
+    expect(s.networks.facebook.comments).toHaveLength(0);
   });
 });

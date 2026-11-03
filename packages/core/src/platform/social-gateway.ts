@@ -118,9 +118,18 @@ export class SocialGateway {
   receiveMessage(
     workspaceId: string,
     staffId: string,
-    input: { accountId: string; externalId: string; authorName: string | null; text: string; receivedAt: Date },
+    input: {
+      accountId: string;
+      externalId: string;
+      /** The sender's id on the network: how the message is answered. */
+      senderId: string;
+      authorName: string | null;
+      text: string;
+      receivedAt: Date;
+    },
   ) {
-    return this.file(workspaceId, staffId, { ...input, postId: null, kind: 'dm' });
+    const { senderId, ...rest } = input;
+    return this.file(workspaceId, staffId, { ...rest, postId: null, kind: 'dm', threadId: senderId });
   }
 
   private async file(
@@ -134,6 +143,7 @@ export class SocialGateway {
       authorName: string | null;
       text: string;
       receivedAt: Date;
+      threadId?: string;
     },
   ): Promise<number> {
     const text = input.text.trim();
@@ -141,8 +151,8 @@ export class SocialGateway {
     return withTenant(this.db, { workspaceId, userId: null }, async (m) => {
       const rows = (await m.query(
         `INSERT INTO social_engagements
-           (id, workspace_id, account_id, post_id, kind, external_id, author_name, text, received_at, reply_window_ends_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           (id, workspace_id, account_id, post_id, kind, external_id, author_name, text, received_at, reply_window_ends_at, thread_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (workspace_id, account_id, external_id) DO NOTHING RETURNING id`,
         [
           uuidv7(),
@@ -155,6 +165,7 @@ export class SocialGateway {
           text.slice(0, 5000),
           input.receivedAt,
           input.kind === 'dm' ? new Date(input.receivedAt.getTime() + MESSAGE_REPLY_WINDOW_MS) : null,
+          input.threadId ?? null,
         ],
       )) as { id: string }[];
       if (!rows.length) return 0;

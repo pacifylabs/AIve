@@ -10,8 +10,8 @@ import { weeklyReport } from './tasks/weekly-report.js';
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
 
 /**
- * Social Media Staff. See docs/roles/SOCIAL-MEDIA-STAFF.md. Not here yet: video tasks (Milestone 4b), the
- * synchronous caption-suggestion endpoint (it belongs to the API), and sending approved replies.
+ * Social Media Staff. See docs/roles/SOCIAL-MEDIA-STAFF.md. Not here yet: video tasks (Milestone 4b) and the
+ * synchronous caption-suggestion endpoint (it belongs to the API).
  */
 export const socialMediaRole: RoleDefinition = {
   key: 'social_media',
@@ -63,5 +63,5 @@ export const socialMediaRole: RoleDefinition = {
       input: (payload) => (uuid(payload.postId) ? { postId: payload.postId } : null),
     },
   ],
-  emits: ['social.plan_approved', 'engagement.reply_approved'],
+  emits: ['social.plan_approved'],
 };

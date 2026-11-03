@@ -4,6 +4,7 @@ import {
   type EntityManager,
   Lead,
   PublishIntent,
+  ReplyIntent,
   SocialEngagement,
   SocialPost,
   StaffMember,
@@ -137,4 +138,42 @@ export async function recordMetrics(
      ON CONFLICT (workspace_id, post_id, capture) DO UPDATE SET captured_at = $5, metrics = $6, updated_at = now()`,
     [uuidv7(), workspaceId, effect.postId, effect.capture, now, JSON.stringify(effect.metrics)],
   );
+}
+
+export type ReplyIntentResult = { created: true; intentId: string } | { created: false; reason: string };
+
+/** Writes the promise to send an approved reply. The same key returns the same intent, so a double approval sends one. */
+export async function createReplyIntent(
+  m: EntityManager,
+  workspaceId: string,
+  staffId: string,
+  effect: Extract<Effect, { type: 'createReplyIntent' }>,
+  now: Date,
+): Promise<ReplyIntentResult> {
+  if (await m.existsBy(ReplyIntent, { workspaceId, idempotencyKey: effect.idempotencyKey })) {
+    return { created: false, reason: 'Already queued.' };
+  }
+  const engagement = await m.findOneBy(SocialEngagement, { workspaceId, id: effect.engagementId });
+  if (!engagement) return { created: false, reason: 'That comment was removed.' };
+  const message = effect.message.trim();
+  if (!message) return { created: false, reason: 'The reply is empty.' };
+  if (engagement.replyWindowEndsAt && now > engagement.replyWindowEndsAt) {
+    return { created: false, reason: "The network's reply window for this message has closed." };
+  }
+  const intent = await m.save(
+    m.create(ReplyIntent, {
+      workspaceId,
+      staffId,
+      accountId: engagement.accountId,
+      engagementId: engagement.id,
+      message,
+      idempotencyKey: effect.idempotencyKey,
+      state: 'pending',
+      notBefore: now,
+      claimedAt: null,
+      attempts: 0,
+      error: null,
+    }),
+  );
+  return { created: true, intentId: intent.id };
 }

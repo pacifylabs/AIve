@@ -14,6 +14,7 @@ export * from './platform/inbound.js';
 export * from './platform/mail-effects.js';
 export * from './platform/prefill.js';
 export * from './platform/publisher.js';
+export * from './platform/reply-sender.js';
 export * from './platform/social-effects.js';
 export * from './platform/social-gateway.js';
 export * from './platform/triggers.js';

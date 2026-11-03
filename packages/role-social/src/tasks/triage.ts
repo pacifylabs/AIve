@@ -152,8 +152,15 @@ export const triageEngagement: TaskDefinition<Input, Triage & Reply> = {
           replyTo: engagement.text.slice(0, 500),
           reply,
         },
-        // Approving emits an event; sending the approved reply is a separate step (not built yet).
-        onApprove: [{ type: 'emitEvent', event: 'engagement.reply_approved', payload: APPROVED_PAYLOAD }],
+        // Approving queues the reply with the wording the person left. The sender re-checks the network's window.
+        onApprove: [
+          {
+            type: 'createReplyIntent',
+            engagementId,
+            message: APPROVED_PAYLOAD,
+            idempotencyKey: `reply:${engagementId}`,
+          },
+        ],
         expiresInHours: engagement.kind === 'dm' ? 20 : 24 * 3,
       },
     ];

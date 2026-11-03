@@ -12,6 +12,7 @@ import {
   type SocialProvider,
   type CommentInput,
   type ProviderComment,
+  type MessageReplyInput,
 } from './provider.js';
 
 /**
@@ -26,6 +27,9 @@ export class FixtureSocialProvider implements SocialProvider {
   readonly usesPkce = false;
   readonly posts: (PublishInput & { externalPostId: string; at: Date })[] = [];
   readonly comments: CommentInput[] = [];
+  readonly messages: MessageReplyInput[] = [];
+  /** Makes the next reply fail like a real network: `auth`, `rate_limit` or `drop` (sent, never answered). */
+  nextReply: 'auth' | 'rate_limit' | 'drop' | null = null;
   next: 'auth' | 'rate_limit' | 'refuse' | 'drop' | 'drop_and_lose' | null = null;
   incoming: ProviderComment[] = [];
   /** What `listAccounts` returns: tests add more to exercise choosing between several pages. */
@@ -112,8 +116,31 @@ export class FixtureSocialProvider implements SocialProvider {
     return Promise.resolve(this.incoming);
   }
 
+  private replyOutcome(): Promise<void> | null {
+    const behaviour = this.nextReply;
+    this.nextReply = null;
+    if (behaviour === 'auth')
+      return Promise.reject(new ProviderError('The token is invalid.', this.network, 'auth', 401));
+    if (behaviour === 'rate_limit')
+      return Promise.reject(new ProviderError('Too many requests.', this.network, 'rate_limit', 429));
+    if (behaviour === 'drop')
+      return Promise.reject(
+        new ProviderError('Connection closed before the network answered.', this.network, 'other', undefined, true),
+      );
+    return null;
+  }
+
   replyToComment(input: CommentInput): Promise<void> {
+    const failed = this.replyOutcome();
+    if (failed) return failed;
     this.comments.push(input);
+    return Promise.resolve();
+  }
+
+  replyToMessage(input: MessageReplyInput): Promise<void> {
+    const failed = this.replyOutcome();
+    if (failed) return failed;
+    this.messages.push(input);
     return Promise.resolve();
   }
 }
