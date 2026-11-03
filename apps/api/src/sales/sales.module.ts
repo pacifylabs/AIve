@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { Keyring, MailInbox } from '@ai-staff/core';
 import { DataSource } from '@ai-staff/db';
 import { RoleRegistry } from '@ai-staff/core';
-import { buildProductionRegistry } from '@ai-staff/role-sales';
+import { buildProductionRegistry } from '@ai-staff/roles';
 import { AuthModule } from '../auth/auth.module.js';
 import {
   ConversationsController,

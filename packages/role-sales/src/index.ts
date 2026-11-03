@@ -1,7 +1,6 @@
 export * from './guardrails.js';
 export * from './policy.js';
 export * from './prompts.js';
-export * from './registry.js';
 export * from './role.js';
 export * from './settings.js';
 export { researchUrl } from './tasks/research.js';

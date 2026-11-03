@@ -58,7 +58,8 @@ export const salesManagerRole: RoleDefinition = {
     {
       event: 'lead.created',
       task: 'sales_manager.research_lead',
-      input: (payload) => (uuid(payload.leadId) ? { leadId: payload.leadId } : null),
+      // A lead from social has no website or email to read; it waits for a suggested reply (a later task) instead.
+      input: (payload) => (uuid(payload.leadId) && payload.source !== 'social' ? { leadId: payload.leadId } : null),
     },
     {
       event: 'lead.researched',

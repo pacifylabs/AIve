@@ -53,6 +53,9 @@ importers:
       '@ai-staff/role-sales':
         specifier: workspace:*
         version: link:../../packages/role-sales
+      '@ai-staff/roles':
+        specifier: workspace:*
+        version: link:../../packages/roles
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.3.2)(bullmq@6.5.1(ioredis@6.0.0)(pg@8.23.1))
@@ -199,6 +202,9 @@ importers:
       '@ai-staff/role-sales':
         specifier: workspace:*
         version: link:../../packages/role-sales
+      '@ai-staff/roles':
+        specifier: workspace:*
+        version: link:../../packages/roles
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.3.2)(bullmq@6.5.1(ioredis@6.0.0)(pg@8.23.1))
@@ -386,6 +392,56 @@ importers:
       vitest:
         specifier: ^4.1.12
         version: 4.1.12(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/role-social:
+    dependencies:
+      '@ai-staff/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ai-staff/db':
+        specifier: workspace:*
+        version: link:../db
+      '@ai-staff/llm':
+        specifier: workspace:*
+        version: link:../llm
+      '@ai-staff/social':
+        specifier: workspace:*
+        version: link:../social
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@ai-staff/role-sales':
+        specifier: workspace:*
+        version: link:../role-sales
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+      uuid:
+        specifier: ^14.0.3
+        version: 14.0.3
+      vitest:
+        specifier: ^4.1.12
+        version: 4.1.12(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(jiti@2.7.0))
+
+  packages/roles:
+    dependencies:
+      '@ai-staff/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ai-staff/role-sales':
+        specifier: workspace:*
+        version: link:../role-sales
+      '@ai-staff/role-social':
+        specifier: workspace:*
+        version: link:../role-social
+    devDependencies:
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
 
   packages/social:
     devDependencies:
