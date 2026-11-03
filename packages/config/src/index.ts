@@ -25,10 +25,14 @@ export const configSchema = z
     DB_NAME: z.string().min(1),
     DB_APP_USER: z.string().min(1),
     DB_APP_PASSWORD: z.string().min(1),
+    /** Managed databases such as Neon require TLS; local Postgres does not. Certificates are verified when on. */
+    DB_SSL: z.stringbool().default(false),
 
     REDIS_URL: z.url(),
     /** Namespaces rate-limit counters; tests set a unique prefix per run. */
     RATE_LIMIT_PREFIX: z.string().min(1).default('rl'),
+    /** Namespaces BullMQ keys. Give each deployment its own when it shares a Redis instance with another app. */
+    BULL_PREFIX: z.string().min(1).default('bull'),
 
     JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
     ACCESS_TOKEN_TTL_SEC: z.coerce.number().int().min(60).max(3600).default(900),
@@ -42,7 +46,13 @@ export const configSchema = z
       }),
     ENCRYPTION_ACTIVE_KID: z.string().min(1),
 
-    SMTP_URL: z.url(),
+    /** How platform emails (verification, password reset, invitations) are delivered. */
+    EMAIL_PROVIDER: z.enum(['smtp', 'resend']).default('smtp'),
+    /** Required when EMAIL_PROVIDER=smtp. */
+    SMTP_URL: z.url().optional(),
+    /** Required when EMAIL_PROVIDER=resend. */
+    RESEND_API_KEY: z.string().min(1).optional(),
+    /** The sender shown on platform emails, for either provider. With Resend the domain must be verified there. */
     MAIL_FROM: z.string().min(3),
 
     /**
@@ -70,7 +80,19 @@ export const configSchema = z
     (config) =>
       config.ENCRYPTION_KEYS.split(',').some((entry) => entry.trim().split(':')[0] === config.ENCRYPTION_ACTIVE_KID),
     { message: 'ENCRYPTION_ACTIVE_KID must name one of the keys in ENCRYPTION_KEYS', path: ['ENCRYPTION_ACTIVE_KID'] },
-  );
+  )
+  .superRefine((config, ctx) => {
+    if (config.EMAIL_PROVIDER === 'smtp' && !config.SMTP_URL) {
+      ctx.addIssue({ code: 'custom', path: ['SMTP_URL'], message: 'SMTP_URL is required when EMAIL_PROVIDER=smtp' });
+    }
+    if (config.EMAIL_PROVIDER === 'resend' && !config.RESEND_API_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['RESEND_API_KEY'],
+        message: 'RESEND_API_KEY is required when EMAIL_PROVIDER=resend',
+      });
+    }
+  });
 
 export type AppConfig = z.infer<typeof configSchema>;
 
