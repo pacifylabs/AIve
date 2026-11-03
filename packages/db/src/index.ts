@@ -5,6 +5,7 @@ export * from './entities/base.entity.js';
 export * from './entities/early-access.entity.js';
 export * from './entities/identity.entities.js';
 export * from './entities/platform.entities.js';
+export * from './entities/sales.entities.js';
 export * from './entities/workspace.entities.js';
 export * from './tenant.js';
 

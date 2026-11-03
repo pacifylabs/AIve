@@ -16,10 +16,22 @@ import {
   UsageReservation,
   WorkItem,
 } from './entities/platform.entities.js';
+import {
+  Conversation,
+  GlobalSuppression,
+  InboundEvent,
+  Lead,
+  LeadResearch,
+  Mailbox,
+  Message,
+  SendIntent,
+  Suppression,
+} from './entities/sales.entities.js';
 import { Invitation, Membership, Workspace } from './entities/workspace.entities.js';
 import { IdentityAndWorkspaces1793318400000 } from './migrations/0001-identity-and-workspaces.js';
 import { EarlyAccess1793404800000 } from './migrations/0002-early-access.js';
 import { PlatformCore1793491200000 } from './migrations/0003-platform-core.js';
+import { SalesManager1793577600000 } from './migrations/0004-sales-manager.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -42,8 +54,22 @@ export const entities = [
   AuditEntry,
   UsageReservation,
   SpendCap,
+  Mailbox,
+  Lead,
+  LeadResearch,
+  Conversation,
+  Message,
+  SendIntent,
+  Suppression,
+  GlobalSuppression,
+  InboundEvent,
 ];
-export const migrations = [IdentityAndWorkspaces1793318400000, EarlyAccess1793404800000, PlatformCore1793491200000];
+export const migrations = [
+  IdentityAndWorkspaces1793318400000,
+  EarlyAccess1793404800000,
+  PlatformCore1793491200000,
+  SalesManager1793577600000,
+];
 
 export interface ConnectionOptions {
   host: string;
