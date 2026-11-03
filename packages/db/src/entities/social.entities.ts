@@ -146,6 +146,10 @@ export class SocialEngagement extends WorkspaceScopedEntity {
   @Column({ type: 'timestamptz', nullable: true })
   replyWindowEndsAt: Date | null;
 
+  /** The sender's id on the network, which is how a private message is answered. */
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  threadId: string | null;
+
   @Column({ type: 'varchar', length: 16, nullable: true })
   classification: EngagementClass | null;
 
@@ -166,4 +170,39 @@ export class SocialMetric extends WorkspaceScopedEntity {
 
   @Column({ type: 'jsonb', default: {} })
   metrics: Record<string, number>;
+}
+
+export type ReplyIntentState = 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'cancelled';
+
+@Entity('reply_intents')
+export class ReplyIntent extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid' })
+  staffId: string;
+
+  @Column({ type: 'uuid' })
+  accountId: string;
+
+  @Column({ type: 'uuid' })
+  engagementId: string;
+
+  @Column({ type: 'text' })
+  message: string;
+
+  @Column({ type: 'varchar', length: 200 })
+  idempotencyKey: string;
+
+  @Column({ type: 'varchar', length: 16, default: 'pending' })
+  state: ReplyIntentState;
+
+  @Column({ type: 'timestamptz' })
+  notBefore: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  claimedAt: Date | null;
+
+  @Column({ type: 'integer', default: 0 })
+  attempts: number;
+
+  @Column({ type: 'varchar', length: 400, nullable: true })
+  error: string | null;
 }

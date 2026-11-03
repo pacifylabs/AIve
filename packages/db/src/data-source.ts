@@ -30,6 +30,7 @@ import {
 import {
   ConnectedAccount,
   PublishIntent,
+  ReplyIntent,
   SocialEngagement,
   SocialMetric,
   SocialPost,
@@ -41,6 +42,7 @@ import { PlatformCore1793491200000 } from './migrations/0003-platform-core.js';
 import { SalesManager1793577600000 } from './migrations/0004-sales-manager.js';
 import { SocialPublishing1793664000000 } from './migrations/0005-social-publishing.js';
 import { SocialEngagement1793750400000 } from './migrations/0006-social-engagement.js';
+import { SocialReplies1793836800000 } from './migrations/0007-social-replies.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -77,6 +79,7 @@ export const entities = [
   PublishIntent,
   SocialEngagement,
   SocialMetric,
+  ReplyIntent,
 ];
 export const migrations = [
   IdentityAndWorkspaces1793318400000,
@@ -85,6 +88,7 @@ export const migrations = [
   SalesManager1793577600000,
   SocialPublishing1793664000000,
   SocialEngagement1793750400000,
+  SocialReplies1793836800000,
 ];
 
 export interface ConnectionOptions {
