@@ -27,13 +27,20 @@ import {
   SendIntent,
   Suppression,
 } from './entities/sales.entities.js';
-import { ConnectedAccount, PublishIntent, SocialPost } from './entities/social.entities.js';
+import {
+  ConnectedAccount,
+  PublishIntent,
+  SocialEngagement,
+  SocialMetric,
+  SocialPost,
+} from './entities/social.entities.js';
 import { Invitation, Membership, Workspace } from './entities/workspace.entities.js';
 import { IdentityAndWorkspaces1793318400000 } from './migrations/0001-identity-and-workspaces.js';
 import { EarlyAccess1793404800000 } from './migrations/0002-early-access.js';
 import { PlatformCore1793491200000 } from './migrations/0003-platform-core.js';
 import { SalesManager1793577600000 } from './migrations/0004-sales-manager.js';
 import { SocialPublishing1793664000000 } from './migrations/0005-social-publishing.js';
+import { SocialEngagement1793750400000 } from './migrations/0006-social-engagement.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -68,6 +75,8 @@ export const entities = [
   ConnectedAccount,
   SocialPost,
   PublishIntent,
+  SocialEngagement,
+  SocialMetric,
 ];
 export const migrations = [
   IdentityAndWorkspaces1793318400000,
@@ -75,6 +84,7 @@ export const migrations = [
   PlatformCore1793491200000,
   SalesManager1793577600000,
   SocialPublishing1793664000000,
+  SocialEngagement1793750400000,
 ];
 
 export interface ConnectionOptions {

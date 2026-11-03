@@ -117,3 +117,53 @@ export class PublishIntent extends WorkspaceScopedEntity {
   @Column({ type: 'varchar', length: 300, nullable: true })
   externalPostId: string | null;
 }
+
+export type EngagementClass = 'question' | 'praise' | 'complaint' | 'buying_intent' | 'spam' | 'other';
+
+@Entity('social_engagements')
+export class SocialEngagement extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid' })
+  accountId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  postId: string | null;
+
+  @Column({ type: 'varchar', length: 8 })
+  kind: 'comment' | 'dm';
+
+  @Column({ type: 'varchar', length: 300 })
+  externalId: string;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  authorName: string | null;
+
+  @Column({ type: 'text' })
+  text: string;
+
+  @Column({ type: 'timestamptz' })
+  receivedAt: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  replyWindowEndsAt: Date | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  classification: EngagementClass | null;
+
+  @Column({ type: 'varchar', length: 16, default: 'new' })
+  state: 'new' | 'triaged' | 'replied' | 'dismissed';
+}
+
+@Entity('social_metrics')
+export class SocialMetric extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid' })
+  postId: string;
+
+  @Column({ type: 'varchar', length: 8 })
+  capture: '24h' | '7d';
+
+  @Column({ type: 'timestamptz' })
+  capturedAt: Date;
+
+  @Column({ type: 'jsonb', default: {} })
+  metrics: Record<string, number>;
+}
