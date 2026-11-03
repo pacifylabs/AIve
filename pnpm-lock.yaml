@@ -47,6 +47,12 @@ importers:
       '@ai-staff/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ai-staff/mail':
+        specifier: workspace:*
+        version: link:../../packages/mail
+      '@ai-staff/role-sales':
+        specifier: workspace:*
+        version: link:../../packages/role-sales
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.3.2)(bullmq@6.5.1(ioredis@6.0.0)(pg@8.23.1))
@@ -68,6 +74,9 @@ importers:
       bullmq:
         specifier: ^6.5.1
         version: 6.5.1(ioredis@6.0.0)(pg@8.23.1)
+      csv-parse:
+        specifier: ^6.2.1
+        version: 6.2.1
       ioredis:
         specifier: ^6.0.0
         version: 6.0.0
@@ -184,6 +193,12 @@ importers:
       '@ai-staff/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@ai-staff/mail':
+        specifier: workspace:*
+        version: link:../../packages/mail
+      '@ai-staff/role-sales':
+        specifier: workspace:*
+        version: link:../../packages/role-sales
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.3.2)(bullmq@6.5.1(ioredis@6.0.0)(pg@8.23.1))
@@ -1634,6 +1649,9 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  csv-parse@6.2.1:
+    resolution: {integrity: sha512-LRLMV+UCyfMokp8Wb411duBf1gaBKJfOfBWU9eHMJ+b+cJYZsNu3AFmjJf3+yPGd59Exz1TsMjaSFyxnYB9+IQ==}
 
   d3-array@3.2.4:
     resolution: {integrity: sha512-tdQAmyA18i4J7wprpYq8ClcxZy3SC31QMeByyCFyRt7BVHdREQZ5lpzoe5mFEYZUWe+oq8HBvk9JjpibyEV4Jg==}
@@ -4329,6 +4347,8 @@ snapshots:
       which: 2.0.2
 
   csstype@3.2.3: {}
+
+  csv-parse@6.2.1: {}
 
   d3-array@3.2.4:
     dependencies:

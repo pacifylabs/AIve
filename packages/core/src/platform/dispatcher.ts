@@ -13,7 +13,7 @@ import {
 } from '@ai-staff/db';
 import { type MailboxLogin, type MailTransport, normaliseEmail, renderEmailHtml, SendError } from '@ai-staff/mail';
 import type { Keyring } from '../crypto/keyring.js';
-import { isSuppressed } from './mail-effects.js';
+import { isSuppressed, resolveUncertainSend } from './mail-effects.js';
 
 export type SendVerdict = { ok: true } | { defer: Date; reason: string } | { block: string };
 
@@ -74,14 +74,19 @@ export class MailDispatcher {
   }
 
   /** Pending sends whose time has come. */
-  async due(limit = 200): Promise<{ id: string; workspaceId: string }[]> {
+  async due(limit = 200): Promise<{ id: string; workspaceId: string; attempts: number; notBefore: Date }[]> {
     return asSystem(this.db, 'mail dispatcher: list send intents that are due', async (m) => {
       const rows = (await m.query(
-        `SELECT id, workspace_id FROM send_intents WHERE state = 'pending' AND not_before <= $1
+        `SELECT id, workspace_id, attempts, not_before FROM send_intents WHERE state = 'pending' AND not_before <= $1
           ORDER BY not_before LIMIT $2`,
         [this.now(), limit],
-      )) as { id: string; workspace_id: string }[];
-      return rows.map((row) => ({ id: row.id, workspaceId: row.workspace_id }));
+      )) as { id: string; workspace_id: string; attempts: number; not_before: Date }[];
+      return rows.map((row) => ({
+        id: row.id,
+        workspaceId: row.workspace_id,
+        attempts: row.attempts,
+        notBefore: new Date(row.not_before),
+      }));
     });
   }
 
@@ -226,25 +231,12 @@ export class MailDispatcher {
   }
 
   /** A person settles an uncertain email: it did go (`sent`), or send it again (`retry`). */
-  async resolveUncertain(
+  resolveUncertain(
     actor: { workspaceId: string; userId: string },
     intentId: string,
     outcome: 'sent' | 'retry',
   ): Promise<boolean> {
-    return withTenant(this.db, actor, async (m) => {
-      const intent = await m.findOne(SendIntent, {
-        where: { workspaceId: actor.workspaceId, id: intentId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!intent || intent.state !== 'uncertain') return false;
-      await m.update(
-        SendIntent,
-        { id: intent.id },
-        outcome === 'sent' ? { state: 'sent', error: null } : { state: 'pending', error: null, notBefore: this.now() },
-      );
-      await m.update(Message, { id: intent.messageId }, { delivery: outcome === 'sent' ? 'accepted' : 'queued' });
-      return true;
-    });
+    return withTenant(this.db, actor, (m) => resolveUncertainSend(m, actor.workspaceId, intentId, outcome, this.now()));
   }
 
   /** Platform rules first (nothing a role can loosen), then the role's own. */

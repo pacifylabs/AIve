@@ -36,6 +36,8 @@ export async function createSendIntent(
   workspaceId: string,
   staffId: string,
   effect: SendIntentEffect,
+  /** A person's own email: sent as them, regardless of who is handling the conversation. */
+  by?: { userId: string },
 ): Promise<SendIntentResult> {
   const existing = await m.findOneBy(SendIntent, { workspaceId, idempotencyKey: effect.idempotencyKey });
   if (existing) return { created: false, reason: 'Already queued.' };
@@ -71,7 +73,7 @@ export async function createSendIntent(
     );
   } else if (effect.conversationVersion !== null && effect.conversationVersion !== conversation.stateVersion) {
     return { created: false, reason: 'The conversation moved on since this was written.' };
-  } else if (conversation.handledBy === 'human') {
+  } else if (conversation.handledBy === 'human' && !by) {
     return { created: false, reason: 'A person is handling this conversation.' };
   }
 
@@ -91,9 +93,9 @@ export async function createSendIntent(
       workspaceId,
       conversationId: conversation.id,
       direction: 'out',
-      kind: effect.kind,
-      author: 'staff',
-      authorUserId: null,
+      kind: by ? 'human' : effect.kind,
+      author: by ? 'human' : 'staff',
+      authorUserId: by?.userId ?? null,
       subject: effect.subject.slice(0, 300),
       body: signature ? `${effect.body.trim()}\n\n${signature}` : effect.body.trim(),
       messageIdHeader: `<${uuidv7()}@${domainOf(mailbox.address) || 'localhost'}>`,
@@ -110,8 +112,8 @@ export async function createSendIntent(
       conversationId: conversation.id,
       messageId: message.id,
       idempotencyKey: effect.idempotencyKey,
-      conversationVersion: conversation.stateVersion,
-      byHuman: false,
+      conversationVersion: by ? null : conversation.stateVersion,
+      byHuman: Boolean(by),
       state: 'pending',
       notBefore: new Date(),
       claimedAt: null,
@@ -236,5 +238,27 @@ export async function updateConversation(
       ...(effect.reason ? { needsHumanReason: effect.reason.slice(0, 300) } : {}),
     },
   );
+  return true;
+}
+
+/** A person settles an uncertain email: it did go (`sent`), or send it again (`retry`). */
+export async function resolveUncertainSend(
+  m: EntityManager,
+  workspaceId: string,
+  intentId: string,
+  outcome: 'sent' | 'retry',
+  now: Date = new Date(),
+): Promise<boolean> {
+  const intent = await m.findOne(SendIntent, {
+    where: { workspaceId, id: intentId },
+    lock: { mode: 'pessimistic_write' },
+  });
+  if (!intent || intent.state !== 'uncertain') return false;
+  await m.update(
+    SendIntent,
+    { id: intent.id },
+    outcome === 'sent' ? { state: 'sent', error: null } : { state: 'pending', error: null, notBefore: now },
+  );
+  await m.update(Message, { id: intent.messageId }, { delivery: outcome === 'sent' ? 'accepted' : 'queued' });
   return true;
 }

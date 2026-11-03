@@ -16,4 +16,3 @@ export * from './platform/triggers.js';
 export * from './roles/registry.js';
 export * from './roles/types.js';
 export { dummyRole } from './testing/dummy-role.js';
-export * from './roles/production.js';
