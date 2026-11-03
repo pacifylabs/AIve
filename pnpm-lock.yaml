@@ -56,6 +56,9 @@ importers:
       '@ai-staff/roles':
         specifier: workspace:*
         version: link:../../packages/roles
+      '@ai-staff/social':
+        specifier: workspace:*
+        version: link:../../packages/social
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.3.2)(bullmq@6.5.1(ioredis@6.0.0)(pg@8.23.1))

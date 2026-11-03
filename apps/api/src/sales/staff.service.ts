@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { hireStaffRequest } from '@ai-staff/contracts';
 import { hireStaff, RoleRegistry } from '@ai-staff/core';
-import { AuditEntry, DataSource, Mailbox, StaffMember, withTenant } from '@ai-staff/db';
+import { AuditEntry, ConnectedAccount, DataSource, In, Mailbox, StaffMember, withTenant } from '@ai-staff/db';
 import type { z } from 'zod';
 import { ZodError } from 'zod';
 import { AppError } from '../common/app-error.js';
@@ -76,8 +76,21 @@ export class StaffAdminService {
     });
   }
 
-  /** A staff member can only send from a mailbox of its own workspace. */
+  /** A staff member can only use mailboxes and social accounts of its own workspace. */
   private async assertMailbox(ctx: WorkspaceContext, settings: Record<string, unknown>) {
+    const accountIds = Array.isArray(settings.accountIds)
+      ? settings.accountIds.filter((id): id is string => typeof id === 'string')
+      : [];
+    if (accountIds.length) {
+      const found = await withTenant(this.db, ctx, (m) =>
+        m.countBy(ConnectedAccount, { workspaceId: ctx.workspaceId, id: In(accountIds) }),
+      );
+      if (found !== new Set(accountIds).size) {
+        throw new AppError(400, 'validation_failed', 'One of those accounts is not connected.', {
+          errors: [{ path: 'settings.accountIds', message: 'Choose accounts you have connected.' }],
+        });
+      }
+    }
     const mailboxId = settings.mailboxId;
     if (typeof mailboxId !== 'string') return;
     const found = await withTenant(this.db, ctx, (m) =>

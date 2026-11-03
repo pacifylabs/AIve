@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApp } from '../../src/configure-app.js';
 import { Mailer, type OutgoingMail } from '../../src/mail/mail.module.js';
+import { FixtureSocialProvider, SocialProviders } from '@ai-staff/social';
 
 /** Collects platform emails instead of sending them, so tests can read codes and links. */
 export class CaptureMailer extends Mailer {
@@ -37,6 +38,8 @@ type Client = Pick<ReturnType<typeof request>, 'get' | 'post' | 'patch' | 'put' 
 export interface TestApp {
   app: INestApplication;
   mail: CaptureMailer;
+  /** Stand-ins for the networks: tests script what they return. */
+  social: { facebook: FixtureSocialProvider; instagram: FixtureSocialProvider; x: FixtureSocialProvider };
   /** A client with its own IP address, so each test looks like a different visitor to the rate limits. */
   http: (ip?: string) => Client;
   close: () => Promise<void>;
@@ -50,9 +53,16 @@ const nextIp = () => {
 
 export async function startApp(): Promise<TestApp> {
   const mail = new CaptureMailer();
+  const social = {
+    facebook: new FixtureSocialProvider('facebook'),
+    instagram: new FixtureSocialProvider('instagram'),
+    x: new FixtureSocialProvider('x'),
+  };
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(Mailer)
     .useValue(mail)
+    .overrideProvider(SocialProviders)
+    .useValue(new SocialProviders({}, Object.values(social)))
     .compile();
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);
@@ -67,7 +77,7 @@ export async function startApp(): Promise<TestApp> {
       delete: (url: string) => agent.delete(url).set('X-Forwarded-For', ip),
     };
   };
-  return { app, mail, http, close: () => app.close() };
+  return { app, mail, social, http, close: () => app.close() };
 }
 
 let counter = 0;

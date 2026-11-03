@@ -28,6 +28,8 @@ export class FixtureSocialProvider implements SocialProvider {
   readonly comments: CommentInput[] = [];
   next: 'auth' | 'rate_limit' | 'refuse' | 'drop' | 'drop_and_lose' | null = null;
   incoming: ProviderComment[] = [];
+  /** What `listAccounts` returns: tests add more to exercise choosing between several pages. */
+  accounts: ProviderAccount[] = [{ externalId: 'fixture-account', name: 'Fixture account', kind: 'page' }];
   private counter = 0;
 
   constructor(readonly network: SocialNetwork) {
@@ -51,7 +53,7 @@ export class FixtureSocialProvider implements SocialProvider {
   }
 
   listAccounts(): Promise<ProviderAccount[]> {
-    return Promise.resolve([{ externalId: 'fixture-account', name: 'Fixture account', kind: 'page' }]);
+    return Promise.resolve(this.accounts);
   }
 
   publishPost(input: PublishInput): Promise<PublishResult> {

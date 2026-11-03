@@ -74,3 +74,15 @@ export const hireStaffRequest = z.object({
 export const updateStaffSettingsRequest = z.object({
   settings: z.record(z.string(), z.unknown()),
 });
+
+// ---- Social Media Staff ------------------------------------------------------------------------------------
+
+export const selectAccountsRequest = z.object({
+  externalIds: z.array(z.string().min(1).max(200)).min(1).max(50),
+});
+
+export const resolvePostRequest = z.object({
+  /** `published`: it is on the network after all. `retry`: queue it again. */
+  outcome: z.enum(['published', 'retry']),
+  permalink: z.url({ protocol: /^https$/ }).max(500).optional(),
+});
