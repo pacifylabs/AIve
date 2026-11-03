@@ -84,5 +84,8 @@ export const selectAccountsRequest = z.object({
 export const resolvePostRequest = z.object({
   /** `published`: it is on the network after all. `retry`: queue it again. */
   outcome: z.enum(['published', 'retry']),
-  permalink: z.url({ protocol: /^https$/ }).max(500).optional(),
+  permalink: z
+    .url({ protocol: /^https$/ })
+    .max(500)
+    .optional(),
 });
