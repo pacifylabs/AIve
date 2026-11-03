@@ -42,6 +42,14 @@ export const configSchema = z
 
     SMTP_URL: z.url(),
     MAIL_FROM: z.string().min(3),
+
+    /**
+     * Claude API key for staff model calls and website prefill. Optional so local development and tests run without
+     * one; without it, model tasks fail loudly (retried, then marked dead with an alert) instead of doing nothing.
+     */
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    /** How often the worker schedules, delivers events, reaps dead runs and queues due work. */
+    WORKER_TICK_MS: z.coerce.number().int().min(1000).max(60_000).default(5_000),
   })
   .refine(
     (config) =>

@@ -1,6 +1,17 @@
-/** Queue names are shared with the API (which enqueues) once it starts producing work. */
+/** Queue names, shared with the API, which enqueues platform jobs (website prefill) for the worker. */
 export const SYSTEM_QUEUE = 'system';
+/** Task runs. Postgres holds each run's state; a job here only says "execute this run now". */
+export const TASKS_QUEUE = 'tasks';
+/** Platform jobs that are not task runs: website prefill and the nightly promotion evaluation. */
+export const PLATFORM_QUEUE = 'platform';
 
 export interface HeartbeatJob {
   requestedAt: string;
 }
+
+export interface TaskJob {
+  workspaceId: string;
+  runId: string;
+}
+
+export type PlatformJob = { kind: 'prefill'; workspaceId: string } | { kind: 'evaluate_promotions' };

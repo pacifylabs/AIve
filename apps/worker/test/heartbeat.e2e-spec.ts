@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { type Queue, QueueEvents } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SYSTEM_QUEUE } from '../src/queues.js';
-import { WorkerModule } from '../src/worker.module.js';
+import { QueuesModule } from '../src/queues.module.js';
 
 const redisUrl = process.env.TEST_REDIS_URL ?? 'redis://localhost:6390';
 
@@ -30,7 +30,7 @@ describe('worker queue round-trip', () => {
       SMTP_URL: 'smtp://localhost:1',
       MAIL_FROM: 'test <test@test.local>',
     });
-    const moduleRef = await Test.createTestingModule({ imports: [WorkerModule] }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [QueuesModule] }).compile();
     const app = await moduleRef.init();
     queue = app.get<Queue>(getQueueToken(SYSTEM_QUEUE));
     const url = new URL(redisUrl);
