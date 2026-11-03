@@ -47,8 +47,23 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 <Link href="/app/inbox" className="hover:underline">
                   Inbox
                 </Link>
+                <Link href="/app/pipeline" className="hover:underline">
+                  Pipeline
+                </Link>
+                <Link href="/app/leads" className="hover:underline">
+                  Leads
+                </Link>
+                <Link href="/app/mailboxes" className="hover:underline">
+                  Mailboxes
+                </Link>
                 <Link href="/app/company" className="hover:underline">
                   Company
+                </Link>
+                <Link href="/app/hire" className="hover:underline">
+                  Hire
+                </Link>
+                <Link href="/app/suppressions" className="hover:underline">
+                  Do not contact
                 </Link>
                 <Link href="/app/settings" className="hover:underline">
                   Settings
