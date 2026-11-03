@@ -3,6 +3,7 @@ import { salesSettingsSchema } from './settings.js';
 import { firstTouch } from './tasks/first-touch.js';
 import { followUp } from './tasks/follow-up.js';
 import { researchLead } from './tasks/research.js';
+import { socialHandoff } from './tasks/social-handoff.js';
 import { triageReply } from './tasks/triage.js';
 import { watchHealth } from './tasks/watch-health.js';
 import { weeklyReport } from './tasks/weekly-report.js';
@@ -11,7 +12,7 @@ const uuid = (value: unknown): value is string => typeof value === 'string' && /
 
 /**
  * Sales Manager Staff. See docs/roles/SALES-MANAGER-STAFF.md. Voice tasks (`answer_call`, `call_summary`, `call_lead`)
- * arrive with Milestone 3b and `social_handoff` with Social Media Staff in Milestone 4.
+ * arrive with Milestone 3b.
  */
 export const salesManagerRole: RoleDefinition = {
   key: 'sales_manager',
@@ -53,13 +54,19 @@ export const salesManagerRole: RoleDefinition = {
       target: { setting: 'cta.url' },
     },
   ],
-  tasks: [researchLead, firstTouch, followUp, triageReply, weeklyReport, watchHealth],
+  tasks: [researchLead, firstTouch, followUp, triageReply, socialHandoff, weeklyReport, watchHealth],
   subscribes: [
     {
       event: 'lead.created',
       task: 'sales_manager.research_lead',
       // A lead from social has no website or email to read; it waits for a suggested reply (a later task) instead.
       input: (payload) => (uuid(payload.leadId) && payload.source !== 'social' ? { leadId: payload.leadId } : null),
+    },
+    {
+      event: 'lead.created',
+      task: 'sales_manager.social_handoff',
+      // Only leads from social, which have no email to write to.
+      input: (payload) => (uuid(payload.leadId) && payload.source === 'social' ? { leadId: payload.leadId } : null),
     },
     {
       event: 'lead.researched',

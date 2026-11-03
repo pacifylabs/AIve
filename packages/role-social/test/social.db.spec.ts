@@ -146,6 +146,8 @@ async function setup() {
     }
     if (request.user.includes('Write one post for')) return { output: script.draft };
     if (request.user.includes('Classify it.')) return { output: script.triage };
+    if (request.user.includes('showed interest on social media'))
+      return { output: { reply: 'You can book a call on our website, Ada.' } };
     return { error: new Error(`Unexpected prompt: ${request.user.slice(0, 80)}`) };
   });
 
@@ -371,9 +373,16 @@ describe('Social Media Staff, end to end', () => {
     );
     expect(researched).toHaveLength(0);
 
-    const [draft] = await s.pending();
-    expect(draft?.kind).toBe('reply_draft');
-    expect(draft?.payload.reply).toBe('You can book a call on our website.');
+    // Two drafts for a person: the Social Media reply to post, and the Sales Manager's suggested reply for the lead.
+    const drafts = await s.pending();
+    expect(drafts.map((item) => item.kind)).toEqual(['reply_draft', 'reply_draft']);
+    const byStaff = new Map(drafts.map((item) => [item.staffId, item]));
+    expect(byStaff.get(s.staff.id)?.payload.reply).toBe('You can book a call on our website.');
+    expect(byStaff.get(s.sales.id)).toMatchObject({
+      taskType: 'sales_manager.social_handoff',
+      title: 'Suggested reply to Ada Buyer',
+    });
+    expect(byStaff.get(s.sales.id)?.payload.reply).toBe('You can book a call on our website, Ada.');
     const engagement = await s.inWs((m) => m.findOneByOrFail(SocialEngagement, { workspaceId: s.workspaceId }));
     expect(engagement).toMatchObject({ classification: 'buying_intent', state: 'triaged' });
   });
