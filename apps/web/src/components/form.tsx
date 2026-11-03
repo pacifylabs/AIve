@@ -1,6 +1,6 @@
 'use client';
 
-import { type InputHTMLAttributes, type ReactNode, useId, useState } from 'react';
+import { type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, useId, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { FormState } from '@/lib/form-state';
 
@@ -44,6 +44,42 @@ export function TextField({ label, error, hint, ...input }: FieldProps) {
 }
 
 /** The one password field used everywhere, with a show/hide toggle. */
+/** Multi-line text, for drafts and longer answers. Same label, hint and error wiring as TextField. */
+export function TextAreaField({
+  label,
+  error,
+  hint,
+  ...textarea
+}: { label: string; error?: string; hint?: string } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const id = useId();
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-sm font-medium">
+        {label}
+      </label>
+      <textarea
+        id={id}
+        rows={4}
+        className={inputClass}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        {...textarea}
+      />
+      {hint && !error ? (
+        <p id={`${id}-hint`} className="text-xs text-muted">
+          {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function PasswordField({ label, error, hint, ...input }: FieldProps) {
   const id = useId();
   const [visible, setVisible] = useState(false);

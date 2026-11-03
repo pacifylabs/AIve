@@ -43,9 +43,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           ) : null}
           <nav className="ml-auto flex items-center gap-4 text-sm">
             {current ? (
-              <Link href="/app/settings" className="hover:underline">
-                Settings
-              </Link>
+              <>
+                <Link href="/app/inbox" className="hover:underline">
+                  Inbox
+                </Link>
+                <Link href="/app/company" className="hover:underline">
+                  Company
+                </Link>
+                <Link href="/app/settings" className="hover:underline">
+                  Settings
+                </Link>
+              </>
             ) : null}
             <span className="text-muted">{me.ok ? me.data.email : ''}</span>
             <form action={logoutAction}>

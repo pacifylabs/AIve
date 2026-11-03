@@ -11,7 +11,7 @@ export interface EarlyAccessValues {
 }
 
 /** `values` echoes what was sent, because React resets the form after the action and the visitor should not retype it. */
-export type EarlyAccessState = FormState & { done?: boolean; values?: EarlyAccessValues };
+export type EarlyAccessState = Omit<FormState, 'values'> & { done?: boolean; values?: EarlyAccessValues };
 
 export async function joinEarlyAccessAction(_state: EarlyAccessState, data: FormData): Promise<EarlyAccessState> {
   const values: EarlyAccessValues = {
