@@ -17,6 +17,8 @@
     "@ai-staff/core": "workspace:*",
     "@ai-staff/db": "workspace:*",
     "@ai-staff/llm": "workspace:*",
+    "@ai-staff/mail": "workspace:*",
+    "@ai-staff/role-sales": "workspace:*",
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.3.0",
     "@nestjs/core": "^12.3.0",

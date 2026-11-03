@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { loadConfig } from '@ai-staff/config';
 import { LoggerModule } from 'nestjs-pino';
 import { HeartbeatProcessor } from './heartbeat.processor.js';
-import { PLATFORM_QUEUE, SYSTEM_QUEUE, TASKS_QUEUE } from './queues.js';
+import { MAIL_QUEUE, PLATFORM_QUEUE, SYSTEM_QUEUE, TASKS_QUEUE } from './queues.js';
 
 /** Logging, the Redis connection and the queues. Has no database, so the queue round-trip test runs on Redis alone. */
 @Module({
@@ -34,6 +34,11 @@ import { PLATFORM_QUEUE, SYSTEM_QUEUE, TASKS_QUEUE } from './queues.js';
     // Retries and back-off for task runs are decided by the task engine and stored on the run, so BullMQ never retries.
     BullModule.registerQueue({
       name: TASKS_QUEUE,
+      defaultJobOptions: { attempts: 1, removeOnComplete: 5_000, removeOnFail: 5_000 },
+    }),
+    // The dispatcher decides retries (an unknown outcome is never retried), so BullMQ never does.
+    BullModule.registerQueue({
+      name: MAIL_QUEUE,
       defaultJobOptions: { attempts: 1, removeOnComplete: 5_000, removeOnFail: 5_000 },
     }),
     BullModule.registerQueue({ name: PLATFORM_QUEUE }),

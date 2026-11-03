@@ -1,10 +1,10 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import { type AppConfig } from '@ai-staff/config';
-import { Triggers } from '@ai-staff/core';
+import { MailDispatcher, Triggers } from '@ai-staff/core';
 import type { Queue } from 'bullmq';
 import { APP_CONFIG } from './tokens.js';
-import { PLATFORM_QUEUE, type PlatformJob, TASKS_QUEUE, type TaskJob } from './queues.js';
+import { MAIL_QUEUE, type MailJob, PLATFORM_QUEUE, type PlatformJob, TASKS_QUEUE, type TaskJob } from './queues.js';
 
 /**
  * The worker's heartbeat for the platform. Each tick reaps runs from dead workers, creates schedule-slot runs, delivers
@@ -19,6 +19,8 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(Triggers) private readonly triggers: Triggers,
+    @Inject(MailDispatcher) private readonly dispatcher: MailDispatcher,
+    @InjectQueue(MAIL_QUEUE) private readonly mail: Queue<MailJob>,
     @InjectQueue(TASKS_QUEUE) private readonly tasks: Queue<TaskJob>,
     @InjectQueue(PLATFORM_QUEUE) private readonly platform: Queue<PlatformJob>,
   ) {}
@@ -29,6 +31,11 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
       'evaluate-promotions',
       { pattern: '0 3 * * *', tz: 'UTC' },
       { name: 'evaluate_promotions', data: { kind: 'evaluate_promotions' } },
+    );
+    await this.platform.upsertJobScheduler(
+      'recheck-dns',
+      { pattern: '30 3 * * *', tz: 'UTC' },
+      { name: 'recheck_dns', data: { kind: 'recheck_dns' } },
     );
     this.timer = setInterval(() => void this.tick(), this.config.WORKER_TICK_MS);
   }
@@ -55,8 +62,20 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
           })),
         );
       }
-      if (reaped || scheduled || delivered || due.length) {
-        this.logger.log({ reaped, scheduled, delivered, queued: due.length }, 'tick');
+      const stuck = await this.dispatcher.reapStuck();
+      const sends = await this.dispatcher.due();
+      if (sends.length) {
+        await this.mail.addBulk(
+          sends.map((send) => ({
+            name: 'send',
+            data: { workspaceId: send.workspaceId, intentId: send.id },
+            // One job per intent, attempt and due time, like task runs: a held send that comes due again is a new job.
+            opts: { jobId: `send-${send.id}-${send.attempts}-${send.notBefore.getTime()}` },
+          })),
+        );
+      }
+      if (reaped || scheduled || delivered || due.length || stuck || sends.length) {
+        this.logger.log({ reaped, scheduled, delivered, queued: due.length, stuck, sends: sends.length }, 'tick');
       }
     } catch (error) {
       this.logger.error({ error: error instanceof Error ? error.message : String(error) }, 'tick failed');

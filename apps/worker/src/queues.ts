@@ -5,6 +5,9 @@ export const TASKS_QUEUE = 'tasks';
 /** Platform jobs that are not task runs: website prefill and the nightly promotion evaluation. */
 export const PLATFORM_QUEUE = 'platform';
 
+/** Outgoing email: one job per send intent. Postgres holds the intent's state; a job only says "try this one now". */
+export const MAIL_QUEUE = 'mail';
+
 export interface HeartbeatJob {
   requestedAt: string;
 }
@@ -14,4 +17,10 @@ export interface TaskJob {
   runId: string;
 }
 
-export type PlatformJob = { kind: 'prefill'; workspaceId: string } | { kind: 'evaluate_promotions' };
+export interface MailJob {
+  workspaceId: string;
+  intentId: string;
+}
+
+export type PlatformJob =
+  { kind: 'prefill'; workspaceId: string } | { kind: 'evaluate_promotions' } | { kind: 'recheck_dns' };
