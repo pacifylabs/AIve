@@ -32,7 +32,7 @@ export class CaptureMailer extends Mailer {
   }
 }
 
-type Client = Pick<ReturnType<typeof request>, 'get' | 'post' | 'patch' | 'delete'>;
+type Client = Pick<ReturnType<typeof request>, 'get' | 'post' | 'patch' | 'put' | 'delete'>;
 
 export interface TestApp {
   app: INestApplication;
@@ -63,6 +63,7 @@ export async function startApp(): Promise<TestApp> {
       get: (url: string) => agent.get(url).set('X-Forwarded-For', ip),
       post: (url: string) => agent.post(url).set('X-Forwarded-For', ip),
       patch: (url: string) => agent.patch(url).set('X-Forwarded-For', ip),
+      put: (url: string) => agent.put(url).set('X-Forwarded-For', ip),
       delete: (url: string) => agent.delete(url).set('X-Forwarded-For', ip),
     };
   };
