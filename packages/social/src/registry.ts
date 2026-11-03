@@ -2,6 +2,14 @@ import { MetaProvider, type MetaConfig } from './meta.js';
 import { ProviderError, SOCIAL_NETWORKS, type SocialNetwork, type SocialProvider } from './provider.js';
 import { XProvider, type XConfig } from './x.js';
 
+/** Names for networks that have no client yet, so a screen can still list them properly. */
+const NETWORK_LABELS: Record<SocialNetwork, string> = {
+  facebook: 'Facebook Page',
+  instagram: 'Instagram business account',
+  linkedin: 'LinkedIn Page',
+  x: 'X account',
+};
+
 export interface SocialConfig {
   meta?: MetaConfig;
   x?: XConfig;
@@ -34,7 +42,7 @@ export class SocialProviders {
       const provider = this.providers.get(network);
       return {
         network,
-        label: provider?.label ?? network,
+        label: provider?.label ?? NETWORK_LABELS[network],
         configured: provider?.isConfigured() ?? false,
         supportsNativeScheduling: provider?.supportsNativeScheduling ?? false,
         canReplyToComments: typeof provider?.replyToComment === 'function',
