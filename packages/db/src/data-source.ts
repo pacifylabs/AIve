@@ -2,13 +2,48 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { EmailToken, RefreshToken, User } from './entities/identity.entities.js';
 import { EarlyAccessSignup } from './entities/early-access.entity.js';
+import {
+  ActivityEvent,
+  AuditEntry,
+  CompanyFact,
+  CompanyProfile,
+  DomainEvent,
+  PromotionOffer,
+  SpendCap,
+  StaffMember,
+  StaffTaskSetting,
+  TaskRun,
+  UsageReservation,
+  WorkItem,
+} from './entities/platform.entities.js';
 import { Invitation, Membership, Workspace } from './entities/workspace.entities.js';
 import { IdentityAndWorkspaces1793318400000 } from './migrations/0001-identity-and-workspaces.js';
 import { EarlyAccess1793404800000 } from './migrations/0002-early-access.js';
+import { PlatformCore1793491200000 } from './migrations/0003-platform-core.js';
 import { SnakeNamingStrategy } from './naming.js';
 
-export const entities = [User, EmailToken, RefreshToken, Workspace, Membership, Invitation, EarlyAccessSignup];
-export const migrations = [IdentityAndWorkspaces1793318400000, EarlyAccess1793404800000];
+export const entities = [
+  User,
+  EmailToken,
+  RefreshToken,
+  Workspace,
+  Membership,
+  Invitation,
+  EarlyAccessSignup,
+  CompanyProfile,
+  CompanyFact,
+  StaffMember,
+  StaffTaskSetting,
+  PromotionOffer,
+  TaskRun,
+  WorkItem,
+  DomainEvent,
+  ActivityEvent,
+  AuditEntry,
+  UsageReservation,
+  SpendCap,
+];
+export const migrations = [IdentityAndWorkspaces1793318400000, EarlyAccess1793404800000, PlatformCore1793491200000];
 
 export interface ConnectionOptions {
   host: string;
