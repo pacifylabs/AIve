@@ -50,6 +50,19 @@ export const configSchema = z
      * one; without it, model tasks fail loudly (retried, then marked dead with an alert) instead of doing nothing.
      */
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    /** Meta app (Facebook Pages and Instagram). Both needed to connect accounts; confirmed during Meta app review. */
+    META_APP_ID: z.string().min(1).optional(),
+    META_APP_SECRET: z.string().min(1).optional(),
+    /** Pinned so a Graph API change cannot break posting unannounced. */
+    META_GRAPH_VERSION: z
+      .string()
+      .regex(/^v\d+\.\d+$/)
+      .default('v21.0'),
+    /** Switch on only once the app is approved to read and answer messages. */
+    META_MESSAGING: z.stringbool().default(false),
+    /** X API app (OAuth 2.0 client). */
+    X_CLIENT_ID: z.string().min(1).optional(),
+    X_CLIENT_SECRET: z.string().min(1).optional(),
     /** How often the worker schedules, delivers events, reaps dead runs and queues due work. */
     WORKER_TICK_MS: z.coerce.number().int().min(1000).max(60_000).default(5_000),
   })
@@ -84,4 +97,22 @@ export function parseKeyring(config: Pick<AppConfig, 'ENCRYPTION_KEYS'>): Map<st
       return [kid, Buffer.from(hex, 'hex')];
     }),
   );
+}
+
+/** The social network credentials in the shape `SocialProviders` takes. Unset networks are listed as not configured. */
+export function socialConfig(
+  config: Pick<
+    AppConfig,
+    'META_APP_ID' | 'META_APP_SECRET' | 'META_GRAPH_VERSION' | 'META_MESSAGING' | 'X_CLIENT_ID' | 'X_CLIENT_SECRET'
+  >,
+) {
+  return {
+    meta: {
+      appId: config.META_APP_ID ?? '',
+      appSecret: config.META_APP_SECRET ?? '',
+      graphVersion: config.META_GRAPH_VERSION,
+      messaging: config.META_MESSAGING,
+    },
+    x: { clientId: config.X_CLIENT_ID ?? '', clientSecret: config.X_CLIENT_SECRET ?? '' },
+  };
 }

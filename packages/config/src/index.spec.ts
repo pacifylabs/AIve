@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadConfig, parseKeyring } from './index.js';
+import { ConfigError, loadConfig, parseKeyring, socialConfig } from './index.js';
 
 const key = 'a'.repeat(64);
 const valid = {
@@ -49,5 +49,30 @@ describe('loadConfig', () => {
     const keys = parseKeyring({ ENCRYPTION_KEYS: `k1:${key}, k2:${'b'.repeat(64)}` });
     expect([...keys.keys()]).toEqual(['k1', 'k2']);
     expect(keys.get('k2')).toHaveLength(32);
+  });
+});
+
+describe('social network settings', () => {
+  it('are optional, and an unset network is passed on as empty credentials', () => {
+    const config = loadConfig(valid);
+    expect(config.META_GRAPH_VERSION).toBe('v21.0');
+    expect(config.META_MESSAGING).toBe(false);
+    expect(socialConfig(config)).toEqual({
+      meta: { appId: '', appSecret: '', graphVersion: 'v21.0', messaging: false },
+      x: { clientId: '', clientSecret: '' },
+    });
+  });
+
+  it('reads the values when they are set, and rejects a malformed Graph version', () => {
+    const config = loadConfig({
+      ...valid,
+      META_APP_ID: 'id',
+      META_APP_SECRET: 's',
+      META_MESSAGING: 'true',
+      X_CLIENT_ID: 'x',
+      X_CLIENT_SECRET: 'y',
+    });
+    expect(socialConfig(config).meta).toMatchObject({ appId: 'id', messaging: true });
+    expect(() => loadConfig({ ...valid, META_GRAPH_VERSION: '21' })).toThrow(ConfigError);
   });
 });
