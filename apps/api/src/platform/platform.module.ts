@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ApprovalService, buildProductionRegistry, CompanyBrain, RoleRegistry } from '@ai-staff/core';
+import { ApprovalService, CompanyBrain, RoleRegistry } from '@ai-staff/core';
+import { buildProductionRegistry } from '@ai-staff/role-sales';
 import { DataSource } from '@ai-staff/db';
 import { AuthModule } from '../auth/auth.module.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.module.js';

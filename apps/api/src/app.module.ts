@@ -9,6 +9,7 @@ import { HealthController } from './health/health.controller.js';
 import { MailModule } from './mail/mail.module.js';
 import { PlatformModule } from './platform/platform.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { SalesModule } from './sales/sales.module.js';
 import { WorkspacesModule } from './workspaces/workspaces.module.js';
 
 @Module({
@@ -43,6 +44,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module.js';
     WorkspacesModule,
     EarlyAccessModule,
     PlatformModule,
+    SalesModule,
   ],
   controllers: [HealthController],
 })
