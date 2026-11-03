@@ -1,0 +1,160 @@
+import { request as requestHttp, type RequestOptions } from 'node:http';
+import { request as requestHttps } from 'node:https';
+import { Readable } from 'node:stream';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+
+const MAX_BYTES = 300_000;
+const MAX_REDIRECTS = 3;
+const TIMEOUT_MS = 8000;
+
+/** Whether an address is somewhere a public web page has no business sending us: this machine, the local network, link-local, cloud metadata. */
+export function isPrivateAddress(address: string): boolean {
+  const version = isIP(address);
+  if (version === 4) {
+    const [a = 0, b = 0] = address.split('.').map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 192 && b === 0) ||
+      a >= 224
+    );
+  }
+  if (version === 6) {
+    const lower = address.toLowerCase();
+    if (lower === '::1' || lower === '::') return true;
+    if (lower.startsWith('::ffff:')) return isPrivateAddress(lower.slice(7));
+    return /^f[cd]/.test(lower) || /^fe[89ab]/.test(lower) || lower.startsWith('ff');
+  }
+  return true;
+}
+
+export class UnsafeUrlError extends Error {}
+
+/** Checks one address before it is fetched: web protocols only, no credentials in it, and the name must resolve to public addresses only. */
+export async function assertPublicUrl(raw: string): Promise<URL> {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new UnsafeUrlError('That is not a web address.');
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:')
+    throw new UnsafeUrlError('Only web addresses can be read.');
+  if (url.username || url.password) throw new UnsafeUrlError('Addresses with a login in them are not read.');
+  const host = url.hostname.replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local'))
+    throw new UnsafeUrlError('That address is not on the public internet.');
+  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true }).catch(() => []);
+  if (!addresses.length) throw new UnsafeUrlError('That address could not be found.');
+  if (addresses.some((entry) => isPrivateAddress(entry.address)))
+    throw new UnsafeUrlError('That address is not on the public internet.');
+  return url;
+}
+
+/** Validate the DNS answer used by the socket itself, rather than trusting an earlier lookup. */
+const publicFetch = (async (input: string | URL, init?: RequestInit): Promise<Response> => {
+  const url = new URL(String(input));
+  return new Promise((resolve, reject) => {
+    const options: RequestOptions & { autoSelectFamily: boolean } = {
+      method: 'GET',
+      headers: init?.headers as Record<string, string>,
+      signal: init?.signal ?? undefined,
+      autoSelectFamily: false,
+      lookup: (hostname, _options, callback) => {
+        void lookup(hostname, { all: true })
+          .then((addresses) => {
+            const first = addresses[0];
+            if (!first || addresses.some((entry) => isPrivateAddress(entry.address)))
+              return callback(new UnsafeUrlError('That address is not on the public internet.'), '', 4);
+            callback(null, first.address, first.family);
+          })
+          .catch((error) => callback(error, '', 4));
+      },
+    };
+    const request = (url.protocol === 'https:' ? requestHttps : requestHttp)(url, options, (response) => {
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(response.headers))
+        if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(', ') : value);
+      const status = response.statusCode ?? 502;
+      if (status < 200 || status > 599) {
+        response.destroy();
+        reject(new UnsafeUrlError('The page returned an invalid HTTP status.'));
+        return;
+      }
+      const body = [204, 205, 304].includes(status) ? null : (Readable.toWeb(response) as ReadableStream<Uint8Array>);
+      if (!body) response.resume();
+      resolve(new Response(body, { status, headers }));
+    });
+    request.on('error', reject);
+    request.end();
+  });
+}) as typeof fetch;
+
+/**
+ * Reads a public web page as text. Every hop of a redirect is checked again, the page is capped in size and time, and
+ * only text comes back. What the page says is data for the agent to weigh; it is never an instruction.
+ */
+export async function safeFetchText(
+  raw: string,
+  fetcher: typeof fetch = publicFetch,
+): Promise<{ url: string; text: string; contentType: string }> {
+  let current = raw;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const url = await assertPublicUrl(current);
+    const response = await fetcher(url, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { Accept: 'text/html,text/plain;q=0.9', 'User-Agent': 'AIStaffResearch/1.0' },
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const next = response.headers.get('location');
+      if (!next) throw new UnsafeUrlError('That page redirected nowhere.');
+      current = new URL(next, url).toString();
+      continue;
+    }
+    if (!response.ok) throw new Error(`The page answered ${response.status}.`);
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!/text\/|application\/xhtml/i.test(contentType)) throw new UnsafeUrlError('That is not a page of text.');
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (reader) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.length;
+      chunks.push(value);
+      if (total >= MAX_BYTES) {
+        await reader.cancel();
+        break;
+      }
+    }
+    return { url: url.toString(), text: Buffer.concat(chunks).toString('utf8').slice(0, MAX_BYTES), contentType };
+  }
+  throw new UnsafeUrlError('That page redirected too many times.');
+}
+
+/** A page boiled down to what a person would read: title, description and the first run of text. */
+export function summarisePage(html: string): { title: string | null; description: string | null; text: string } {
+  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1]?.replace(/\s+/g, ' ').trim() ?? null;
+  const description =
+    /<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i.exec(html)?.[1]?.trim() ??
+    /<meta[^>]+content=["']([^"']*)["'][^>]*name=["']description["']/i.exec(html)?.[1]?.trim() ??
+    null;
+  const text = html
+    .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 1500);
+  return { title: title?.slice(0, 300) ?? null, description: description?.slice(0, 400) ?? null, text };
+}
