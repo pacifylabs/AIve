@@ -19,7 +19,11 @@ function bounceRecipient(text: string): string | undefined {
  * Reads INBOX messages newer than the cursor. The first poll of a mailbox only records where the inbox is, so connecting
  * a mailbox never replays its whole history into the pipeline.
  */
-export async function pollImap(login: ImapLogin, cursor: ImapCursor, max = 50): Promise<{ mails: InboundMail[]; cursor: ImapCursor }> {
+export async function pollImap(
+  login: ImapLogin,
+  cursor: ImapCursor,
+  max = 50,
+): Promise<{ mails: InboundMail[]; cursor: ImapCursor }> {
   const client = new ImapFlow({
     host: login.host,
     port: login.port,
@@ -51,7 +55,11 @@ export async function pollImap(login: ImapLogin, cursor: ImapCursor, max = 50): 
       const from = firstAddress(parsed.from);
       const text = (parsed.text ?? '').slice(0, 50_000);
       const report = /multipart\/report/i.test(String(parsed.headers.get('content-type') ?? ''));
-      const references = Array.isArray(parsed.references) ? parsed.references : parsed.references ? [parsed.references] : [];
+      const references = Array.isArray(parsed.references)
+        ? parsed.references
+        : parsed.references
+          ? [parsed.references]
+          : [];
       mails.push({
         event: report ? 'bounce' : 'message',
         messageId: parsed.messageId ?? `<imap-${uidValidity}-${message.uid}@local>`,

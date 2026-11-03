@@ -29,7 +29,9 @@ export class SmtpTransport implements MailTransport {
         inReplyTo: mail.inReplyTo ?? undefined,
         references: mail.references,
         list: mail.unsubscribe
-          ? { unsubscribe: [{ url: mail.unsubscribe.url, comment: 'Unsubscribe' }, `mailto:${mail.unsubscribe.mailto}`] }
+          ? {
+              unsubscribe: [{ url: mail.unsubscribe.url, comment: 'Unsubscribe' }, `mailto:${mail.unsubscribe.mailto}`],
+            }
           : undefined,
         headers: mail.unsubscribe ? { 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined,
       });

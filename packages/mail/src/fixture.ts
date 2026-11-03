@@ -12,7 +12,8 @@ export class FixtureTransport implements MailTransport {
     const behaviour = this.next;
     this.next = null;
     if (behaviour === 'refuse') return Promise.reject(new SendError('550 The mailbox refused the message.', true));
-    if (behaviour === 'drop') return Promise.reject(new SendError('Connection closed before the server answered.', false));
+    if (behaviour === 'drop')
+      return Promise.reject(new SendError('Connection closed before the server answered.', false));
     this.outbox.push({ ...mail, at: new Date() });
     return Promise.resolve(`fixture-${mail.messageId}`);
   }

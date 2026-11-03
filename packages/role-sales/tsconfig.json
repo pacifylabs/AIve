@@ -3,17 +3,9 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "lib": [
-      "ES2023"
-    ],
-    "types": [
-      "node"
-    ]
+    "lib": ["ES2023"],
+    "types": ["node"]
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/**/*.spec.ts"
-  ]
+  "include": ["src"],
+  "exclude": ["src/**/*.spec.ts"]
 }

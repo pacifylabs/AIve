@@ -76,15 +76,7 @@ export class Mailbox extends WorkspaceScopedEntity {
 
 export type LeadSource = 'csv' | 'manual' | 'social';
 export type LeadState =
-  | 'new'
-  | 'researching'
-  | 'queued'
-  | 'contacting'
-  | 'replied'
-  | 'needs_human'
-  | 'won'
-  | 'lost'
-  | 'stopped';
+  'new' | 'researching' | 'queued' | 'contacting' | 'replied' | 'needs_human' | 'won' | 'lost' | 'stopped';
 
 @Entity('leads')
 export class Lead extends WorkspaceScopedEntity {
@@ -148,14 +140,7 @@ export class LeadResearch extends WorkspaceScopedEntity {
 
 export type ConversationState = 'active' | 'waiting' | 'needs_human' | 'closed';
 export type ReplyClassification =
-  | 'interested'
-  | 'question'
-  | 'objection'
-  | 'out_of_office'
-  | 'opt_out'
-  | 'bounce'
-  | 'unclear'
-  | 'escalate';
+  'interested' | 'question' | 'objection' | 'out_of_office' | 'opt_out' | 'bounce' | 'unclear' | 'escalate';
 
 @Entity('conversations')
 export class Conversation extends WorkspaceScopedEntity {
@@ -195,14 +180,7 @@ export class Conversation extends WorkspaceScopedEntity {
 
 export type MessageKind = 'first' | 'follow_up' | 'reply' | 'human';
 export type MessageDelivery =
-  | 'queued'
-  | 'sending'
-  | 'accepted'
-  | 'uncertain'
-  | 'failed'
-  | 'cancelled'
-  | 'received'
-  | 'bounced';
+  'queued' | 'sending' | 'accepted' | 'uncertain' | 'failed' | 'cancelled' | 'received' | 'bounced';
 
 @Entity('messages')
 export class Message extends WorkspaceScopedEntity {
