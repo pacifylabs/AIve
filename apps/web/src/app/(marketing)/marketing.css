@@ -1522,6 +1522,11 @@
   align-items: center;
   gap: 8px;
 }
+.gc-place {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
 .gc-row {
   display: flex;
   align-items: center;
@@ -1571,47 +1576,68 @@
     transform: scaleY(3.226);
   }
 }
+/*
+ * Smaller screens keep the desktop composition: the cards float around the Earth and overlap its edge, rather than
+ * stacking into a list below it. Only the sizes change.
+ */
 @container page (max-width: 980px) {
   .globe-stage {
-    height: auto;
-    flex-direction: column;
-    gap: 28px;
+    height: 560px;
   }
   .globe {
-    width: 420px;
-    height: 420px;
-  }
-  .globe-list {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    width: 100%;
+    width: 440px;
+    height: 440px;
   }
   .globe-card {
-    position: static;
-    width: auto;
-    animation: none;
-  }
-  .globe-inbox {
-    position: static;
-    transform: none;
-    order: -1;
+    width: 220px;
   }
 }
 @container page (max-width: 600px) {
-  .globe {
-    width: 300px;
-    height: 300px;
+  .globe-stage {
+    height: 460px;
   }
-  .globe-list {
-    grid-template-columns: minmax(0, 1fr);
+  .globe {
+    width: 280px;
+    height: 280px;
+  }
+  .globe-card {
+    width: 172px;
+    padding: 10px 12px;
+    gap: 7px;
+    border-radius: 14px;
+  }
+  .gc-place {
+    font-size: 10px;
+  }
+  .gc-top {
+    flex-wrap: wrap;
+    row-gap: 5px;
+  }
+  .gc-top .badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  .gc-row {
+    gap: 8px;
+    font-size: 12px;
+  }
+  .gc-row .tile {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
   }
   .globe-inbox {
-    white-space: normal;
-    flex-wrap: wrap;
-    justify-content: center;
-    border-radius: 18px;
+    gap: 8px;
+    padding: 6px 8px 6px 12px;
+    font-size: 13px;
+  }
+  .globe-inbox .badge {
+    font-size: 11px;
+  }
+  .globe-staff {
+    width: 22px;
+    height: 22px;
+    margin: -11px 0 0 -11px;
   }
 }
 
@@ -1727,17 +1753,33 @@
   }
   .hero-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 40px;
+    gap: 32px;
   }
   .hero .h1 {
     font-size: 58px;
   }
   .hero-globe {
-    height: auto;
+    height: 560px;
+    max-width: 640px;
   }
   .hero-globe .globe {
-    width: 420px;
-    height: 420px;
+    width: 440px;
+    height: 440px;
+  }
+  .hero .globe-card {
+    width: 220px;
+  }
+  .hc-1 {
+    left: 0;
+    top: 36px;
+  }
+  .hc-2 {
+    right: 0;
+    top: 196px;
+  }
+  .hc-3 {
+    left: 12px;
+    bottom: 76px;
   }
 }
 @container page (max-width: 600px) {
@@ -1752,9 +1794,30 @@
     flex-direction: row;
     align-items: center;
   }
+  .hero {
+    padding-bottom: 8px;
+  }
+  .hero-globe {
+    height: 470px;
+  }
   .hero-globe .globe {
-    width: 300px;
-    height: 300px;
+    width: 280px;
+    height: 280px;
+  }
+  .hero .globe-card {
+    width: 172px;
+  }
+  .hc-1 {
+    left: -6px;
+    top: 4px;
+  }
+  .hc-2 {
+    right: -6px;
+    top: 168px;
+  }
+  .hc-3 {
+    left: 0;
+    bottom: 62px;
   }
 }
 
@@ -2047,5 +2110,188 @@
 @media (prefers-reduced-motion: reduce) {
   .slider-nav {
     transition: none;
+  }
+}
+
+/* Legal pages: a contents list that stays in view beside long text on wide screens */
+.legal {
+  padding-top: 72px;
+}
+.legal-head {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+  margin-bottom: 56px;
+}
+.legal-draft {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--amber-soft);
+  color: var(--amber-text);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.legal-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 17px;
+}
+.legal-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 64px;
+  align-items: start;
+}
+.legal-toc {
+  position: sticky;
+  top: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+}
+.legal-toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 1px solid var(--line);
+}
+.legal-toc a {
+  display: flex;
+  gap: 10px;
+  padding: 6px 12px;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+.legal-toc a:hover {
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+.legal-toc .mono {
+  font-size: 11px;
+  color: var(--muted);
+  padding-top: 2px;
+}
+.legal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  max-width: 760px;
+}
+.legal-section {
+  scroll-margin-top: 96px;
+}
+.legal-section .h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.legal-num {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+}
+.legal-text {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.legal-text p {
+  margin: 0;
+}
+.legal-text ul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.legal-text h3 {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.legal-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 520px;
+}
+.legal-table th,
+.legal-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.legal-table th {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--subtle);
+}
+.legal-table tr:last-child td {
+  border-bottom: 0;
+}
+.legal-placeholder {
+  background: var(--amber-soft);
+  color: var(--amber-text);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.legal-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  border-radius: 16px;
+}
+@container page (max-width: 980px) {
+  .legal-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .legal-toc {
+    position: static;
+  }
+}
+@container page (max-width: 600px) {
+  .legal-table {
+    min-width: 0;
+    font-size: 13px;
+  }
+  .legal-table th,
+  .legal-table td {
+    padding: 10px 12px;
+  }
+  .legal {
+    padding-top: 48px;
+  }
+  .legal-head {
+    margin-bottom: 36px;
+  }
+  .legal-intro {
+    font-size: 16px;
+  }
+  .legal-body {
+    gap: 36px;
   }
 }
