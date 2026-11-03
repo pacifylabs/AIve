@@ -13,8 +13,10 @@ import { MAIL_QUEUE, PLATFORM_QUEUE, SYSTEM_QUEUE, TASKS_QUEUE } from './queues.
     }),
     BullModule.forRootAsync({
       useFactory: () => {
-        const url = new URL(loadConfig(process.env).REDIS_URL);
+        const config = loadConfig(process.env);
+        const url = new URL(config.REDIS_URL);
         return {
+          prefix: config.BULL_PREFIX,
           connection: {
             host: url.hostname,
             port: Number(url.port || 6379),

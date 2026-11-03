@@ -44,6 +44,7 @@ const notConfigured: ModelProvider = {
           database: config.DB_NAME,
           username: config.DB_APP_USER,
           password: config.DB_APP_PASSWORD,
+          ssl: config.DB_SSL,
         }).initialize(),
     },
     { provide: RoleRegistry, useFactory: buildRegistry },

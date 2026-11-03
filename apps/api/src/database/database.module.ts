@@ -15,6 +15,7 @@ import { APP_CONFIG, type AppConfig } from '../config/config.module.js';
           database: config.DB_NAME,
           username: config.DB_APP_USER,
           password: config.DB_APP_PASSWORD,
+          ssl: config.DB_SSL,
         });
         return db.initialize();
       },

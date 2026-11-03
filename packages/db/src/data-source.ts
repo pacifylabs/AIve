@@ -79,6 +79,8 @@ export interface ConnectionOptions {
   password: string;
   /** Connection pool size; the API and worker size this separately. */
   poolSize?: number;
+  /** Use TLS and verify the server certificate. Managed databases (Neon, Render) require it; local Postgres does not. */
+  ssl?: boolean;
 }
 
 export function createDataSource(options: ConnectionOptions): DataSource {
@@ -89,6 +91,7 @@ export function createDataSource(options: ConnectionOptions): DataSource {
     database: options.database,
     username: options.username,
     password: options.password,
+    ssl: options.ssl ? { rejectUnauthorized: true } : false,
     entities,
     migrations,
     namingStrategy: new SnakeNamingStrategy(),

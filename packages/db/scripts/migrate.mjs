@@ -14,5 +14,6 @@ const applied = await runMigrations({
   username: process.env.DB_ADMIN_USER,
   password: process.env.DB_ADMIN_PASSWORD,
   poolSize: 1,
+  ssl: process.env.DB_SSL === 'true',
 });
 console.log(applied.length ? `Applied: ${applied.join(', ')}` : 'Database is up to date.');
