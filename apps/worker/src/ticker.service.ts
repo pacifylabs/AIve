@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import { type AppConfig } from '@ai-staff/config';
-import { MailDispatcher, PostPublisher, Triggers } from '@ai-staff/core';
+import { MailDispatcher, PostPublisher, ReplySender, Triggers } from '@ai-staff/core';
 import type { Queue } from 'bullmq';
 import { APP_CONFIG } from './tokens.js';
 import {
@@ -30,6 +30,7 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
     @Inject(Triggers) private readonly triggers: Triggers,
     @Inject(MailDispatcher) private readonly dispatcher: MailDispatcher,
     @Inject(PostPublisher) private readonly publisher: PostPublisher,
+    @Inject(ReplySender) private readonly replies: ReplySender,
     @InjectQueue(MAIL_QUEUE) private readonly mail: Queue<MailJob>,
     @InjectQueue(PUBLISH_QUEUE) private readonly publish: Queue<PublishJob>,
     @InjectQueue(TASKS_QUEUE) private readonly tasks: Queue<TaskJob>,
@@ -101,6 +102,17 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
           })),
         );
       }
+      const stuckReplies = await this.replies.reapStuck();
+      const replies = await this.replies.due();
+      if (replies.length) {
+        await this.publish.addBulk(
+          replies.map((reply) => ({
+            name: 'reply',
+            data: { kind: 'reply' as const, workspaceId: reply.workspaceId, intentId: reply.id },
+            opts: { jobId: `reply-${reply.id}-${reply.attempts}-${reply.notBefore.getTime()}` },
+          })),
+        );
+      }
       // An unclear publish is checked against the network about once a minute until it settles.
       const unclear = await this.publisher.uncertain();
       if (unclear.length) {
@@ -122,7 +134,9 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
         sends.length ||
         stuckPosts ||
         posts.length ||
-        unclear.length
+        unclear.length ||
+        stuckReplies ||
+        replies.length
       ) {
         this.logger.log(
           {
@@ -135,6 +149,8 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
             posts: posts.length,
             unclear: unclear.length,
             stuckPosts,
+            replies: replies.length,
+            stuckReplies,
           },
           'tick',
         );

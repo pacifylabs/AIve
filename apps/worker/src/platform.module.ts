@@ -7,6 +7,7 @@ import {
   MailDispatcher,
   MailInbox,
   PostPublisher,
+  ReplySender,
   RoleRegistry,
   SocialGateway,
   TaskEngine,
@@ -80,6 +81,12 @@ const notConfigured: ModelProvider = {
       inject: [DataSource, KEYRING, SocialProviders],
       useFactory: (db: DataSource, keyring: Keyring, providers: SocialProviders) =>
         new PostPublisher(db, { keyring, providers }),
+    },
+    {
+      provide: ReplySender,
+      inject: [DataSource, SocialProviders, AccountTokens],
+      useFactory: (db: DataSource, providers: SocialProviders, tokens: AccountTokens) =>
+        new ReplySender(db, { providers, tokens }),
     },
     {
       provide: TaskEngine,

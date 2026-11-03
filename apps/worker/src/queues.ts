@@ -13,7 +13,8 @@ export const PUBLISH_QUEUE = 'publish';
 
 export type PublishJob =
   | { kind: 'publish'; workspaceId: string; intentId: string }
-  | { kind: 'reconcile'; workspaceId: string; intentId: string };
+  | { kind: 'reconcile'; workspaceId: string; intentId: string }
+  | { kind: 'reply'; workspaceId: string; intentId: string };
 
 export interface HeartbeatJob {
   requestedAt: string;
