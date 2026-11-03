@@ -213,6 +213,7 @@ export class TaskEngine {
       profile: loaded.profile,
       autonomy: loaded.autonomy,
       now: this.now(),
+      evidence: [],
       read: (work) => withTenant(this.db, { workspaceId, userId: null }, work),
     };
     return { task: task as TaskDefinition<unknown, unknown>, ctx };

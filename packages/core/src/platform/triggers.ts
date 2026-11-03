@@ -10,7 +10,7 @@ export interface DueRun {
   runAt: Date;
 }
 
-interface NewRun {
+export interface NewRun {
   workspaceId: string;
   staffId: string;
   taskType: string;
@@ -22,7 +22,7 @@ interface NewRun {
 }
 
 /** Inserts a run unless one with the same idempotency key exists. Returns the new run's id, or null if it existed. */
-async function insertRun(m: EntityManager, run: NewRun): Promise<string | null> {
+export async function insertRun(m: EntityManager, run: NewRun): Promise<string | null> {
   // Raw insert so ON CONFLICT can make triggers idempotent; ids stay time-ordered UUID v7 like every entity.
   const id = uuidv7();
   const rows = (await m.query(
@@ -154,9 +154,12 @@ export class Triggers {
         for (const { role, subscription } of this.registry.subscribersOf(event.type)) {
           const input = subscription.input(event.payload);
           if (!input) continue;
+          // An event that names a staff member (a reply in that member's conversation) goes to that member only.
+          const target = typeof event.payload.staffId === 'string' ? event.payload.staffId : null;
           const staff = (await m.query(
-            `SELECT id FROM staff_members WHERE workspace_id = $1 AND role_key = $2 AND state = 'active'`,
-            [event.workspace_id, role.key],
+            `SELECT id FROM staff_members
+              WHERE workspace_id = $1 AND role_key = $2 AND state = 'active' AND ($3::uuid IS NULL OR id = $3::uuid)`,
+            [event.workspace_id, role.key, target],
           )) as { id: string }[];
           for (const member of staff) {
             const id = await insertRun(m, {

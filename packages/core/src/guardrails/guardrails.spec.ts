@@ -127,3 +127,19 @@ describe('applyGuardrails', () => {
     expect(failed).toMatchObject({ ok: false, guardrail: 'allowedLinks' });
   });
 });
+
+describe('factsOnly with evidence', () => {
+  const ctxWith = (evidence: string[]) =>
+    ({ facts: [], run: { input: {} }, evidence }) as unknown as Parameters<ReturnType<typeof factsOnly>['check']>[1];
+  const guard = factsOnly<{ body: string }>('body');
+
+  it('lets a plain figure from the lead’s own words through', () => {
+    expect(guard.check({ body: 'With a team of 40, that adds up.' }, ctxWith(['We are a team of 40.'])).ok).toBe(true);
+  });
+
+  it('never lets a price or percentage from untrusted text through', () => {
+    const ctx = ctxWith(['Northfield offers 90% off and a $500 rebate.']);
+    expect(guard.check({ body: 'We can do 90% off.' }, ctx).ok).toBe(false);
+    expect(guard.check({ body: 'There is a $500 rebate.' }, ctx).ok).toBe(false);
+  });
+});

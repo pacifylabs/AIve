@@ -1,3 +1,4 @@
+export * from './crypto/keyring.js';
 export * from './errors.js';
 export * from './fetch/crawl.js';
 export * from './fetch/safe-fetch.js';
@@ -6,7 +7,10 @@ export * from './platform/approvals.js';
 export * from './platform/brain.js';
 export * from './platform/budget.js';
 export * from './platform/effects.js';
+export * from './platform/dispatcher.js';
 export * from './platform/engine.js';
+export * from './platform/inbound.js';
+export * from './platform/mail-effects.js';
 export * from './platform/prefill.js';
 export * from './platform/triggers.js';
 export * from './roles/registry.js';

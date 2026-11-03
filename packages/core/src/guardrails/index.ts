@@ -84,16 +84,19 @@ export function factsOnly<O>(...fields: TextFields<O>[]): Guardrail<O> {
   return {
     name: 'factsOnly',
     check(output, ctx) {
-      const known = new Set(
-        [...ctx.facts.map((fact) => fact.text), JSON.stringify(ctx.run.input)]
-          .flatMap((text) => text.match(CLAIM_NUMBER) ?? [])
-          .map(normaliseNumber),
-      );
+      const numbersIn = (texts: string[]) =>
+        new Set(texts.flatMap((text) => text.match(CLAIM_NUMBER) ?? []).map(normaliseNumber));
+      const known = numbersIn([...ctx.facts.map((fact) => fact.text), JSON.stringify(ctx.run.input)]);
+      // Figures quoted from the other side's own words, but never as a price or a percentage: an injected page
+      // must not be able to put "90% off" in our mouth.
+      const quoted = numbersIn(ctx.evidence ?? []);
       for (const text of textsOf(output, fields)) {
         for (const raw of text.match(CLAIM_NUMBER) ?? []) {
           const value = normaliseNumber(raw);
           if (/^\d$/.test(value)) continue;
-          if (!known.has(value)) return fail(`It used "${raw.trim()}", which is not in your confirmed facts.`);
+          if (known.has(value)) continue;
+          if (!/[$£€₦%]/.test(raw) && quoted.has(value)) continue;
+          return fail(`It used "${raw.trim()}", which is not in your confirmed facts.`);
         }
       }
       return ok(output);

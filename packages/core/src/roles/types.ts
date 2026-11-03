@@ -1,4 +1,14 @@
-import type { CompanyFact, CompanyProfile, EntityManager, StaffMember, TaskRun } from '@ai-staff/db';
+import type {
+  CompanyFact,
+  CompanyProfile,
+  ConversationState,
+  EntityManager,
+  LeadState,
+  ReplyClassification,
+  StaffMember,
+  SuppressionReason,
+  TaskRun,
+} from '@ai-staff/db';
 import type { Effort } from '@ai-staff/llm';
 import type { z } from 'zod';
 
@@ -28,6 +38,11 @@ export interface TaskContext {
    */
   read<T>(work: (m: EntityManager) => Promise<T>): Promise<T>;
   now: Date;
+  /**
+   * Untrusted text the prompt showed the model (a lead's web page, their reply). `buildPrompt` adds to it. Plain
+   * figures in it may be repeated back ("your team of 40"); prices and percentages must still come from facts.
+   */
+  evidence?: string[];
 }
 
 export interface Prompt {
@@ -43,8 +58,8 @@ export interface Prompt {
 export const APPROVED_PAYLOAD = '$approved' as const;
 
 /**
- * The closed set of things a role can ask the platform to do. Milestones 3 and 4 add the outbound intents
- * (`createSendIntent`, `createPublishIntent`); at autonomy `draft` those may only appear inside a work item's
+ * The closed set of things a role can ask the platform to do. External effects (`createSendIntent`, and the M4
+ * `createPublishIntent`) reach outside the platform: at autonomy `draft` they may only appear inside a work item's
  * `onApprove`, which the engine enforces.
  */
 export type Effect =
@@ -74,10 +89,66 @@ export type Effect =
       type: 'alert';
       summary: string;
       detail?: Record<string, unknown>;
+    }
+  | {
+      /**
+       * Promise to send one email to a lead from the staff member's mailbox. The dispatcher sends it later, after the
+       * send policy (hours, limits, suppression) and the conversation version are checked again at that moment.
+       * `subject` and `body` may be `$approved`: the approved work item's `subject` and `body`, edits included.
+       */
+      type: 'createSendIntent';
+      leadId: string;
+      kind: 'first' | 'follow_up' | 'reply';
+      subject: string;
+      body: string;
+      /** The conversation version this was written for; the send is dropped if the conversation moved on. */
+      conversationVersion: number | null;
+      idempotencyKey: string;
+    }
+  | {
+      /** Never contact this address (or `@domain`) again from this workspace. Closes its open conversations. */
+      type: 'suppress';
+      value: string;
+      reason: SuppressionReason;
+      note?: string;
+    }
+  | { type: 'updateLead'; leadId: string; state: LeadState }
+  | {
+      type: 'recordResearch';
+      leadId: string;
+      items: { url: string; title: string | null; excerpt: string; kind: 'observed' | 'inferred' }[];
+    }
+  | {
+      type: 'updateConversation';
+      conversationId: string;
+      /** Only applied if the conversation is still at this version. */
+      expectedVersion: number;
+      state?: ConversationState;
+      classification?: ReplyClassification;
+      reason?: string;
+    }
+  | {
+      /** Take these tasks back to drafts (from `act`), so a person approves each one again. */
+      type: 'demote';
+      taskTypes: string[];
+      reason: string;
+    }
+  | {
+      /** Stop this staff member entirely until a person resumes it. */
+      type: 'pauseStaff';
+      reason: string;
+    }
+  | {
+      /** Queue another task for this staff member later, once per idempotency key. */
+      type: 'scheduleTask';
+      taskType: string;
+      input: Record<string, unknown>;
+      runAt: Date;
+      idempotencyKey: string;
     };
 
-/** Effect types that reach outside the platform. Empty until the M3/M4 intents exist; kept so the rule is in place. */
-export const EXTERNAL_EFFECTS: ReadonlySet<Effect['type']> = new Set<Effect['type']>();
+/** Effect types that reach outside the platform. */
+export const EXTERNAL_EFFECTS: ReadonlySet<Effect['type']> = new Set<Effect['type']>(['createSendIntent']);
 
 export type GuardrailResult<O> = { ok: true; output: O } | { ok: false; reason: string };
 
