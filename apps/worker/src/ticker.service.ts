@@ -1,10 +1,19 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import { type AppConfig } from '@ai-staff/config';
-import { MailDispatcher, Triggers } from '@ai-staff/core';
+import { MailDispatcher, PostPublisher, Triggers } from '@ai-staff/core';
 import type { Queue } from 'bullmq';
 import { APP_CONFIG } from './tokens.js';
-import { MAIL_QUEUE, type MailJob, PLATFORM_QUEUE, type PlatformJob, TASKS_QUEUE, type TaskJob } from './queues.js';
+import {
+  MAIL_QUEUE,
+  type MailJob,
+  PLATFORM_QUEUE,
+  type PlatformJob,
+  PUBLISH_QUEUE,
+  type PublishJob,
+  TASKS_QUEUE,
+  type TaskJob,
+} from './queues.js';
 
 /**
  * The worker's heartbeat for the platform. Each tick reaps runs from dead workers, creates schedule-slot runs, delivers
@@ -20,7 +29,9 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(Triggers) private readonly triggers: Triggers,
     @Inject(MailDispatcher) private readonly dispatcher: MailDispatcher,
+    @Inject(PostPublisher) private readonly publisher: PostPublisher,
     @InjectQueue(MAIL_QUEUE) private readonly mail: Queue<MailJob>,
+    @InjectQueue(PUBLISH_QUEUE) private readonly publish: Queue<PublishJob>,
     @InjectQueue(TASKS_QUEUE) private readonly tasks: Queue<TaskJob>,
     @InjectQueue(PLATFORM_QUEUE) private readonly platform: Queue<PlatformJob>,
   ) {}
@@ -36,6 +47,11 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
       'recheck-dns',
       { pattern: '30 3 * * *', tz: 'UTC' },
       { name: 'recheck_dns', data: { kind: 'recheck_dns' } },
+    );
+    await this.platform.upsertJobScheduler(
+      'sync-comments',
+      { pattern: '*/5 * * * *', tz: 'UTC' },
+      { name: 'sync_comments', data: { kind: 'sync_comments' } },
     );
     this.timer = setInterval(() => void this.tick(), this.config.WORKER_TICK_MS);
   }
@@ -74,8 +90,54 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
           })),
         );
       }
-      if (reaped || scheduled || delivered || due.length || stuck || sends.length) {
-        this.logger.log({ reaped, scheduled, delivered, queued: due.length, stuck, sends: sends.length }, 'tick');
+      const stuckPosts = await this.publisher.reapStuck();
+      const posts = await this.publisher.due();
+      if (posts.length) {
+        await this.publish.addBulk(
+          posts.map((post) => ({
+            name: 'publish',
+            data: { kind: 'publish' as const, workspaceId: post.workspaceId, intentId: post.id },
+            opts: { jobId: `publish-${post.id}-${post.attempts}-${post.notBefore.getTime()}` },
+          })),
+        );
+      }
+      // An unclear publish is checked against the network about once a minute until it settles.
+      const unclear = await this.publisher.uncertain();
+      if (unclear.length) {
+        const minute = Math.floor(Date.now() / 60_000);
+        await this.publish.addBulk(
+          unclear.map((post) => ({
+            name: 'reconcile',
+            data: { kind: 'reconcile' as const, workspaceId: post.workspaceId, intentId: post.id },
+            opts: { jobId: `reconcile-${post.id}-${minute}` },
+          })),
+        );
+      }
+      if (
+        reaped ||
+        scheduled ||
+        delivered ||
+        due.length ||
+        stuck ||
+        sends.length ||
+        stuckPosts ||
+        posts.length ||
+        unclear.length
+      ) {
+        this.logger.log(
+          {
+            reaped,
+            scheduled,
+            delivered,
+            queued: due.length,
+            stuck,
+            sends: sends.length,
+            posts: posts.length,
+            unclear: unclear.length,
+            stuckPosts,
+          },
+          'tick',
+        );
       }
     } catch (error) {
       this.logger.error({ error: error instanceof Error ? error.message : String(error) }, 'tick failed');

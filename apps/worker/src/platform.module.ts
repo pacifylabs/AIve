@@ -1,11 +1,14 @@
 import { Module, type OnApplicationShutdown, Inject } from '@nestjs/common';
-import { type AppConfig, loadConfig, parseKeyring } from '@ai-staff/config';
+import { type AppConfig, loadConfig, parseKeyring, socialConfig } from '@ai-staff/config';
 import {
+  AccountTokens,
   ApprovalService,
   Keyring,
   MailDispatcher,
   MailInbox,
+  PostPublisher,
   RoleRegistry,
+  SocialGateway,
   TaskEngine,
   Triggers,
   WebsitePrefill,
@@ -14,9 +17,11 @@ import { createDataSource, DataSource, type Mailbox } from '@ai-staff/db';
 import { AnthropicProvider, type ModelProvider } from '@ai-staff/llm';
 import { FixtureTransport, type MailboxLogin, type MailTransport, SmtpTransport } from '@ai-staff/mail';
 import { salesSendHooks } from '@ai-staff/role-sales';
+import { SocialProviders } from '@ai-staff/social';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { ImapPoller } from './imap-poller.service.js';
 import { MailProcessor } from './mail.processor.js';
+import { PublishProcessor } from './publish.processor.js';
 import { PlatformProcessor } from './platform.processor.js';
 import { QueuesModule } from './queues.module.js';
 import { buildRegistry } from './roles.js';
@@ -54,10 +59,40 @@ const notConfigured: ModelProvider = {
         config.ANTHROPIC_API_KEY ? new AnthropicProvider({ apiKey: config.ANTHROPIC_API_KEY }) : notConfigured,
     },
     {
+      provide: SocialProviders,
+      inject: [APP_CONFIG],
+      useFactory: (config: AppConfig) => new SocialProviders(socialConfig(config)),
+    },
+    {
+      provide: AccountTokens,
+      inject: [DataSource, KEYRING, SocialProviders],
+      useFactory: (db: DataSource, keyring: Keyring, providers: SocialProviders) =>
+        new AccountTokens(db, keyring, providers),
+    },
+    {
+      provide: SocialGateway,
+      inject: [DataSource, SocialProviders, AccountTokens],
+      useFactory: (db: DataSource, providers: SocialProviders, tokens: AccountTokens) =>
+        new SocialGateway(db, { providers, tokens }),
+    },
+    {
+      provide: PostPublisher,
+      inject: [DataSource, KEYRING, SocialProviders],
+      useFactory: (db: DataSource, keyring: Keyring, providers: SocialProviders) =>
+        new PostPublisher(db, { keyring, providers }),
+    },
+    {
       provide: TaskEngine,
-      inject: [DataSource, RoleRegistry, MODEL_PROVIDER, PinoLogger],
-      useFactory: (db: DataSource, registry: RoleRegistry, model: ModelProvider, logger: PinoLogger) =>
+      inject: [DataSource, RoleRegistry, MODEL_PROVIDER, PinoLogger, SocialGateway],
+      useFactory: (
+        db: DataSource,
+        registry: RoleRegistry,
+        model: ModelProvider,
+        logger: PinoLogger,
+        social: SocialGateway,
+      ) =>
         new TaskEngine(db, registry, model, {
+          social,
           logger: {
             info: (detail, message) => logger.log({ ...detail, msg: message }, 'TaskEngine'),
             error: (detail, message) => logger.error({ ...detail, msg: message }, undefined, 'TaskEngine'),
@@ -110,6 +145,7 @@ const notConfigured: ModelProvider = {
     TaskProcessor,
     PlatformProcessor,
     MailProcessor,
+    PublishProcessor,
     ImapPoller,
     Ticker,
   ],

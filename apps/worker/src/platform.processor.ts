@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
-import { ApprovalService, WebsitePrefill } from '@ai-staff/core';
+import { ApprovalService, SocialGateway, WebsitePrefill } from '@ai-staff/core';
 import { ActivityEvent, asSystem, DataSource, Mailbox } from '@ai-staff/db';
 import { checkSendingDns, domainOf } from '@ai-staff/mail';
 import type { Job } from 'bullmq';
@@ -15,6 +15,7 @@ export class PlatformProcessor extends WorkerHost {
     @Inject(WebsitePrefill) private readonly prefill: WebsitePrefill,
     @Inject(ApprovalService) private readonly approvals: ApprovalService,
     @Inject(DataSource) private readonly db: DataSource,
+    @Inject(SocialGateway) private readonly social: SocialGateway,
   ) {
     super();
   }
@@ -33,6 +34,11 @@ export class PlatformProcessor extends WorkerHost {
       }
       case 'recheck_dns':
         return this.recheckDns();
+      case 'sync_comments': {
+        const result = await this.social.syncComments();
+        if (result.filed) this.logger.log(result, 'social comments filed');
+        return result;
+      }
     }
   }
 
