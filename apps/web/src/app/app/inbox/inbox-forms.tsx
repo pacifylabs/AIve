@@ -19,6 +19,19 @@ export interface InboxItem {
   decidedAt: string | null;
 }
 
+/** Shown for context, not editable: changing them would not change what happens. */
+const READ_ONLY = new Set([
+  'overview',
+  'network',
+  'accountName',
+  'replyTo',
+  'weekStart',
+  'staffId',
+  'engagementId',
+  'accountId',
+  'to',
+]);
+
 const label = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, (first) => first.toUpperCase());
 
 /** A pending draft: its text fields are editable in place, and approving sends what the person left. */
@@ -57,15 +70,27 @@ export function PendingItem({ item }: { item: InboxItem }) {
           <FormMessages state={approveState} />
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="original" value={JSON.stringify(item.payload)} />
-          {textFields.map(([key, value]) => (
-            <TextAreaField
-              key={key}
-              label={label(key)}
-              name={`payload.${key}`}
-              defaultValue={approveState.values?.[`payload.${key}`] ?? value}
-              rows={key === 'body' ? 8 : 2}
-            />
-          ))}
+          {textFields
+            .filter(([key]) => READ_ONLY.has(key))
+            .map(([key, value]) =>
+              key === 'staffId' || key === 'engagementId' || key === 'accountId' ? null : (
+                <div key={key} className="space-y-1">
+                  <p className="text-sm font-medium">{label(key)}</p>
+                  <p className="whitespace-pre-wrap rounded-md bg-background px-3 py-2 text-sm text-muted">{value}</p>
+                </div>
+              ),
+            )}
+          {textFields
+            .filter(([key]) => !READ_ONLY.has(key))
+            .map(([key, value]) => (
+              <TextAreaField
+                key={key}
+                label={label(key)}
+                name={`payload.${key}`}
+                defaultValue={approveState.values?.[`payload.${key}`] ?? value}
+                rows={key === 'body' ? 8 : 2}
+              />
+            ))}
           <SubmitButton pendingLabel="Approving…">Approve</SubmitButton>
         </form>
       )}
