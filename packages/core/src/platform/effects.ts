@@ -10,6 +10,7 @@ import {
 } from '@ai-staff/db';
 import { APPROVED_PAYLOAD, type AutonomyLevel, type Effect, EXTERNAL_EFFECTS } from '../roles/types.js';
 import { createSendIntent, recordResearch, suppress, updateConversation } from './mail-effects.js';
+import { createPublishIntent } from './social-effects.js';
 import { insertRun } from './triggers.js';
 
 /** Where effects came from: a task run, or a person approving a work item. */
@@ -51,6 +52,15 @@ export function withApprovedPayload(effects: Effect[], approved: Record<string, 
   };
   return effects.map((effect) => {
     if (effect.type === 'emitEvent' && effect.payload === APPROVED_PAYLOAD) return { ...effect, payload: approved };
+    if (effect.type === 'createPublishIntent') {
+      const optionalText = (key: string) => (typeof approved[key] === 'string' ? (approved[key] as string) : null);
+      return {
+        ...effect,
+        body: effect.body === APPROVED_PAYLOAD ? text('body') : effect.body,
+        firstComment: effect.firstComment === APPROVED_PAYLOAD ? optionalText('firstComment') : effect.firstComment,
+        scheduledFor: effect.scheduledFor === APPROVED_PAYLOAD ? text('scheduledFor') : effect.scheduledFor,
+      };
+    }
     if (effect.type === 'createSendIntent') {
       return {
         ...effect,
@@ -67,6 +77,9 @@ export function withApprovedPayload(effects: Effect[], approved: Record<string, 
  * that crashes leaves no half-applied effects behind, and retrying it cannot apply them twice.
  */
 export class EffectExecutor {
+  /** The clock effects stamp their rows with, so a test or a replay controls it. */
+  constructor(private readonly now: () => Date = () => new Date()) {}
+
   async execute(m: EntityManager, origin: EffectOrigin, effects: Effect[]): Promise<{ workItemIds: string[] }> {
     const workItemIds: string[] = [];
     for (const effect of effects) {
@@ -143,7 +156,7 @@ export class EffectExecutor {
           if (effect.subject === APPROVED_PAYLOAD || effect.body === APPROVED_PAYLOAD) {
             throw new Error('A send uses the approved draft outside an approval.');
           }
-          const result = await createSendIntent(m, origin.workspaceId, origin.staffId, effect);
+          const result = await createSendIntent(m, origin.workspaceId, origin.staffId, effect, undefined, this.now());
           await this.activity(
             m,
             origin,
@@ -152,6 +165,24 @@ export class EffectExecutor {
               ? `Queued "${effect.subject}" to send.`
               : `Did not queue "${effect.subject}": ${result.reason}`,
             { leadId: effect.leadId, ...(result.created ? { intentId: result.intentId } : {}) },
+          );
+          break;
+        }
+        case 'createPublishIntent': {
+          if (
+            effect.body === APPROVED_PAYLOAD ||
+            effect.firstComment === APPROVED_PAYLOAD ||
+            effect.scheduledFor === APPROVED_PAYLOAD
+          ) {
+            throw new Error('A publish uses the approved draft outside an approval.');
+          }
+          const result = await createPublishIntent(m, origin.workspaceId, origin.staffId, effect);
+          await this.activity(
+            m,
+            origin,
+            result.created ? 'post.queued' : 'post.not_queued',
+            result.created ? 'Queued a post to publish.' : `Did not queue a post: ${result.reason}`,
+            result.created ? { intentId: result.intentId, postId: result.postId } : {},
           );
           break;
         }
@@ -169,7 +200,7 @@ export class EffectExecutor {
           await m.update(Lead, { workspaceId: origin.workspaceId, id: effect.leadId }, { state: effect.state });
           break;
         case 'recordResearch':
-          await recordResearch(m, origin.workspaceId, effect);
+          await recordResearch(m, origin.workspaceId, effect, this.now());
           break;
         case 'updateConversation':
           await updateConversation(m, origin.workspaceId, effect);

@@ -57,13 +57,15 @@ interface Decider {
  * nightly and only ever offered; a person accepts it.
  */
 export class ApprovalService {
-  private readonly effects = new EffectExecutor();
+  private readonly effects: EffectExecutor;
 
   constructor(
     private readonly db: DataSource,
     private readonly registry: RoleRegistry,
     private readonly now: () => Date = () => new Date(),
-  ) {}
+  ) {
+    this.effects = new EffectExecutor(now);
+  }
 
   async approve(by: Decider, workItemId: string, editedPayload?: Record<string, unknown>) {
     return withTenant(this.db, { workspaceId: by.workspaceId, userId: by.userId }, async (m) => {

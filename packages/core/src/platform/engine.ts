@@ -58,7 +58,7 @@ export class TaskEngine {
   private readonly now: () => Date;
   private readonly logger: EngineLogger;
   private readonly budget: BudgetService;
-  private readonly effects = new EffectExecutor();
+  private readonly effects: EffectExecutor;
 
   constructor(
     private readonly db: DataSource,
@@ -68,6 +68,7 @@ export class TaskEngine {
   ) {
     this.leaseMs = options.leaseMs ?? 5 * 60_000;
     this.now = options.now ?? (() => new Date());
+    this.effects = new EffectExecutor(this.now);
     this.logger = options.logger ?? silent;
     this.budget = new BudgetService(this.now);
   }

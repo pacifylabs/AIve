@@ -119,7 +119,7 @@ async function setup(options: { hooks?: Partial<SendHooks>; status?: Mailbox['st
     actor: 'staff',
   };
   const execute = (effects: Effect[]) =>
-    inWorkspace(db, ws.workspaceId, (m) => new EffectExecutor().execute(m, origin, effects));
+    inWorkspace(db, ws.workspaceId, (m) => new EffectExecutor(time.now).execute(m, origin, effects));
   const queueFirst = (key = 'first:1') =>
     execute([
       {

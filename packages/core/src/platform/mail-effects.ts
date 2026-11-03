@@ -38,6 +38,7 @@ export async function createSendIntent(
   effect: SendIntentEffect,
   /** A person's own email: sent as them, regardless of who is handling the conversation. */
   by?: { userId: string },
+  now: Date = new Date(),
 ): Promise<SendIntentResult> {
   const existing = await m.findOneBy(SendIntent, { workspaceId, idempotencyKey: effect.idempotencyKey });
   if (existing) return { created: false, reason: 'Already queued.' };
@@ -100,7 +101,7 @@ export async function createSendIntent(
       body: signature ? `${effect.body.trim()}\n\n${signature}` : effect.body.trim(),
       messageIdHeader: `<${uuidv7()}@${domainOf(mailbox.address) || 'localhost'}>`,
       inReplyTo: last?.messageIdHeader ?? null,
-      occurredAt: new Date(),
+      occurredAt: now,
       delivery: 'queued',
     }),
   );
@@ -115,7 +116,7 @@ export async function createSendIntent(
       conversationVersion: by ? null : conversation.stateVersion,
       byHuman: Boolean(by),
       state: 'pending',
-      notBefore: new Date(),
+      notBefore: now,
       claimedAt: null,
       attempts: 0,
       error: null,
@@ -201,6 +202,7 @@ export async function recordResearch(
   m: EntityManager,
   workspaceId: string,
   effect: Extract<Effect, { type: 'recordResearch' }>,
+  now: Date = new Date(),
 ): Promise<void> {
   for (const item of effect.items) {
     await m.save(
@@ -211,7 +213,7 @@ export async function recordResearch(
         title: item.title?.slice(0, 300) ?? null,
         excerpt: item.excerpt.slice(0, 2000),
         kind: item.kind,
-        retrievedAt: new Date(),
+        retrievedAt: now,
       }),
     );
   }

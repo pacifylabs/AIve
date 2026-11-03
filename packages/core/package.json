@@ -20,6 +20,7 @@
     "@ai-staff/db": "workspace:*",
     "@ai-staff/llm": "workspace:*",
     "@ai-staff/mail": "workspace:*",
+    "@ai-staff/social": "workspace:*",
     "cron-parser": "^5.10.3",
     "uuid": "^14.0.3",
     "zod": "^4.6.0"

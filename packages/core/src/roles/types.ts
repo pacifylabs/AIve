@@ -112,6 +112,22 @@ export type Effect =
       reason: SuppressionReason;
       note?: string;
     }
+  | {
+      /**
+       * Promise to publish one post to one connected account at `scheduledFor`. The dispatcher publishes it later, after
+       * the account's health and the staff member's state are checked again. `body`, `firstComment` and `scheduledFor`
+       * may be `$approved`: the approved work item's values, edits included.
+       */
+      type: 'createPublishIntent';
+      accountId: string;
+      body: string;
+      linkUrl?: string | null;
+      firstComment?: string | null;
+      media: string[];
+      /** ISO time. Work items store effects as JSON, so this is text, not a Date. */
+      scheduledFor: string;
+      idempotencyKey: string;
+    }
   | { type: 'updateLead'; leadId: string; state: LeadState }
   | {
       type: 'recordResearch';
@@ -148,7 +164,10 @@ export type Effect =
     };
 
 /** Effect types that reach outside the platform. */
-export const EXTERNAL_EFFECTS: ReadonlySet<Effect['type']> = new Set<Effect['type']>(['createSendIntent']);
+export const EXTERNAL_EFFECTS: ReadonlySet<Effect['type']> = new Set<Effect['type']>([
+  'createSendIntent',
+  'createPublishIntent',
+]);
 
 export type GuardrailResult<O> = { ok: true; output: O } | { ok: false; reason: string };
 
