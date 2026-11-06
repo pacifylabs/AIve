@@ -117,6 +117,55 @@ export async function resolvePostAction(data: FormData): Promise<void> {
   revalidatePath('/app/calendar');
 }
 
+// ---- Feeds -------------------------------------------------------------------------------------------------
+
+/** Adds a blog or news feed. The API reads it first, so an address that is not a feed is refused with a reason. */
+export async function addFeedAction(_state: FormState, data: FormData): Promise<FormState> {
+  const accountIds = data.getAll('accountId').filter((value): value is string => typeof value === 'string');
+  const result = await api<{ id: string; queued: number }>('/social/feeds', {
+    method: 'POST',
+    workspace: true,
+    body: { url: field(data, 'url').trim(), accountIds, note: field(data, 'note').trim() || undefined },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/feeds', ['url', 'note']);
+  revalidatePath('/app/feeds');
+  revalidatePath('/app/inbox');
+  return {
+    notice: result.data.queued
+      ? 'Feed added. A draft for the newest article is on its way to your inbox.'
+      : 'Feed added. New articles will be picked up automatically.',
+  };
+}
+
+export async function checkFeedAction(data: FormData): Promise<void> {
+  const result = await api(`/social/feeds/${encodeURIComponent(field(data, 'id'))}/check`, {
+    method: 'POST',
+    workspace: true,
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/feeds');
+  revalidatePath('/app/feeds');
+  revalidatePath('/app/inbox');
+}
+
+export async function pauseFeedAction(data: FormData): Promise<void> {
+  const result = await api(`/social/feeds/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'PATCH',
+    workspace: true,
+    body: { paused: field(data, 'paused') === 'true' },
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/feeds');
+  revalidatePath('/app/feeds');
+}
+
+export async function removeFeedAction(data: FormData): Promise<void> {
+  const result = await api(`/social/feeds/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'DELETE',
+    workspace: true,
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/feeds');
+  revalidatePath('/app/feeds');
+}
+
 // ---- Hiring ------------------------------------------------------------------------------------------------
 
 const HIRE_FIELDS = ['displayName', 'signature', 'goal', 'pillars', 'styleExamples', 'neverPost', 'cadence'] as const;

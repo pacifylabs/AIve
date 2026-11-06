@@ -30,6 +30,7 @@ const READ_ONLY = new Set([
   'engagementId',
   'accountId',
   'to',
+  'link',
 ]);
 
 const label = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, (first) => first.toUpperCase());

@@ -35,7 +35,13 @@ export const NAV: NavGroup[] = [
       { label: 'Do not contact', href: '/app/suppressions', icon: 'shield' },
     ],
   },
-  { label: 'Social', items: [{ label: 'Accounts', href: '/app/accounts', icon: 'accounts' }] },
+  {
+    label: 'Social',
+    items: [
+      { label: 'Accounts', href: '/app/accounts', icon: 'accounts' },
+      { label: 'Feeds', href: '/app/feeds', icon: 'feeds' },
+    ],
+  },
   {
     label: 'Company',
     items: [

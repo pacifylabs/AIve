@@ -105,6 +105,12 @@ const PATHS = {
       <path d="M12 7.5V12l3 2" />
     </>
   ),
+  feeds: (
+    <>
+      <path d="M5 5a14 14 0 0 1 14 14M5 11a8 8 0 0 1 8 8" />
+      <circle cx="6" cy="18" r="1.5" />
+    </>
+  ),
   bot: (
     <>
       <rect x="4" y="8" width="16" height="11" rx="3" />
