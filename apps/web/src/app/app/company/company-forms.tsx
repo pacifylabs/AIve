@@ -101,12 +101,7 @@ export function AddFactForm() {
         <label htmlFor="fact-kind" className="block text-sm font-medium">
           Kind
         </label>
-        <select
-          id="fact-kind"
-          name="kind"
-          defaultValue={state.values?.kind ?? 'offering'}
-          className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-        >
+        <select id="fact-kind" name="kind" defaultValue={state.values?.kind ?? 'offering'} className="field">
           {FACT_KINDS.map(([value, text]) => (
             <option key={value} value={value}>
               {text}

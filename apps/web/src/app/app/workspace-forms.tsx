@@ -47,12 +47,7 @@ export function InviteForm() {
         <label htmlFor="invite-role" className="block text-sm font-medium">
           Role
         </label>
-        <select
-          id="invite-role"
-          name="role"
-          defaultValue="member"
-          className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-        >
+        <select id="invite-role" name="role" defaultValue="member" className="field">
           <option value="member">Member: approves and edits work</option>
           <option value="admin">Admin: also manages settings and the team</option>
         </select>

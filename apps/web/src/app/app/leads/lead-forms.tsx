@@ -66,7 +66,7 @@ export function ImportLeadsForm() {
               ? ` ${preview.withoutResearch} use a personal email and have no website, so their first email is written from the record alone.`
               : ''}
           </p>
-          <ul className="max-h-60 divide-y divide-border overflow-auto rounded-md border border-border text-sm">
+          <ul className="max-h-60 card-flat divide-y divide-line-soft overflow-auto text-sm">
             {preview.rows.map((row) => (
               <li key={row.line} className="flex justify-between gap-3 px-3 py-1.5">
                 <span className="truncate">{row.email || '(empty)'}</span>
@@ -81,7 +81,7 @@ export function ImportLeadsForm() {
             name="commit"
             value="yes"
             disabled={preview.ready === 0}
-            className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-60"
+            className="btn btn-primary w-full"
           >
             Add {preview.ready} leads
           </button>

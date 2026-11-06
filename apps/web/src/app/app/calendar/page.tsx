@@ -43,11 +43,11 @@ export default async function CalendarPage() {
   return (
     <section className="max-w-3xl space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Calendar</h1>
+        <h1 className="page-title">Calendar</h1>
         <p className="text-muted">Posts that are scheduled, published or waiting on you. Times are shown in UTC.</p>
       </div>
       {posts.data.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center">
+        <div className="empty">
           <h2 className="font-medium">No posts yet</h2>
           <p className="mt-1 text-sm text-muted">Approve a weekly plan in your inbox and the posts appear here.</p>
         </div>
@@ -55,7 +55,7 @@ export default async function CalendarPage() {
       {[...days.entries()].map(([key, items]) => (
         <div key={key} className="space-y-2">
           <h2 className="text-sm font-medium">{day(items[0]!.scheduledFor)}</h2>
-          <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+          <ul className="card divide-y divide-line-soft">
             {items.map((post) => (
               <li key={post.id} className="space-y-2 px-5 py-3 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">

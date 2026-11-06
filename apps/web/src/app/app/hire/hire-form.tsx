@@ -38,12 +38,7 @@ export function HireForm({ mailboxes, questions }: { mailboxes: MailboxOption[];
         <label htmlFor="hire-mailbox" className="block text-sm font-medium">
           Send from
         </label>
-        <select
-          id="hire-mailbox"
-          name="mailboxId"
-          defaultValue={v.mailboxId ?? ''}
-          className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
-        >
+        <select id="hire-mailbox" name="mailboxId" defaultValue={v.mailboxId ?? ''} className="field">
           <option value="">Choose a mailbox…</option>
           {mailboxes.map((mailbox) => (
             <option key={mailbox.id} value={mailbox.id}>

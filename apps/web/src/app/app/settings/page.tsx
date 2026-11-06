@@ -22,9 +22,9 @@ export default async function SettingsPage() {
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <section className="space-y-4">
-        <h1 className="text-2xl font-semibold">Workspace settings</h1>
+        <h1 className="page-title">Workspace settings</h1>
         {canManage ? (
-          <div className="rounded-xl border border-border bg-surface p-6">
+          <div className="card p-6">
             <WorkspaceSettingsForm name={workspace.data.name} timezone={workspace.data.timezone} />
           </div>
         ) : (
@@ -34,7 +34,7 @@ export default async function SettingsPage() {
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Team</h2>
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="card divide-y divide-line-soft">
           {(members.ok ? members.data : []).map((member) => (
             <li key={member.userId} className="flex items-center justify-between px-4 py-3 text-sm">
               <span>
@@ -49,13 +49,13 @@ export default async function SettingsPage() {
         {canManage ? (
           <>
             <h3 className="font-medium">Invite someone</h3>
-            <div className="rounded-xl border border-border bg-surface p-6">
+            <div className="card p-6">
               <InviteForm />
             </div>
             {invitations?.ok && invitations.data.length > 0 ? (
               <>
                 <h3 className="font-medium">Pending invitations</h3>
-                <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+                <ul className="card divide-y divide-line-soft">
                   {invitations.data.map((invitation) => (
                     <li key={invitation.id} className="flex items-center justify-between px-4 py-3 text-sm">
                       <span>

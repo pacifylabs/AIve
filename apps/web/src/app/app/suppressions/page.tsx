@@ -24,7 +24,7 @@ export default async function SuppressionsPage() {
   return (
     <section className="max-w-2xl space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Do not contact</h1>
+        <h1 className="page-title">Do not contact</h1>
         <p className="text-muted">
           Your staff never write to these addresses. Only the ones you added yourself can be removed.
         </p>
@@ -34,7 +34,7 @@ export default async function SuppressionsPage() {
           Nobody yet. People who ask to stop, and addresses that bounce, appear here automatically.
         </p>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="card divide-y divide-line-soft">
           {rows.data.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
               <span>
@@ -57,7 +57,7 @@ export default async function SuppressionsPage() {
           ))}
         </ul>
       )}
-      <div className="space-y-3 rounded-xl border border-border bg-surface p-6">
+      <div className="space-y-3 card p-6">
         <h2 className="font-medium">Add one</h2>
         <AddSuppressionForm />
       </div>

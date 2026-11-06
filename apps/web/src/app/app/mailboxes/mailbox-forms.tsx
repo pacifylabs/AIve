@@ -22,7 +22,7 @@ export function ConnectMailboxForm() {
         hint="A dedicated address works best, for example sales@yourcompany.com."
       />
       <TextField label="Name people see" name="displayName" defaultValue={v.displayName} error={f.displayName} />
-      <fieldset className="space-y-3 rounded-md border border-border p-4">
+      <fieldset className="card-flat space-y-3 p-4">
         <legend className="px-1 text-sm font-medium">Sending (SMTP)</legend>
         <TextField
           label="Server"
@@ -47,7 +47,7 @@ export function ConnectMailboxForm() {
         />
         <PasswordField label="Password" name="smtpPass" autoComplete="new-password" error={f['smtp.pass']} />
       </fieldset>
-      <fieldset className="space-y-3 rounded-md border border-border p-4">
+      <fieldset className="card-flat space-y-3 p-4">
         <legend className="px-1 text-sm font-medium">How replies reach us</legend>
         <label className="flex items-start gap-2 text-sm">
           <input

@@ -19,13 +19,10 @@ export default async function AcceptInvitationPage({ searchParams }: { searchPar
         subtitle="Sign in, or create an account with the email address the invitation was sent to."
       >
         <div className="flex gap-3 text-sm">
-          <Link
-            href={`/login?next=${encodeURIComponent(back)}`}
-            className="rounded-md bg-accent px-4 py-2 font-medium text-accent-foreground"
-          >
+          <Link href={`/login?next=${encodeURIComponent(back)}`} className="btn btn-primary">
             Sign in
           </Link>
-          <Link href="/signup" className="rounded-md border border-border px-4 py-2 font-medium">
+          <Link href="/signup" className="btn font-medium">
             Create an account
           </Link>
         </div>

@@ -4,8 +4,7 @@ import { type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, 
 import { useFormStatus } from 'react-dom';
 import type { FormState } from '@/lib/form-state';
 
-const inputClass =
-  'w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 aria-invalid:border-danger';
+const inputClass = 'field';
 
 interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
   label: string;
@@ -122,14 +121,19 @@ export function PasswordField({ label, error, hint, ...input }: FieldProps) {
   );
 }
 
-export function SubmitButton({ children, pendingLabel }: { children: ReactNode; pendingLabel?: string }) {
+export function SubmitButton({
+  children,
+  pendingLabel,
+  variant = 'primary',
+}: {
+  children: ReactNode;
+  pendingLabel?: string;
+  /** `secondary` for the lesser of two buttons side by side, such as Reject beside Approve. */
+  variant?: 'primary' | 'secondary';
+}) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-60"
-    >
+    <button type="submit" disabled={pending} className={`btn w-full ${variant === 'primary' ? 'btn-primary' : ''}`}>
       {pending ? (pendingLabel ?? 'Working…') : children}
     </button>
   );
@@ -139,10 +143,10 @@ export function FormMessages({ state }: { state: FormState }) {
   return (
     <div aria-live="polite">
       {state.error ? (
-        <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{state.error}</p>
+        <p className="rounded-xl border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{state.error}</p>
       ) : null}
       {state.notice ? (
-        <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm">{state.notice}</p>
+        <p className="rounded-xl border border-ok/30 bg-ok-soft px-3 py-2 text-sm text-ok">{state.notice}</p>
       ) : null}
     </div>
   );

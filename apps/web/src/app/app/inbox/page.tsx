@@ -32,21 +32,24 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     <section className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Inbox</h1>
+          <h1 className="page-title">Inbox</h1>
           <p className="text-muted">Everything your staff want to send or post waits here until you approve it.</p>
         </div>
-        <nav aria-label="Inbox views" className="flex gap-1 rounded-md border border-border bg-surface p-1 text-sm">
+        <nav
+          aria-label="Inbox views"
+          className="inline-flex gap-1 rounded-xl border border-border bg-subtle p-1 text-sm"
+        >
           <Link
             href="/app/inbox"
             aria-current={decided ? undefined : 'page'}
-            className="rounded px-3 py-1 aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+            className="rounded-lg px-3 py-1.5 text-muted aria-[current=page]:bg-surface aria-[current=page]:font-medium aria-[current=page]:text-foreground aria-[current=page]:shadow-sm"
           >
             Waiting
           </Link>
           <Link
             href="/app/inbox?view=decided"
             aria-current={decided ? 'page' : undefined}
-            className="rounded px-3 py-1 aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+            className="rounded-lg px-3 py-1.5 text-muted aria-[current=page]:bg-surface aria-[current=page]:font-medium aria-[current=page]:text-foreground aria-[current=page]:shadow-sm"
           >
             Decided
           </Link>
@@ -54,7 +57,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       </div>
 
       {ready.length > 0 ? (
-        <p className="rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+        <p className="rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm">
           {[...new Set(ready.map((task) => task.staffName))].join(' and ')} {ready.length > 1 ? 'have' : 'has'} a clean
           record.{' '}
           <Link href="/app/autopilot" className="font-medium underline">
@@ -66,14 +69,14 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       {!items.ok ? (
         <p className="text-danger">{items.problem.title}</p>
       ) : items.data.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center">
+        <div className="empty">
           <h2 className="font-medium">{decided ? 'Nothing decided yet' : 'Nothing waiting for you'}</h2>
           <p className="mt-1 text-sm text-muted">
             {decided ? 'Approved and rejected work shows up here.' : 'New drafts appear here as your staff work.'}
           </p>
         </div>
       ) : decided ? (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="card divide-y divide-line-soft">
           {items.data.map((item) => (
             <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
               <span>

@@ -27,20 +27,20 @@ export default async function HirePage({ searchParams }: { searchParams: Promise
 
   return (
     <section className="max-w-2xl space-y-6">
-      <nav aria-label="Roles" className="flex gap-1 rounded-md border border-border bg-surface p-1 text-sm">
+      <nav aria-label="Roles" className="inline-flex gap-1 rounded-xl border border-border bg-subtle p-1 text-sm">
         {roles.data.map((candidate) => (
           <Link
             key={candidate.key}
             href={`/app/hire?role=${candidate.key}`}
             aria-current={candidate.key === role.key ? 'page' : undefined}
-            className="rounded px-3 py-1 aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+            className="rounded-lg px-3 py-1.5 text-muted aria-[current=page]:bg-surface aria-[current=page]:font-medium aria-[current=page]:text-foreground aria-[current=page]:shadow-sm"
           >
             {candidate.name.replace(' Staff', '')}
           </Link>
         ))}
       </nav>
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Hire {role.name}</h1>
+        <h1 className="page-title">Hire {role.name}</h1>
         <p className="text-muted">{role.summary}</p>
       </div>
       <ul className="list-disc space-y-1 pl-5 text-sm">
@@ -51,7 +51,7 @@ export default async function HirePage({ searchParams }: { searchParams: Promise
       {role.key === 'social_media' ? (
         <>
           {accounts.ok && accounts.data.length === 0 ? (
-            <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
+            <p className="card-flat px-3 py-2 text-sm">
               Connect an account first, on the{' '}
               <Link href="/app/accounts" className="font-medium text-accent hover:underline">
                 Accounts
@@ -59,18 +59,18 @@ export default async function HirePage({ searchParams }: { searchParams: Promise
               page.
             </p>
           ) : null}
-          <div className="rounded-xl border border-border bg-surface p-6">
+          <div className="card p-6">
             <SocialHireForm accounts={accounts.ok ? accounts.data : []} questions={questions} />
           </div>
         </>
       ) : (
         <>
           {mailboxes.ok && mailboxes.data.length === 0 ? (
-            <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
+            <p className="card-flat px-3 py-2 text-sm">
               Connect a mailbox first, on the Mailboxes page, so there is somewhere to send from.
             </p>
           ) : null}
-          <div className="rounded-xl border border-border bg-surface p-6">
+          <div className="card p-6">
             <HireForm mailboxes={mailboxes.ok ? mailboxes.data : []} questions={questions} />
           </div>
         </>

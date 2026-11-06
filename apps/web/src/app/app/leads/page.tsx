@@ -36,14 +36,14 @@ export default async function LeadsPage() {
   return (
     <section className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Leads</h1>
+        <h1 className="page-title">Leads</h1>
         <p className="text-muted">
           People your Sales Manager will research and write to. You approve each first email.
         </p>
       </div>
 
       {!hired ? (
-        <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
+        <p className="card-flat px-3 py-2 text-sm">
           You need a Sales Manager before adding leads.{' '}
           <Link href="/app/hire" className="font-medium text-accent hover:underline">
             Hire one
@@ -53,12 +53,12 @@ export default async function LeadsPage() {
       ) : null}
 
       {leads.data.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center">
+        <div className="empty">
           <h2 className="font-medium">No leads yet</h2>
           <p className="mt-1 text-sm text-muted">Add one below, or import a list.</p>
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="card divide-y divide-line-soft">
           {leads.data.map((lead) => (
             <li key={lead.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
               <span>
@@ -76,11 +76,11 @@ export default async function LeadsPage() {
 
       {hired ? (
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-3 rounded-xl border border-border bg-surface p-6">
+          <div className="space-y-3 card p-6">
             <h2 className="font-medium">Add a lead</h2>
             <AddLeadForm />
           </div>
-          <div className="space-y-3 rounded-xl border border-border bg-surface p-6">
+          <div className="space-y-3 card p-6">
             <h2 className="font-medium">Import from a CSV</h2>
             <ImportLeadsForm />
           </div>

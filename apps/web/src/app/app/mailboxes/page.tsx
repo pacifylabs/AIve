@@ -33,7 +33,7 @@ export default async function MailboxesPage() {
   return (
     <section className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Mailboxes</h1>
+        <h1 className="page-title">Mailboxes</h1>
         <p className="text-muted">
           Your Sales Manager writes from your own address, so your reputation stays yours. Nothing is sent until the
           mailbox is verified.
@@ -41,7 +41,7 @@ export default async function MailboxesPage() {
       </div>
 
       {mailboxes.data.map((mailbox) => (
-        <article key={mailbox.id} className="space-y-4 rounded-xl border border-border bg-surface p-6">
+        <article key={mailbox.id} className="space-y-4 card p-6">
           <header className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-medium">{mailbox.address}</h2>
             <span
@@ -52,7 +52,7 @@ export default async function MailboxesPage() {
             </span>
           </header>
           {mailbox.lastError ? (
-            <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{mailbox.lastError}</p>
+            <p className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">{mailbox.lastError}</p>
           ) : null}
           <p className="text-sm text-muted">
             Replies: {mailbox.inboundMode === 'imap' ? 'read from the inbox' : 'forwarded to us'}
@@ -79,7 +79,7 @@ export default async function MailboxesPage() {
         </article>
       ))}
 
-      <div className="max-w-xl space-y-4 rounded-xl border border-border bg-surface p-6">
+      <div className="max-w-xl space-y-4 card p-6">
         <h2 className="font-medium">Connect a mailbox</h2>
         <ConnectMailboxForm />
       </div>

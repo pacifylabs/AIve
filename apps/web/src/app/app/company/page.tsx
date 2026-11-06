@@ -33,18 +33,18 @@ export default async function CompanyPage() {
   return (
     <section className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Company</h1>
+        <h1 className="page-title">Company</h1>
         <p className="text-muted">
           Your staff only use what is written here. Prices, offers and claims anywhere else are refused.
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
+        <div className="space-y-4 card p-6">
           <h2 className="font-medium">Profile</h2>
           <ProfileForm profile={profile} canEdit={canEdit} />
         </div>
-        <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
+        <div className="space-y-4 card p-6">
           <h2 className="font-medium">Start from your website</h2>
           <p className="text-sm text-muted">
             We read a few pages of your site and suggest facts. Nothing is used until you confirm it.
@@ -65,7 +65,7 @@ export default async function CompanyPage() {
           return (
             <div key={kind} className="space-y-2">
               <h3 className="text-sm font-medium text-muted">{heading}</h3>
-              <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+              <ul className="card divide-y divide-line-soft">
                 {ofKind.map((fact) => (
                   <li key={fact.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 text-sm">
                     <div className="min-w-0 flex-1 space-y-1">
@@ -103,13 +103,13 @@ export default async function CompanyPage() {
           );
         })}
         {facts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-8 text-center">
+          <div className="empty">
             <h3 className="font-medium">No facts yet</h3>
             <p className="mt-1 text-sm text-muted">Add what you sell and your prices, or start from your website.</p>
           </div>
         ) : null}
         {canEdit ? (
-          <div className="max-w-xl space-y-3 rounded-xl border border-border bg-surface p-6">
+          <div className="max-w-xl space-y-3 card p-6">
             <h3 className="font-medium">Add a fact</h3>
             <AddFactForm />
           </div>

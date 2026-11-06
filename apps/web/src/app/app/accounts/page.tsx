@@ -48,19 +48,19 @@ export default async function AccountsPage({
   return (
     <section className="max-w-2xl space-y-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Accounts</h1>
+        <h1 className="page-title">Accounts</h1>
         <p className="text-muted">
           The social accounts your staff post to. You sign in at the network; we never see your password.
         </p>
       </div>
       {error ? (
-        <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
+        <p className="rounded-xl border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">
           {error}
         </p>
       ) : null}
 
       {choice?.ok ? (
-        <div className="space-y-3 rounded-xl border border-border bg-surface p-6">
+        <div className="space-y-3 card p-6">
           <PickAccountsForm pending={pending!} accounts={choice.data.accounts} />
         </div>
       ) : pending ? (
@@ -70,7 +70,7 @@ export default async function AccountsPage({
       {accounts.data.length === 0 ? (
         <p className="text-sm text-muted">Nothing connected yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="card divide-y divide-line-soft">
           {accounts.data.map((account) => (
             <li key={account.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
               <span>
@@ -112,7 +112,7 @@ export default async function AccountsPage({
         <ul className="grid gap-2 sm:grid-cols-2">
           {networks.ok
             ? networks.data.map((network) => (
-                <li key={network.network} className="rounded-xl border border-border bg-surface p-4 text-sm">
+                <li key={network.network} className="card p-4 text-sm">
                   <p className="font-medium">{network.label}</p>
                   {network.configured && network.auth === 'credentials' ? (
                     <details

@@ -49,20 +49,20 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   return (
     <section className="max-w-3xl space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">{c.lead?.name ?? c.lead?.email ?? 'Conversation'}</h1>
+        <h1 className="page-title">{c.lead?.name ?? c.lead?.email ?? 'Conversation'}</h1>
         <p className="text-muted">
           {c.subject}
           {c.lead?.company ? ` · ${c.lead.company}` : ''}
         </p>
         {c.needsHumanReason ? (
-          <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger" role="note">
+          <p className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger" role="note">
             Needs you: {c.needsHumanReason}
           </p>
         ) : null}
       </div>
 
       {c.uncertainSends.map((intentId) => (
-        <div key={intentId} className="space-y-2 rounded-md border border-danger/40 bg-danger/10 p-4 text-sm">
+        <div key={intentId} className="space-y-2 rounded-xl border border-danger/30 bg-danger-soft p-4 text-sm">
           <p>An email here may or may not have gone out. It will not be sent again unless you say so.</p>
           <div className="flex gap-4">
             {(['sent', 'retry'] as const).map((outcome) => (
@@ -83,7 +83,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
         {c.messages.map((message) => (
           <li
             key={message.id}
-            className={`rounded-xl border border-border p-4 text-sm ${message.direction === 'in' ? 'bg-surface' : 'bg-background'}`}
+            className={`card-flat p-4 text-sm ${message.direction === 'in' ? 'bg-surface' : 'bg-surface-2'}`}
           >
             <p className="mb-2 text-xs text-muted">
               {message.direction === 'in'
@@ -104,7 +104,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
 
       {!closed ? (
         c.handledBy === 'human' ? (
-          <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
+          <div className="space-y-4 card p-6">
             <h2 className="font-medium">You are handling this conversation</h2>
             <p className="text-sm text-muted">
               Your Sales Manager has stopped and will not write here until you give it back.
@@ -120,10 +120,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
         ) : (
           <form action={takeOverAction}>
             <input type="hidden" name="id" value={c.id} />
-            <button
-              type="submit"
-              className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-background"
-            >
+            <button type="submit" className="btn">
               Take over this conversation
             </button>
           </form>

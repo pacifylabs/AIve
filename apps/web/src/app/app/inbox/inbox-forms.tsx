@@ -44,7 +44,7 @@ export function PendingItem({ item }: { item: InboxItem }) {
   const escalation = item.kind === 'escalation';
 
   return (
-    <article className="space-y-4 rounded-xl border border-border bg-surface p-5">
+    <article className="space-y-4 card p-5">
       <header className="space-y-1">
         <p className="text-xs text-muted">
           {item.staffName} ·{' '}
@@ -55,14 +55,14 @@ export function PendingItem({ item }: { item: InboxItem }) {
         </p>
         <h2 className="font-medium">{item.title}</h2>
         {item.flaggedReason ? (
-          <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger" role="note">
+          <p className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger" role="note">
             Needs you: {item.flaggedReason}
           </p>
         ) : null}
       </header>
 
       {escalation ? (
-        <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs">
+        <pre className="max-h-64 overflow-auto rounded-lg bg-subtle p-3 text-xs">
           {JSON.stringify(item.payload, null, 2)}
         </pre>
       ) : (
@@ -76,7 +76,7 @@ export function PendingItem({ item }: { item: InboxItem }) {
               key === 'staffId' || key === 'engagementId' || key === 'accountId' ? null : (
                 <div key={key} className="space-y-1">
                   <p className="text-sm font-medium">{label(key)}</p>
-                  <p className="whitespace-pre-wrap rounded-md bg-background px-3 py-2 text-sm text-muted">{value}</p>
+                  <p className="whitespace-pre-wrap rounded-lg bg-subtle px-3 py-2 text-sm text-muted">{value}</p>
                 </div>
               ),
             )}
@@ -106,7 +106,9 @@ export function PendingItem({ item }: { item: InboxItem }) {
           error={rejectState.fields?.reason}
           hint="Your reason is shown to this staff member next time."
         />
-        <SubmitButton pendingLabel="Saving…">{escalation ? 'Close' : 'Reject'}</SubmitButton>
+        <SubmitButton pendingLabel="Saving…" variant="secondary">
+          {escalation ? 'Close' : 'Reject'}
+        </SubmitButton>
       </form>
     </article>
   );

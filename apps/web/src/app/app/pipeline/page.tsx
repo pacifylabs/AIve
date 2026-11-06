@@ -28,13 +28,13 @@ export default async function PipelinePage() {
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Pipeline</h1>
+        <h1 className="page-title">Pipeline</h1>
         <p className="text-muted">
           Every conversation your Sales Manager is having. Open one to read it or take it over.
         </p>
       </div>
       {conversations.data.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center">
+        <div className="empty">
           <h2 className="font-medium">No conversations yet</h2>
           <p className="mt-1 text-sm text-muted">They start when a first email is approved and sent.</p>
         </div>
@@ -48,7 +48,7 @@ export default async function PipelinePage() {
               {column.title} <span className="text-muted">({items.length})</span>
             </h2>
             <p className="text-xs text-muted">{column.hint}</p>
-            <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+            <ul className="card divide-y divide-line-soft">
               {items.map((conversation) => (
                 <li key={conversation.id}>
                   <Link

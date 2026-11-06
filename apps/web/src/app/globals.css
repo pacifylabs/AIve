@@ -1,27 +1,54 @@
 @import 'tailwindcss';
 
+/*
+ * The app's design tokens: the marketing site's Earthlight palette (blue accent, Geist, soft cool surfaces), written
+ * with light-dark() so every colour follows the page's colour scheme. The scheme follows the system, and the toggle
+ * in the top bar pins it by changing <meta name="color-scheme"> (see components/app/theme.ts). Nothing here depends
+ * on script: with JavaScript off the app follows the system setting.
+ */
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
-  --muted: #57534e;
-  --border: #d6d3d1;
-  --surface: #ffffff;
-  --accent: #4f46e5;
-  --accent-foreground: #ffffff;
-  --danger: #b91c1c;
+  color-scheme: light dark;
+
+  /* Surfaces and text */
+  --background: light-dark(#f5f8fc, #060b16);
+  --surface: light-dark(#ffffff, #0e1626);
+  --surface-2: light-dark(#f9fbfe, #111a2c);
+  --subtle: light-dark(#f1f5fa, #142036);
+  --sunken: light-dark(#eaf0f7, #0a111f);
+  --foreground: light-dark(#0b1324, #eaf0fa);
+  --text-2: light-dark(#334155, #b7c3d6);
+  --muted: light-dark(#556275, #97a4ba);
+  --border: light-dark(#e1e7f0, #1c2740);
+  --line-soft: light-dark(#ebf0f6, #172136);
+  --line-strong: light-dark(#cad3e0, #2a3753);
+
+  /* Accent: the link and focus colour, and the fill behind --accent-foreground */
+  --accent: light-dark(#2563eb, #6ea2ff);
+  --accent-foreground: light-dark(#ffffff, #06122e);
+  --accent-soft: light-dark(#e8f0fe, #12224a);
+
+  /* Status */
+  --danger: light-dark(#b42318, #f97066);
+  --danger-soft: light-dark(#fef3f2, #2a1316);
+  --ok: light-dark(#0e8f8a, #3ccfc3);
+  --ok-soft: light-dark(#e2f5f3, #0d2b2c);
+  --amber: light-dark(#b86e0d, #f0b04a);
+  --amber-soft: light-dark(#fdf2e2, #2e2210);
+
+  --shadow-color: light-dark(rgb(23 46 92 / 0.09), rgb(0 0 0 / 0.5));
+  --glass: light-dark(rgb(255 255 255 / 0.72), rgb(14 22 38 / 0.72));
+
+  accent-color: var(--accent);
+  scrollbar-color: light-dark(#c2ccda, #2a3753) transparent;
+  scrollbar-width: thin;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0c0a09;
-    --foreground: #f5f5f4;
-    --muted: #a8a29e;
-    --border: #44403c;
-    --surface: #1c1917;
-    --accent: #818cf8;
-    --accent-foreground: #0c0a09;
-    --danger: #f87171;
-  }
+/* The toggle pins a scheme through the meta tag; map it back to the property so the cascade follows it. */
+:root:has(> head > meta[name='color-scheme'][content='dark']) {
+  color-scheme: dark;
+}
+:root:has(> head > meta[name='color-scheme'][content='light']) {
+  color-scheme: light;
 }
 
 @theme inline {
@@ -30,18 +57,331 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-subtle: var(--subtle);
+  --color-sunken: var(--sunken);
+  --color-text-2: var(--text-2);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+/* In the base layer, so a utility such as outline-none can still switch it off where a control draws its own focus. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ---- Building blocks -------------------------------------------------------------------------------------------- */
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow:
+      0 1px 2px var(--shadow-color),
+      0 12px 28px -18px var(--shadow-color);
+  }
+
+  .card-flat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+  }
+
+  .empty {
+    border: 1px dashed var(--line-strong);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .page-title {
+    font-size: 1.625rem;
+    line-height: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+    text-wrap: balance;
+  }
+
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .field {
+    width: 100%;
+    border-radius: 0.625rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--foreground);
+    transition:
+      border-color 120ms,
+      box-shadow 120ms;
+  }
+  .field::placeholder {
+    color: color-mix(in srgb, var(--muted) 70%, transparent);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .field[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    transition:
+      background-color 120ms,
+      border-color 120ms,
+      opacity 120ms;
+  }
+  .btn:hover {
+    background: var(--subtle);
+  }
+  .btn:disabled {
+    opacity: 0.6;
+  }
+
+  .btn-primary {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--accent-foreground);
+    box-shadow: 0 1px 2px var(--shadow-color);
+  }
+  .btn-primary:hover {
+    background: var(--accent);
+    opacity: 0.9;
+  }
+
+  .btn-quiet {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+  .btn-quiet:hover {
+    background: var(--subtle);
+    color: var(--foreground);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    background: var(--subtle);
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .pill-accent {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .pill-ok {
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .pill-warn {
+    background: var(--amber-soft);
+    color: var(--amber);
+  }
+  .pill-danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+
+  .kbd {
+    border-radius: 0.375rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-2);
+    padding: 0 0.375rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.25rem;
+    color: var(--muted);
+  }
+}
+
+/* ---- App shell -------------------------------------------------------------------------------------------------- */
+
+/*
+ * The sidebar is dark in both themes, so it declares its own scheme: every light-dark() inside it, and every native
+ * control, resolves to the dark side whatever the page chose.
+ */
+.sidebar {
+  color-scheme: dark;
+  --side-bg: #0a1224;
+  --side-raised: #111b33;
+  --side-line: #1c2842;
+  --side-text: #c9d3e4;
+  --side-muted: #8493ab;
+  --side-faint: #5d6c86;
+  --side-hover: rgb(255 255 255 / 0.06);
+  --side-active: #2563eb;
+  --side-accent: #8db6ff;
+  background: var(--side-bg);
+  color: var(--side-text);
+}
+
+.sidebar a:focus-visible,
+.sidebar button:focus-visible,
+.sidebar select:focus-visible {
+  outline-color: var(--side-accent);
+}
+
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.625rem;
+  padding: 0.4375rem 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--side-text);
+  transition: background-color 120ms;
+}
+.side-link:hover {
+  background: var(--side-hover);
+}
+.side-link[aria-current='page'] {
+  background: var(--side-active);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -8px rgb(37 99 235 / 0.7);
+}
+.side-link svg {
+  flex: none;
+  opacity: 0.85;
+}
+.side-link[aria-current='page'] svg {
+  opacity: 1;
+}
+
+/* The mobile drawer: a top-layer popover that slides in from the left and dims the page behind it. */
+.drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(19rem, 86dvw);
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+}
+.drawer::backdrop {
+  background: rgb(4 8 18 / 0.55);
+  backdrop-filter: blur(2px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .drawer {
+    transition:
+      translate 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      display 220ms allow-discrete,
+      overlay 220ms allow-discrete;
+    translate: -100% 0;
+  }
+  .drawer:popover-open {
+    translate: 0 0;
+  }
+  @starting-style {
+    .drawer:popover-open {
+      translate: -100% 0;
+    }
+  }
+  .drawer::backdrop {
+    transition:
+      opacity 220ms,
+      display 220ms allow-discrete,
+      overlay 220ms allow-discrete;
+    opacity: 0;
+  }
+  .drawer:popover-open::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    .drawer:popover-open::backdrop {
+      opacity: 0;
+    }
+  }
+}
+
+/* The search dialog: native modal, so focus, Escape and the inert page come from the browser. */
+.palette {
+  width: min(36rem, calc(100dvw - 2rem));
+  margin: 12vh auto auto;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 30px 80px -20px rgb(4 8 18 / 0.6);
+}
+.palette::backdrop {
+  background: rgb(4 8 18 / 0.5);
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+/* Where a popover menu opens from, when the browser cannot anchor it. */
+.menu {
+  position: fixed;
+  margin: 0;
+  inset: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 0.375rem;
+  box-shadow: 0 20px 50px -16px rgb(4 8 18 / 0.45);
 }
