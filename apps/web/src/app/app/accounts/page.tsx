@@ -2,6 +2,7 @@ import { connectNetworkAction, disconnectAccountAction } from '@/app/actions/soc
 import { apiOrRedirect } from '@/lib/api';
 import { ConnectLoginForm, type LoginField } from './login-form';
 import { PickAccountsForm } from './pick-form';
+import { SignatureForm } from './signature-form';
 
 export const metadata = { title: 'Accounts' };
 
@@ -21,6 +22,10 @@ interface Network {
   auth: 'oauth' | 'credentials';
   fields: LoginField[];
 }
+interface StaffRow {
+  roleKey: string;
+  settings: { signatures?: Record<string, string> };
+}
 interface Pending {
   network: string;
   accounts: { externalId: string; name: string; username?: string | null }[];
@@ -32,13 +37,16 @@ export default async function AccountsPage({
   searchParams: Promise<{ pending?: string; error?: string }>;
 }) {
   const { pending, error } = await searchParams;
-  const [accounts, networks, choice] = await Promise.all([
+  const [accounts, networks, choice, staff] = await Promise.all([
     apiOrRedirect<Account[]>('/social/accounts', '/app/accounts', { workspace: true }),
     apiOrRedirect<Network[]>('/social/networks', '/app/accounts', { workspace: true }),
     pending
       ? apiOrRedirect<Pending>(`/social/pending/${encodeURIComponent(pending)}`, '/app/accounts', { workspace: true })
       : null,
+    apiOrRedirect<StaffRow[]>('/staff', '/app/accounts', { workspace: true }),
   ]);
+  const signatures = (staff.ok ? staff.data.find((member) => member.roleKey === 'social_media') : null)?.settings
+    .signatures;
   if (!accounts.ok) return <p className="text-danger">{accounts.problem.title}</p>;
   const usesLogin = new Set(
     networks.ok ? networks.data.filter((n) => n.auth === 'credentials').map((n) => n.network) : [],
@@ -72,37 +80,49 @@ export default async function AccountsPage({
       ) : (
         <ul className="card divide-y divide-line-soft">
           {accounts.data.map((account) => (
-            <li key={account.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
-              <span>
-                <span className="font-medium">{account.name}</span>
-                <span className="text-muted"> · {account.network}</span>
-                {account.health !== 'ok' ? (
-                  <span className={account.health === 'degraded' ? 'block text-amber' : 'block text-danger'}>
-                    {account.health === 'degraded' ? 'Needs attention soon' : 'Needs to be reconnected'}
-                    {account.healthReason ? `: ${account.healthReason}` : ''}
-                  </span>
-                ) : null}
-              </span>
-              <span className="flex items-center gap-4">
-                {account.health !== 'ok' && usesLogin.has(account.network) ? (
-                  <a href={`#connect-${account.network}`} className="font-medium text-accent hover:underline">
-                    Reconnect below
-                  </a>
-                ) : account.health !== 'ok' ? (
-                  <form action={connectNetworkAction}>
-                    <input type="hidden" name="network" value={account.network} />
-                    <button type="submit" className="font-medium text-accent hover:underline">
-                      Reconnect
+            <li key={account.id} className="px-5 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>
+                  <span className="font-medium">{account.name}</span>
+                  <span className="text-muted"> · {account.network}</span>
+                  {account.health !== 'ok' ? (
+                    <span className={account.health === 'degraded' ? 'block text-amber' : 'block text-danger'}>
+                      {account.health === 'degraded' ? 'Needs attention soon' : 'Needs to be reconnected'}
+                      {account.healthReason ? `: ${account.healthReason}` : ''}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="flex items-center gap-4">
+                  {account.health !== 'ok' && usesLogin.has(account.network) ? (
+                    <a href={`#connect-${account.network}`} className="font-medium text-accent hover:underline">
+                      Reconnect below
+                    </a>
+                  ) : account.health !== 'ok' ? (
+                    <form action={connectNetworkAction}>
+                      <input type="hidden" name="network" value={account.network} />
+                      <button type="submit" className="font-medium text-accent hover:underline">
+                        Reconnect
+                      </button>
+                    </form>
+                  ) : null}
+                  <form action={disconnectAccountAction}>
+                    <input type="hidden" name="id" value={account.id} />
+                    <button type="submit" className="text-danger hover:underline">
+                      Disconnect
                     </button>
                   </form>
-                ) : null}
-                <form action={disconnectAccountAction}>
-                  <input type="hidden" name="id" value={account.id} />
-                  <button type="submit" className="text-danger hover:underline">
-                    Disconnect
-                  </button>
-                </form>
-              </span>
+                </span>
+              </div>
+              {account.health !== 'broken' ? (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-accent hover:underline">
+                    {signatures?.[account.id] ? 'Edit sign-off' : 'Add a sign-off'}
+                  </summary>
+                  <div className="pt-3">
+                    <SignatureForm accountId={account.id} current={signatures?.[account.id] ?? ''} />
+                  </div>
+                </details>
+              ) : null}
             </li>
           ))}
         </ul>

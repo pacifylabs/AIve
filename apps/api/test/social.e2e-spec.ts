@@ -566,3 +566,40 @@ describe('Threads removing our access', () => {
     await call('deauthorize', sign('nobody-we-know')).expect(200);
   });
 });
+
+describe('sign-offs', () => {
+  it('are saved per account in the staff settings, and kept when other settings change', async () => {
+    const w = await workspace('sig1');
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'Northfield', kind: 'page' }];
+    const pending = (await signIn(w.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(w.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    const staff = (
+      await t
+        .http()
+        .post('/v1/staff')
+        .set(w.as)
+        .send({ roleKey: 'social_media', displayName: 'Sam', settings: { accountIds: [account!.id] } })
+        .expect(201)
+    ).body as { id: string };
+    const patch = (settings: Record<string, unknown>) =>
+      t.http().patch(`/v1/staff/${staff.id}/settings`).set(w.as).send({ settings });
+
+    await patch({ signatures: { [account!.id]: '— Team Northfield' } }).expect(200);
+    await patch({ cadence: 5 }).expect(200);
+    const list = (await t.http().get('/v1/staff').set(w.as).expect(200)).body as {
+      settings: { signatures: Record<string, string>; cadence: number };
+    }[];
+    expect(list[0]!.settings).toMatchObject({ cadence: 5, signatures: { [account!.id]: '— Team Northfield' } });
+
+    // Too long, or not tied to an account id, is refused.
+    await patch({ signatures: { [account!.id]: 'x'.repeat(301) } }).expect(400);
+    await patch({ signatures: { 'not-an-account': 'hi' } }).expect(400);
+  });
+});

@@ -117,6 +117,32 @@ export async function resolvePostAction(data: FormData): Promise<void> {
   revalidatePath('/app/calendar');
 }
 
+// ---- Sign-offs ---------------------------------------------------------------------------------------------
+
+/** Saves the sign-off added to every post for one account. Empty removes it. It lives in the staff member's settings. */
+export async function saveSignatureAction(_state: FormState, data: FormData): Promise<FormState> {
+  const accountId = field(data, 'accountId');
+  const signature = field(data, 'signature').trim();
+  const staff = await api<{ id: string; roleKey: string; settings: { signatures?: Record<string, string> } }[]>(
+    '/staff',
+    { workspace: true },
+  );
+  if (!staff.ok) return failed(staff.problem, data, '/app/accounts', ['signature']);
+  const social = staff.data.find((member) => member.roleKey === 'social_media');
+  if (!social) return { error: 'Hire a Social Media Staff member first.', values: { signature } };
+  const signatures = { ...(social.settings.signatures ?? {}) };
+  if (signature) signatures[accountId] = signature;
+  else delete signatures[accountId];
+  const result = await api(`/staff/${encodeURIComponent(social.id)}/settings`, {
+    method: 'PATCH',
+    workspace: true,
+    body: { settings: { signatures } },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/accounts', ['signature']);
+  revalidatePath('/app/accounts');
+  return { notice: signature ? 'Sign-off saved. New drafts will end with it.' : 'Sign-off removed.' };
+}
+
 // ---- Feeds -------------------------------------------------------------------------------------------------
 
 /** Adds a blog or news feed. The API reads it first, so an address that is not a feed is refused with a reason. */

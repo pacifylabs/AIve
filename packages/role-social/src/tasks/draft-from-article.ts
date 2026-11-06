@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { PostOutput } from '../guardrails.js';
 import { companyBlock, EMOJI_RULE, RULES, SMALL_MODEL, styleBlock } from '../prompts.js';
 import { settingsOf } from '../settings.js';
-import { lengthHint, NETWORKS, postEffects, postGuardrails, postOutputSchema } from './post-shared.js';
+import { lengthHint, NETWORKS, postEffects, postGuardrails, postOutputSchema, signatureSpace } from './post-shared.js';
 
 const input = z.object({
   feedItemId: z.uuid(),
@@ -65,7 +65,7 @@ export const draftFromArticle: TaskDefinition<Input, PostOutput> = {
       user: [
         `Write one post for ${account.name} on ${task.network} that tells people about this new article. The link to it is attached for you.`,
         untrusted('article_data', text),
-        lengthHint(task.network),
+        lengthHint(task.network, signatureSpace(settings, task.accountId)),
         settings.hashtags.max
           ? `Suggest at most ${settings.hashtags.max} hashtags, without the # sign.`
           : 'Do not use hashtags.',

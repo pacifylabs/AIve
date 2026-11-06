@@ -6,7 +6,7 @@ import {
   type Network,
   type TaskContext,
 } from '@ai-staff/core';
-import { settingsOf } from './settings.js';
+import { settingsOf, signatureFor } from './settings.js';
 
 const ok = <O>(output: O): GuardrailResult<O> => ({ ok: true, output });
 const fail = <O>(reason: string): GuardrailResult<O> => ({ ok: false, reason });
@@ -53,6 +53,23 @@ export function composeHashtags(): Guardrail<PostOutput> {
       if (!output.hashtags.length) return ok(output);
       const tags = output.hashtags.map((tag) => `#${tag}`).join(' ');
       return ok({ ...output, body: `${output.body.trimEnd()}\n\n${tags}`, hashtags: [] });
+    },
+  };
+}
+
+/**
+ * Adds the account's saved sign-off after the hashtags, so the length, banned-word and link checks that follow all see the
+ * text that will be published. The owner wrote it, so figures in it are not claims the model made: it is added to the text
+ * the facts check may repeat.
+ */
+export function composeSignature(): Guardrail<PostOutput> {
+  return {
+    name: 'composeSignature',
+    check(output, ctx) {
+      const signature = signatureFor(settingsOf(ctx.staff), ctx.run.input.accountId);
+      if (!signature || output.body.trimEnd().endsWith(signature)) return ok(output);
+      (ctx.evidence ??= []).push(signature);
+      return ok({ ...output, body: `${output.body.trimEnd()}\n\n${signature}` });
     },
   };
 }

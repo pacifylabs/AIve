@@ -26,6 +26,8 @@ export const socialSettingsSchema = z
       })
       .default({ always: [], never: [], max: 3 }),
     emoji: z.enum(['none', 'light', 'free']).default('light'),
+    /** A sign-off added to the end of every post for one account, by account id. Written by the owner, so it is trusted. */
+    signatures: z.record(z.uuid(), z.string().trim().max(300)).default({}),
     /** What people should do after seeing a post. */
     goal: z.string().max(300).default(''),
     neverPost: z.string().max(1000).default(''),
@@ -42,6 +44,11 @@ export const socialSettingsSchema = z
   .strict();
 
 export type SocialSettings = z.infer<typeof socialSettingsSchema>;
+
+/** The sign-off for one account, or null when it has none. */
+export function signatureFor(settings: SocialSettings, accountId: unknown): string | null {
+  return (typeof accountId === 'string' ? settings.signatures[accountId] : undefined) || null;
+}
 
 export function settingsOf(staff: Pick<StaffMember, 'settings'>): SocialSettings {
   return socialSettingsSchema.parse(staff.settings);

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { PostOutput } from '../guardrails.js';
 import { companyBlock, EMOJI_RULE, RULES, SMALL_MODEL, styleBlock } from '../prompts.js';
 import { settingsOf } from '../settings.js';
-import { lengthHint, NETWORKS, postEffects, postGuardrails, postOutputSchema } from './post-shared.js';
+import { lengthHint, NETWORKS, postEffects, postGuardrails, postOutputSchema, signatureSpace } from './post-shared.js';
 
 const input = z.object({
   planItemId: z.string().optional(),
@@ -53,7 +53,7 @@ export const draftPost: TaskDefinition<Input, PostOutput> = {
       ].join('\n\n'),
       user: [
         `Write one post for ${account.name} on ${task.network}. Topic: ${task.pillar}. Angle: ${task.angle}.`,
-        lengthHint(task.network),
+        lengthHint(task.network, signatureSpace(settings, task.accountId)),
         settings.hashtags.max
           ? `Suggest at most ${settings.hashtags.max} hashtags, without the # sign.`
           : 'Do not use hashtags.',

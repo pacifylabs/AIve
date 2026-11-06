@@ -3,6 +3,7 @@ import type { ConnectedAccount, SocialEngagement } from '@ai-staff/db';
 import { describe, expect, it } from 'vitest';
 import {
   composeHashtags,
+  composeSignature,
   emojiPolicy,
   fitsNetwork,
   hashtagPolicy,
@@ -106,6 +107,28 @@ describe('social guardrails', () => {
     expect(
       requiresMedia().check(post('Hi'), ctxFor({ network: 'tiktok', mediaUrls: ['https://c.test/a.mp4?x=1'] })).ok,
     ).toBe(true);
+  });
+
+  it('adds the account’s sign-off after the hashtags, once, and only to that account', () => {
+    const id = '0198a1b2-0000-7000-8000-000000000001';
+    const ctx = ctxFor({ accountId: id }, { signatures: { [id]: '— Team Northfield, since 2019' } });
+    const tagged = composeHashtags().check(post('Hello', ['a']), ctx);
+    const signed = tagged.ok ? composeSignature().check(tagged.output, ctx) : tagged;
+    expect(signed.ok && signed.output.body).toBe('Hello\n\n#a\n\n— Team Northfield, since 2019');
+    // A model that already ended with it, or an account with none, is left alone.
+    expect(composeSignature().check(post('Hi\n\n— Team Northfield, since 2019'), ctx)).toMatchObject({
+      ok: true,
+      output: { body: 'Hi\n\n— Team Northfield, since 2019' },
+    });
+    const other = ctxFor({ accountId: '0198a1b2-0000-7000-8000-000000000002' }, { signatures: { [id]: 'x' } });
+    expect(composeSignature().check(post('Hi'), other)).toMatchObject({ ok: true, output: { body: 'Hi' } });
+  });
+
+  it('lets figures in the owner’s own sign-off through the facts check by adding it to the text that may be repeated', () => {
+    const id = '0198a1b2-0000-7000-8000-000000000001';
+    const ctx = ctxFor({ accountId: id }, { signatures: { [id]: 'Since 2019' } });
+    composeSignature().check(post('Hi'), ctx);
+    expect(ctx.evidence).toContain('Since 2019');
   });
 
   it('refuses a mention of any account but its own', () => {

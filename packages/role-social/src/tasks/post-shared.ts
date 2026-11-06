@@ -12,6 +12,7 @@ import {
 import { z } from 'zod';
 import {
   composeHashtags,
+  composeSignature,
   emojiPolicy,
   fitsNetwork,
   hashtagPolicy,
@@ -19,14 +20,24 @@ import {
   type PostOutput,
   requiresMedia,
 } from '../guardrails.js';
+import { type SocialSettings, signatureFor } from '../settings.js';
 
 export const NETWORKS = ['facebook', 'instagram', 'threads', 'tiktok', 'linkedin', 'x', 'telegram', 'discord'] as const;
 
-/** A tight limit is told to the model up front, with room to spare, so the draft is not rejected for being long. */
-export function lengthHint(network: Network): string {
-  const limit = NETWORK_MAX_CHARACTERS[network];
+/**
+ * A tight limit is told to the model up front, with room to spare, so the draft is not rejected for being long. Room
+ * already taken by a sign-off is taken off first.
+ */
+export function lengthHint(network: Network, reserved = 0): string {
+  const limit = NETWORK_MAX_CHARACTERS[network] - reserved;
   return limit <= 1_000 ? `Keep it under ${Math.floor(limit * 0.85)} characters.` : 'Keep it short and easy to read.';
 }
+
+/** Characters a sign-off takes, with the blank line before it. */
+export const signatureSpace = (settings: SocialSettings, accountId: string): number => {
+  const signature = signatureFor(settings, accountId);
+  return signature ? signature.length + 2 : 0;
+};
 
 export const postOutputSchema = z.object({
   body: z.string().min(1).max(5000),
@@ -38,6 +49,7 @@ export const postOutputSchema = z.object({
 export const postGuardrails: Guardrail<PostOutput>[] = [
   hashtagPolicy(),
   composeHashtags(),
+  composeSignature(),
   emojiPolicy(),
   fitsNetwork(),
   requiresMedia(),

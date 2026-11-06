@@ -27,6 +27,7 @@ import {
   SocialEngagement,
   SocialMetric,
   SocialPost,
+  StaffMember,
   TaskRun,
   WorkItem,
   withTenant,
@@ -305,6 +306,45 @@ describe('Social Media Staff, end to end', () => {
     const items = await s.pending();
     expect(items.every((item) => item.kind === 'escalation')).toBe(true);
     expect(items[0]?.flaggedReason).toMatch(/factsOnly/);
+  });
+
+  describe('sign-offs', () => {
+    const sign = (s: Awaited<ReturnType<typeof setup>>, signature: string) =>
+      s.inWs((m) =>
+        m.update(
+          StaffMember,
+          { id: s.staff.id },
+          { settings: { ...s.staff.settings, signatures: { [s.facebook.id]: signature } } },
+        ),
+      );
+
+    it('ends every draft for that account with its sign-off, and publishes it that way', async () => {
+      const s = await setup();
+      await sign(s, '— Team Northfield');
+      await s.planNow();
+      await s.settle();
+      await s.approveAll();
+      await s.settle();
+      const drafts = await s.pending();
+      expect(drafts).toHaveLength(2);
+      for (const draft of drafts) expect(String(draft.payload.body)).toMatch(/\n\n— Team Northfield$/);
+      await s.approveAll();
+      s.time.now = new Date('2026-11-09T09:00:00Z');
+      await s.settle();
+      expect(s.networks.facebook.posts[0]?.body).toMatch(/— Team Northfield$/);
+    });
+
+    it('a sign-off with a link to someone else’s site stops the post, with the reason', async () => {
+      const s = await setup();
+      await sign(s, 'More at https://other-company.example');
+      await s.planNow();
+      await s.settle();
+      await s.approveAll();
+      await s.settle();
+      const items = await s.pending();
+      expect(items.every((item) => item.kind === 'escalation')).toBe(true);
+      expect(items[0]?.flaggedReason).toMatch(/not one of your domains/);
+    });
   });
 
   it('an Instagram post with no picture is escalated with a clear reason', async () => {
