@@ -20,6 +20,13 @@ const STATE: Record<Post['state'], string> = {
   cancelled: 'Cancelled',
 };
 
+/** What the person should see: a post the network is still working on, or one we are unsure about, is not just "Scheduled". */
+function label(post: Post): string {
+  if (post.state === 'scheduled' && post.publish?.state === 'processing') return 'Processing at the network';
+  if (post.state === 'scheduled' && post.publish?.state === 'uncertain') return 'Checking whether it went up';
+  return STATE[post.state];
+}
+
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
@@ -59,7 +66,7 @@ export default async function CalendarPage() {
                       · {post.account?.network} · {new Date(post.scheduledFor).toISOString().slice(11, 16)}
                     </span>
                   </span>
-                  <span className={post.state === 'failed' ? 'text-danger' : 'text-muted'}>{STATE[post.state]}</span>
+                  <span className={post.state === 'failed' ? 'text-danger' : 'text-muted'}>{label(post)}</span>
                 </div>
                 <p className="line-clamp-3 whitespace-pre-wrap text-muted">{post.body}</p>
                 {post.publish?.error && post.state !== 'published' ? (
@@ -71,7 +78,7 @@ export default async function CalendarPage() {
                       View post
                     </a>
                   ) : null}
-                  {post.state === 'scheduled' ? (
+                  {post.state === 'scheduled' && (!post.publish || post.publish.state === 'pending') ? (
                     <form action={cancelPostAction}>
                       <input type="hidden" name="id" value={post.id} />
                       <button type="submit" className="text-danger hover:underline">

@@ -266,6 +266,24 @@ describe('posts and disconnecting', () => {
     await t.http().post(`/v1/social/posts/${w.post.id}/cancel`).set(w.as).expect(409);
   });
 
+  it('shows a post the network is still processing, and says why it cannot be cancelled', async () => {
+    const w = await accountWithPost('post1b');
+    await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) =>
+      m.update(
+        PublishIntent,
+        { postId: w.post.id },
+        { state: 'processing', ticket: 'container-1', processingSince: new Date(), checkAfter: new Date() },
+      ),
+    );
+    const [row] = (await t.http().get('/v1/social/posts').set(w.as).expect(200)).body as {
+      state: string;
+      publish: { state: string };
+    }[];
+    expect(row).toMatchObject({ state: 'scheduled', publish: { state: 'processing' } });
+    const refused = await t.http().post(`/v1/social/posts/${w.post.id}/cancel`).set(w.as).expect(409);
+    expect(refused.body.title).toMatch(/already processing/);
+  });
+
   it('only a failed or unclear post can be settled, and retrying queues it again', async () => {
     const w = await accountWithPost('post2');
     await t.http().post(`/v1/social/posts/${w.post.id}/resolve`).set(w.as).send({ outcome: 'retry' }).expect(409);

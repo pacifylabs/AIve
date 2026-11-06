@@ -72,7 +72,18 @@ export class SocialPostsService {
         { state: 'cancelled', error: 'Cancelled by a person.' },
       );
       // An intent already being sent cannot be stopped: the publisher owns it now.
-      if (!result.affected) throw AppError.conflict('That post is being sent right now.');
+      if (!result.affected) {
+        const working = await m.findOneBy(PublishIntent, {
+          workspaceId: ctx.workspaceId,
+          postId: id,
+          state: 'processing',
+        });
+        throw AppError.conflict(
+          working
+            ? 'The network is already processing that post, so it cannot be cancelled.'
+            : 'That post is being sent right now.',
+        );
+      }
       await m.update(SocialPost, { id }, { state: 'cancelled' });
       await this.audit(m, ctx, 'social.post_cancelled', id);
       return { ok: true };
