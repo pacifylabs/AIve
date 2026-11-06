@@ -217,6 +217,11 @@ describe('SocialProviders', () => {
       ['instagram', false],
       ['linkedin', true],
       ['x', false],
+      // Connected with a token or app password, so there is no app of ours to configure.
+      ['bluesky', true],
+      ['mastodon', true],
+      ['telegram', true],
+      ['discord', true],
     ]);
     expect(() => new SocialProviders().get('linkedin')).toThrow(/cannot post to linkedin/);
   });

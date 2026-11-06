@@ -1,5 +1,18 @@
-/** The networks Social Media Staff posts to at launch. TikTok and YouTube arrive with video (Milestone 4b). */
-export const SOCIAL_NETWORKS = ['facebook', 'instagram', 'linkedin', 'x'] as const;
+/**
+ * The networks Social Media Staff posts to. Facebook, Instagram, LinkedIn and X sign in through the network; Bluesky,
+ * Mastodon, Telegram and Discord connect with a token or app password the person creates themselves, so they need no
+ * app review. TikTok and YouTube arrive with video (Milestone 4b).
+ */
+export const SOCIAL_NETWORKS = [
+  'facebook',
+  'instagram',
+  'linkedin',
+  'x',
+  'bluesky',
+  'mastodon',
+  'telegram',
+  'discord',
+] as const;
 export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
 
 /** What a connected account's tokens look like once a provider has finished an OAuth handshake. */
@@ -39,6 +52,23 @@ export interface ExchangeCodeInput {
   codeVerifier?: string | null;
 }
 
+/** One box on the form a person fills in to connect a network that has no sign-in page. */
+export interface CredentialField {
+  name: string;
+  label: string;
+  /** A secret is shown hidden and never sent back to the browser. */
+  secret?: boolean;
+  placeholder?: string;
+  /** Where to find it, in plain words. */
+  hint: string;
+}
+
+/** What connecting with a login gives back: the session and the one account it belongs to. */
+export interface CredentialConnection {
+  tokens: ProviderTokens;
+  accounts: ProviderAccount[];
+}
+
 /** Everything a provider needs to put one post on one account. */
 export interface PublishInput {
   accessToken: string;
@@ -49,6 +79,8 @@ export interface PublishInput {
   /** Set when the network is asked to hold the post itself rather than us holding it. */
   scheduledFor?: Date | null;
   metadata?: Record<string, unknown> | null;
+  /** Stays the same for the same post, so a network that supports it never makes two of one. */
+  idempotencyKey?: string | null;
 }
 
 export interface PublishResult {
@@ -106,6 +138,12 @@ export interface SocialProvider {
   isConfigured(): boolean;
   readonly supportsNativeScheduling: boolean;
   readonly usesPkce: boolean;
+  /** `oauth` (the default) sends the person to the network to sign in; `credentials` asks for a token or app password. */
+  readonly authKind?: 'oauth' | 'credentials';
+  /** The boxes to show when `authKind` is `credentials`. */
+  readonly credentialFields?: readonly CredentialField[];
+  /** Checks what the person typed with the network and returns the account it belongs to. */
+  connectWithCredentials?(input: Record<string, string>): Promise<CredentialConnection>;
 
   getAuthUrl(input: AuthUrlInput): string;
   exchangeCode(input: ExchangeCodeInput): Promise<ProviderTokens>;
@@ -199,10 +237,13 @@ export async function callApi<T>(
       error_description?: string;
       message?: string;
       detail?: string;
+      /** Telegram's reason. */
+      description?: string;
     };
     const message =
       (typeof body.error === 'object' ? body.error?.message : body.error) ??
       body.error_description ??
+      body.description ??
       body.message ??
       body.detail ??
       `${network} returned ${response.status}.`;
