@@ -91,16 +91,28 @@ export class BlueskyProvider extends CredentialProvider {
     super();
   }
 
-  /** Bluesky names a dead session in the error code, and answers 400 for some of them, so the status is not enough. */
-  private async call<T>(path: string, init?: RequestInit): Promise<T> {
+  /**
+   * Bluesky answers with a code ("AuthenticationRequired"), not a sentence, and says 400 for some dead sessions, so the
+   * code and the status are both read and turned into words a person can act on.
+   */
+  private async call<T>(path: string, init?: RequestInit, onLoginRefused?: string): Promise<T> {
     try {
       return await callApi<T>(this.network, `${SERVICE}/xrpc/${path}`, init, this.fetcher);
     } catch (error) {
-      if (error instanceof ProviderError && error.kind !== 'auth' && AUTH_ERRORS.test(error.message)) {
+      if (!(error instanceof ProviderError)) throw error;
+      if (error.kind === 'auth' || AUTH_ERRORS.test(error.message)) {
         throw new ProviderError(
-          'Bluesky no longer accepts this login. Connect the account again.',
+          onLoginRefused ?? 'Bluesky no longer accepts this login. Connect the account again.',
           this.network,
           'auth',
+          error.status,
+        );
+      }
+      if (error.kind === 'rate_limit') {
+        throw new ProviderError(
+          'Bluesky asks us to slow down. Try again in a few minutes.',
+          this.network,
+          'rate_limit',
           error.status,
         );
       }
@@ -122,11 +134,15 @@ export class BlueskyProvider extends CredentialProvider {
 
   async connectWithCredentials(input: Record<string, string>): Promise<CredentialConnection> {
     const handle = this.field(input, 'handle').replace(/^@/, '').toLowerCase();
-    const session = await this.call<Session>('com.atproto.server.createSession', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier: handle, password: this.field(input, 'appPassword') }),
-    });
+    const session = await this.call<Session>(
+      'com.atproto.server.createSession',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: handle, password: this.field(input, 'appPassword') }),
+      },
+      'Bluesky did not accept that handle and app password. Check both, and use an app password, not your main one.',
+    );
     return {
       tokens: this.tokensOf(session),
       accounts: [{ externalId: session.did, name: session.handle, username: session.handle, kind: 'profile' }],

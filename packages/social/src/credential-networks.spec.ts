@@ -65,6 +65,21 @@ describe('Bluesky', () => {
     expect(JSON.stringify(result)).not.toContain('abcd-efgh');
   });
 
+  it('turns Bluesky’s codes into words a person can act on', async () => {
+    const refused = scripted({
+      status: 401,
+      body: { error: 'AuthenticationRequired', message: 'Invalid identifier or password' },
+    });
+    await expect(
+      new BlueskyProvider(refused.fetcher).connectWithCredentials({ handle: 'me.bsky.social', appPassword: 'nope' }),
+    ).rejects.toThrow(/did not accept that handle and app password/);
+    const slow = scripted({ status: 429, body: { error: 'RateLimitExceeded' } });
+    await expect(new BlueskyProvider(slow.fetcher).publishPost({ ...account, body: 'hi' })).rejects.toMatchObject({
+      kind: 'rate_limit',
+      message: expect.stringContaining('slow down'),
+    });
+  });
+
   it('names the box that was left empty', async () => {
     await expect(
       new BlueskyProvider(scripted().fetcher).connectWithCredentials({ handle: 'me', appPassword: ' ' }),
