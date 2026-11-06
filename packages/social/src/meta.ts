@@ -1,6 +1,8 @@
 import {
   type AuthUrlInput,
   callApi,
+  type CheckPublishInput,
+  type CheckPublishResult,
   type CommentInput,
   type ExchangeCodeInput,
   form,
@@ -12,9 +14,9 @@ import {
   type ProviderAccount,
   type ProviderComment,
   type ProviderTokens,
+  type PendingPublishResult,
   type PublishInput,
   type PublishResult,
-  sleep,
   type SocialProvider,
 } from './provider.js';
 
@@ -29,8 +31,6 @@ export interface MetaConfig {
 
 export interface MetaOptions {
   fetcher?: typeof fetch;
-  /** Replaced in tests so polling a video container does not wait for real. */
-  sleep?: (ms: number) => Promise<void>;
 }
 
 const GRAPH = 'https://graph.facebook.com';
@@ -75,7 +75,6 @@ export class MetaProvider implements SocialProvider {
   readonly supportsNativeScheduling: boolean;
   readonly usesPkce = false;
   private readonly fetcher: typeof fetch;
-  private readonly wait: (ms: number) => Promise<void>;
 
   constructor(
     readonly network: 'facebook' | 'instagram',
@@ -84,7 +83,6 @@ export class MetaProvider implements SocialProvider {
   ) {
     this.supportsNativeScheduling = network === 'facebook';
     this.fetcher = options.fetcher ?? fetch;
-    this.wait = options.sleep ?? sleep;
   }
 
   get label() {
@@ -205,7 +203,7 @@ export class MetaProvider implements SocialProvider {
       }));
   }
 
-  publishPost(input: PublishInput): Promise<PublishResult> {
+  publishPost(input: PublishInput): Promise<PublishResult | PendingPublishResult> {
     this.assertConfigured();
     return this.network === 'instagram' ? this.publishToInstagram(input) : this.publishToPage(input, null);
   }
@@ -267,10 +265,11 @@ export class MetaProvider implements SocialProvider {
   }
 
   /**
-   * Instagram is containers: one per picture or video, then one to publish. A video (a Reel) is fetched in the
-   * background, so the container is polled until Instagram says it is ready; publishing before that is refused.
+   * Instagram is containers: one per picture or video, then one to publish. A video (a Reel) is fetched by Instagram in
+   * the background, so it is not waited for here: the container is handed back as a ticket and `checkPublish` publishes
+   * it once Instagram says it is ready. Pictures are ready at once and are published straight away.
    */
-  private async publishToInstagram(input: PublishInput): Promise<PublishResult> {
+  private async publishToInstagram(input: PublishInput): Promise<PublishResult | PendingPublishResult> {
     const media = input.mediaUrls;
     if (!media.length)
       throw new ProviderError('Instagram needs an image or a video. Add one before publishing.', this.network);
@@ -285,62 +284,75 @@ export class MetaProvider implements SocialProvider {
         body: form({ access_token: input.accessToken, ...fields }),
       });
 
-    let creationId: string;
+    const note = input.linkUrl ? 'Links in an Instagram caption are not clickable.' : null;
     if (media.length === 1) {
-      const isVideo = videos.length === 1;
-      creationId = (
-        await create({
-          caption: input.body,
-          ...(isVideo ? { video_url: media[0]!, media_type: 'REELS' } : { image_url: media[0]! }),
-        })
-      ).id;
-      if (isVideo) await this.waitUntilReady(creationId, input.accessToken);
-    } else {
-      const children: string[] = [];
-      for (const image of media) children.push((await create({ image_url: image, is_carousel_item: 'true' })).id);
-      creationId = (await create({ media_type: 'CAROUSEL', children: children.join(','), caption: input.body })).id;
+      if (videos.length === 1) {
+        const container = await create({ caption: input.body, video_url: media[0]!, media_type: 'REELS' });
+        return { pending: { ticket: container.id, data: { note }, checkAfterSeconds: 15 } };
+      }
+      const container = await create({ caption: input.body, image_url: media[0]! });
+      return this.finishInstagram(input.externalId, input.accessToken, container.id, note);
     }
+    const children: string[] = [];
+    for (const image of media) children.push((await create({ image_url: image, is_carousel_item: 'true' })).id);
+    const carousel = await create({ media_type: 'CAROUSEL', children: children.join(','), caption: input.body });
+    return this.finishInstagram(input.externalId, input.accessToken, carousel.id, note);
+  }
 
-    const published = await this.call<{ id: string }>(this.url(`${input.externalId}/media_publish`), {
+  /** The last step: publishes a finished container and looks up its link. */
+  private async finishInstagram(
+    externalId: string,
+    accessToken: string,
+    creationId: string,
+    note: string | null,
+  ): Promise<PublishResult> {
+    const published = await this.call<{ id: string }>(this.url(`${externalId}/media_publish`), {
       method: 'POST',
-      body: form({ access_token: input.accessToken, creation_id: creationId }),
+      body: form({ access_token: accessToken, creation_id: creationId }),
     });
     let permalink: string | null = null;
     try {
       const details = await this.call<{ permalink?: string }>(
-        this.url(`${published.id}?${form({ fields: 'permalink', access_token: input.accessToken })}`),
+        this.url(`${published.id}?${form({ fields: 'permalink', access_token: accessToken })}`),
       );
       permalink = details.permalink ?? null;
     } catch {
       // The post is up; a missing link is not worth failing it for.
     }
-    return {
-      externalPostId: published.id,
-      permalink,
-      note: input.linkUrl ? 'Links in an Instagram caption are not clickable.' : null,
-    };
+    return { externalPostId: published.id, permalink, note };
   }
 
-  private async waitUntilReady(containerId: string, accessToken: string) {
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-      const status = await this.call<{ status_code?: string; status?: string }>(
-        this.url(`${containerId}?${form({ fields: 'status_code,status', access_token: accessToken })}`),
-      );
-      if (status.status_code === 'FINISHED') return;
-      if (status.status_code === 'ERROR' || status.status_code === 'EXPIRED') {
-        throw new ProviderError(
-          `Instagram could not process the video${status.status ? `: ${status.status}` : '.'}`,
-          this.network,
-        );
-      }
-      await this.wait(5000);
+  /**
+   * Looks at a Reel's container. Still processing: wait. Finished: publish it. Failed or expired: nothing was posted.
+   * If the publish step is sent and never answered, the post may be up, so that is reported as uncertain and is never
+   * repeated; a failed look at the container itself is only a failed look, and is thrown for the caller to retry.
+   */
+  async checkPublish(input: CheckPublishInput): Promise<CheckPublishResult> {
+    if (this.network !== 'instagram') {
+      return { state: 'failed', message: 'Facebook publishes at once, so there is nothing to wait for.' };
     }
-    // Nothing was published yet, so this is a definite failure and safe to retry later.
-    throw new ProviderError(
-      'Instagram is still processing the video. Nothing was posted; try again in a few minutes.',
-      this.network,
-      'rate_limit',
+    const status = await this.call<{ status_code?: string; status?: string }>(
+      this.url(`${input.ticket}?${form({ fields: 'status_code,status', access_token: input.accessToken })}`),
     );
+    if (status.status_code === 'ERROR' || status.status_code === 'EXPIRED') {
+      return {
+        state: 'failed',
+        message: `Instagram could not process the video${status.status ? `: ${status.status}` : '.'}`,
+      };
+    }
+    if (status.status_code !== 'FINISHED') return { state: 'processing' };
+    try {
+      const note = typeof input.data?.note === 'string' ? input.data.note : null;
+      return {
+        state: 'ready',
+        result: await this.finishInstagram(input.externalId, input.accessToken, input.ticket, note),
+      };
+    } catch (error) {
+      if (error instanceof ProviderError && error.unknownOutcome) {
+        return { state: 'uncertain', message: error.message };
+      }
+      throw error;
+    }
   }
 
   async findRecentPost(input: {

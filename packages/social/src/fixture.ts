@@ -1,5 +1,9 @@
 import {
   type AuthUrlInput,
+  type CheckPublishInput,
+  type CheckPublishResult,
+  type PendingPublishResult,
+  isPendingPublish,
   type CredentialConnection,
   type CredentialField,
   type ExchangeCodeInput,
@@ -35,7 +39,10 @@ export class FixtureSocialProvider implements SocialProvider {
   readonly messages: MessageReplyInput[] = [];
   /** Makes the next reply fail like a real network: `auth`, `rate_limit` or `drop` (sent, never answered). */
   nextReply: 'auth' | 'rate_limit' | 'drop' | null = null;
-  next: 'auth' | 'rate_limit' | 'refuse' | 'drop' | 'drop_and_lose' | null = null;
+  next: 'auth' | 'rate_limit' | 'refuse' | 'drop' | 'drop_and_lose' | 'pending' | null = null;
+  /** What the following looks at a pending publish find, in order. When empty, a look finds the post ready. */
+  checks: ('processing' | 'ready' | 'failed' | 'uncertain' | 'auth' | 'rate_limit' | 'lost')[] = [];
+  readonly checked: CheckPublishInput[] = [];
   incoming: ProviderComment[] = [];
   /** What `listAccounts` returns: tests add more to exercise choosing between several pages. */
   accounts: ProviderAccount[] = [{ externalId: 'fixture-account', name: 'Fixture account', kind: 'page' }];
@@ -89,7 +96,7 @@ export class FixtureSocialProvider implements SocialProvider {
     return Promise.resolve(this.accounts);
   }
 
-  publishPost(input: PublishInput): Promise<PublishResult> {
+  publishPost(input: PublishInput): Promise<PublishResult | PendingPublishResult> {
     const behaviour = this.next;
     this.next = null;
     if (behaviour === 'auth')
@@ -99,6 +106,12 @@ export class FixtureSocialProvider implements SocialProvider {
     if (behaviour === 'refuse')
       return Promise.reject(new ProviderError('The network refused this post.', this.network, 'other', 400));
     const externalPostId = `fixture-post-${(this.counter += 1)}`;
+    if (behaviour === 'pending') {
+      // Nothing is on the network until a look finds it ready, which is when the post is recorded.
+      return Promise.resolve({
+        pending: { ticket: `ticket-${externalPostId}`, data: { externalPostId }, checkAfterSeconds: 15 },
+      });
+    }
     if (behaviour === 'drop') {
       this.posts.push({ ...input, externalPostId, at: new Date() });
       return Promise.reject(
@@ -114,8 +127,39 @@ export class FixtureSocialProvider implements SocialProvider {
     return Promise.resolve({ externalPostId, permalink: `https://fixture.test/${externalPostId}` });
   }
 
-  schedulePost(input: PublishInput) {
-    return this.publishPost(input);
+  checkPublish(input: CheckPublishInput): Promise<CheckPublishResult> {
+    this.checked.push(input);
+    const outcome = this.checks.shift() ?? 'ready';
+    const externalPostId = String(input.data?.externalPostId ?? 'fixture-post-0');
+    if (outcome === 'processing') return Promise.resolve({ state: 'processing' });
+    if (outcome === 'failed') return Promise.resolve({ state: 'failed', message: 'The network could not process it.' });
+    if (outcome === 'uncertain')
+      return Promise.resolve({ state: 'uncertain', message: 'Connection closed before the network answered.' });
+    if (outcome === 'auth')
+      return Promise.reject(new ProviderError('The token is invalid.', this.network, 'auth', 401));
+    if (outcome === 'rate_limit')
+      return Promise.reject(new ProviderError('Too many requests.', this.network, 'rate_limit', 429));
+    if (outcome === 'lost') {
+      return Promise.reject(new ProviderError('Could not reach the network.', this.network, 'other', undefined, true));
+    }
+    this.posts.push({
+      accessToken: input.accessToken,
+      externalId: input.externalId,
+      body: input.body,
+      mediaUrls: [],
+      externalPostId,
+      at: new Date(),
+    });
+    return Promise.resolve({
+      state: 'ready',
+      result: { externalPostId, permalink: `https://fixture.test/${externalPostId}` },
+    });
+  }
+
+  async schedulePost(input: PublishInput): Promise<PublishResult> {
+    const result = await this.publishPost(input);
+    if (isPendingPublish(result)) throw new ProviderError('The fixture does not schedule pending posts.', this.network);
+    return result;
   }
 
   findRecentPost(input: { bodyStart: string; since: Date }): Promise<FoundPost | null> {

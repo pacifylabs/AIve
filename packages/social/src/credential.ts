@@ -3,6 +3,7 @@ import {
   type CredentialConnection,
   type CredentialField,
   type ExchangeCodeInput,
+  type PendingPublishResult,
   type PostRef,
   type ProviderAccount,
   ProviderError,
@@ -59,7 +60,7 @@ export abstract class CredentialProvider implements SocialProvider {
   }
 
   abstract connectWithCredentials(input: Record<string, string>): Promise<CredentialConnection>;
-  abstract publishPost(input: PublishInput): Promise<PublishResult>;
+  abstract publishPost(input: PublishInput): Promise<PublishResult | PendingPublishResult>;
   abstract fetchMetrics(input: PostRef): Promise<Record<string, number>>;
 
   /** One filled-in box, trimmed, or a message that names the box. */

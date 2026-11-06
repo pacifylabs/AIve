@@ -110,28 +110,75 @@ describe('MetaProvider', () => {
     expect(body(calls[1]!)).toMatchObject({ creation_id: 'container-1' });
   });
 
-  it('a Reel waits for the container, and gives up as retryable if it never finishes', async () => {
-    const ready = scripted({ id: 'c' }, { status_code: 'IN_PROGRESS' }, { status_code: 'FINISHED' }, { id: 'm' }, {});
-    const ok = await new MetaProvider('instagram', meta, {
-      fetcher: ready.fetcher,
-      sleep: () => Promise.resolve(),
-    }).publishPost({
+  it('hands a Reel back as a ticket instead of waiting, and carries the link note along', async () => {
+    const { fetcher, calls } = scripted({ id: 'container-7' });
+    const result = await new MetaProvider('instagram', meta, { fetcher }).publishPost({
       accessToken: 't',
       externalId: 'ig',
       body: 'x',
+      linkUrl: 'https://example.com',
       mediaUrls: ['https://cdn.test/a.mp4'],
     });
-    expect(ok.externalPostId).toBe('m');
+    expect(result).toEqual({
+      pending: {
+        ticket: 'container-7',
+        data: { note: 'Links in an Instagram caption are not clickable.' },
+        checkAfterSeconds: 15,
+      },
+    });
+    // One call, to make the container. Nothing was published and nothing was waited for.
+    expect(calls).toHaveLength(1);
+    expect(body(calls[0]!)).toMatchObject({ video_url: 'https://cdn.test/a.mp4', media_type: 'REELS' });
+  });
 
-    const stuck = scripted({ id: 'c' }, ...Array.from({ length: 12 }, () => ({ status_code: 'IN_PROGRESS' })));
+  it('looks at a Reel’s container: still processing, then publishes it once it is finished', async () => {
+    const input = { accessToken: 't', externalId: 'ig', ticket: 'container-7', data: { note: null }, body: 'x' };
+
+    const waiting = scripted({ status_code: 'IN_PROGRESS' });
+    expect(await new MetaProvider('instagram', meta, { fetcher: waiting.fetcher }).checkPublish(input)).toEqual({
+      state: 'processing',
+    });
+    expect(waiting.calls).toHaveLength(1);
+
+    const done = scripted(
+      { status_code: 'FINISHED' },
+      { id: 'media-9' },
+      { permalink: 'https://instagram.com/reel/abc' },
+    );
+    expect(await new MetaProvider('instagram', meta, { fetcher: done.fetcher }).checkPublish(input)).toEqual({
+      state: 'ready',
+      result: { externalPostId: 'media-9', permalink: 'https://instagram.com/reel/abc', note: null },
+    });
+    expect(body(done.calls[1]!)).toMatchObject({ creation_id: 'container-7' });
+  });
+
+  it('reports a Reel Instagram could not process as failed, and an expired one too', async () => {
+    const input = { accessToken: 't', externalId: 'ig', ticket: 'c', data: null, body: 'x' };
+    for (const code of ['ERROR', 'EXPIRED']) {
+      const { fetcher } = scripted({ status: 200, body: { status_code: code, status: 'Video is too long' } });
+      await expect(new MetaProvider('instagram', meta, { fetcher }).checkPublish(input)).resolves.toMatchObject({
+        state: 'failed',
+        message: expect.stringContaining('could not process the video'),
+      });
+    }
+  });
+
+  it('never repeats the publish step: an unanswered one is uncertain, a failed look is only thrown', async () => {
+    const input = { accessToken: 't', externalId: 'ig', ticket: 'c', data: null, body: 'x' };
+    const lost = scripted({ status_code: 'FINISHED' }, new Error('socket hang up'));
+    expect(await new MetaProvider('instagram', meta, { fetcher: lost.fetcher }).checkPublish(input)).toMatchObject({
+      state: 'uncertain',
+    });
+    expect(lost.calls).toHaveLength(2);
+
+    // The look itself failing says nothing about the post: it is thrown so the caller can look again.
+    const noLook = scripted(new Error('socket hang up'));
     await expect(
-      new MetaProvider('instagram', meta, { fetcher: stuck.fetcher, sleep: () => Promise.resolve() }).publishPost({
-        accessToken: 't',
-        externalId: 'ig',
-        body: 'x',
-        mediaUrls: ['https://cdn.test/a.mp4'],
-      }),
-    ).rejects.toMatchObject({ kind: 'rate_limit', unknownOutcome: false });
+      new MetaProvider('instagram', meta, { fetcher: noLook.fetcher }).checkPublish(input),
+    ).rejects.toMatchObject({
+      unknownOutcome: true,
+    });
+    expect(noLook.calls).toHaveLength(1);
   });
 
   it('finds a post that went up by its first words, but not an older or different one', async () => {

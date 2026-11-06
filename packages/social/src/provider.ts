@@ -92,6 +92,48 @@ export interface PublishResult {
   note?: string | null;
 }
 
+/**
+ * The network took the post and is still working on it (a video being processed). `ticket` is what to ask about later.
+ * Nothing is posted yet, or may be: a provider returns this only for work it can ask about again with `checkPublish`.
+ */
+export interface PendingPublish {
+  /** What to ask the network about. For Instagram, the container's id. */
+  ticket: string;
+  /** Anything else the provider needs to finish, kept with the ticket. Never holds a secret. */
+  data?: Record<string, unknown>;
+  /** Seconds to wait before the first look. */
+  checkAfterSeconds?: number;
+}
+
+/** What `publishPost` gives back instead of a result when the network is still working. */
+export interface PendingPublishResult {
+  pending: PendingPublish;
+}
+
+export const isPendingPublish = (result: PublishResult | PendingPublishResult): result is PendingPublishResult =>
+  'pending' in result;
+
+/** Everything `checkPublish` needs: the ticket, the account's login, and what `publishPost` kept with the ticket. */
+export interface CheckPublishInput {
+  accessToken: string;
+  externalId: string;
+  ticket: string;
+  data?: Record<string, unknown> | null;
+  /** The post's own words, so a provider can look for it when it must. */
+  body: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+/**
+ * What a look at a pending publish found. `ready` means the post is up (a provider finishes the last step itself when
+ * the network is ready). `uncertain` means the last step was sent and not answered: it may be up, and is never repeated.
+ */
+export type CheckPublishResult =
+  | { state: 'processing'; checkAfterSeconds?: number }
+  | { state: 'ready'; result: PublishResult }
+  | { state: 'failed'; message: string }
+  | { state: 'uncertain'; message: string };
+
 export interface PostRef {
   accessToken: string;
   externalId: string;
@@ -149,7 +191,13 @@ export interface SocialProvider {
   exchangeCode(input: ExchangeCodeInput): Promise<ProviderTokens>;
   refreshToken(refreshToken: string): Promise<ProviderTokens>;
   listAccounts(tokens: ProviderTokens): Promise<ProviderAccount[]>;
-  publishPost(input: PublishInput): Promise<PublishResult>;
+  /**
+   * Puts the post on the network. A network that takes time (a video) may answer with a ticket instead of a result; the
+   * provider must then also implement `checkPublish`.
+   */
+  publishPost(input: PublishInput): Promise<PublishResult | PendingPublishResult>;
+  /** Asks about a ticket from `publishPost`. Never publishes the same post twice: see CheckPublishResult. */
+  checkPublish?(input: CheckPublishInput): Promise<CheckPublishResult>;
   /** Hand the post to the network to publish later. Only called when `supportsNativeScheduling` is true. */
   schedulePost(input: PublishInput): Promise<PublishResult>;
   /**
