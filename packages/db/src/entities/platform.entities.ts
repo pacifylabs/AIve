@@ -74,6 +74,7 @@ export class CompanyFact extends WorkspaceScopedEntity {
 
 export type StaffState = 'active' | 'paused' | 'archived';
 export type Autonomy = 'off' | 'draft' | 'act';
+export type AutopilotMode = 'off' | 'ask' | 'auto';
 
 @Entity('staff_members')
 export class StaffMember extends WorkspaceScopedEntity {
@@ -135,6 +136,20 @@ export class StaffTaskSetting extends WorkspaceScopedEntity {
 
   @Column({ type: 'varchar', length: 300, nullable: true })
   demotedReason: string | null;
+
+  /** What the owner wants: never offer autopilot, offer it when the rules are met, or switch it on by itself. */
+  @Column({ type: 'varchar', length: 8, default: 'ask' })
+  autopilotMode: AutopilotMode;
+
+  /** The owner's overrides of the role's promotion rule. Read through `resolveAutopilotRules`, which clamps them. */
+  @Column({ type: 'jsonb', default: {} })
+  autopilotRules: Record<string, number | null>;
+
+  @Column({ type: 'uuid', nullable: true })
+  autopilotChangedBy: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  autopilotChangedAt: Date | null;
 }
 
 @Entity('promotion_offers')

@@ -5,6 +5,8 @@ export * from './fetch/safe-fetch.js';
 export * from './guardrails/index.js';
 export * from './platform/account-tokens.js';
 export * from './platform/approvals.js';
+export * from './platform/autopilot-service.js';
+export * from './platform/autopilot.js';
 export * from './platform/brain.js';
 export * from './platform/budget.js';
 export * from './platform/effects.js';

@@ -4,6 +4,7 @@ import {
   AuditEntry,
   type DataSource,
   type EntityManager,
+  In,
   PromotionOffer,
   StaffMember,
   StaffTaskSetting,
@@ -13,6 +14,7 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 import type { RoleRegistry } from '../roles/registry.js';
 import type { Effect } from '../roles/types.js';
+import { autopilotProgress, recentDecisions, resolveAutopilotRules } from './autopilot.js';
 import { EffectExecutor, withApprovedPayload } from './effects.js';
 
 export class WorkItemNotPendingError extends Error {}
@@ -45,7 +47,7 @@ export function editRatio(before: Record<string, unknown>, after: Record<string,
   return Math.min(1, previous[b.length]! / Math.max(a.length, b.length));
 }
 
-interface Decider {
+export interface Decider {
   workspaceId: string;
   userId: string;
   ip?: string | null;
@@ -141,7 +143,13 @@ export class ApprovalService {
     await m.update(
       StaffTaskSetting,
       { workspaceId, staffId, taskType },
-      { autonomy: 'draft', demotedAt: this.now(), demotedReason: reason.slice(0, 300), consecutiveRejections: 0 },
+      {
+        autonomy: 'draft',
+        autopilotMode: 'ask',
+        demotedAt: this.now(),
+        demotedReason: reason.slice(0, 300),
+        consecutiveRejections: 0,
+      },
     );
     const { task } = this.registry.task(taskType);
     await m.save(
@@ -158,63 +166,103 @@ export class ApprovalService {
   }
 
   /**
-   * Nightly: offers promotion for tasks with a clean record. Offered, never applied: only a person accepts. A task
-   * demoted inside the window is not offered again until its record is clean after the demotion.
+   * Nightly: for tasks still waiting for approval, checks the owner's rules (the role's, where the owner set none). Where
+   * the owner chose "ask" it offers promotion for a person to accept; where they chose "auto" it switches the task to
+   * acting on its own. A task demoted inside the window is not considered again until its record is clean after the
+   * demotion. Returns how many offers and promotions were made.
    */
   async evaluatePromotions(): Promise<number> {
-    const now = this.now();
-    return asSystem(this.db, 'promotion evaluator: offer promotions for tasks with a clean record', async (m) => {
-      const candidates = await m.find(StaffTaskSetting, { where: { autonomy: 'draft' } });
-      let offered = 0;
-      for (const setting of candidates) {
-        if (!this.registry.hasTask(setting.taskType)) continue;
-        const { task } = this.registry.task(setting.taskType);
-        const rule = task.promotion;
-        if (!rule || task.risk !== 'acts_external') continue;
+    return asSystem(
+      this.db,
+      'promotion evaluator: offer or apply promotions for tasks that met the rules',
+      async (m) => {
+        const candidates = await m.find(StaffTaskSetting, {
+          where: { autonomy: 'draft', autopilotMode: In(['ask', 'auto']) },
+        });
+        let changed = 0;
+        for (const setting of candidates) {
+          if ((await this.evaluateSetting(m, setting)) !== 'none') changed += 1;
+        }
+        return changed;
+      },
+    );
+  }
 
-        const since = new Date(now.getTime() - rule.windowDays * 86_400_000);
-        const from = setting.demotedAt && setting.demotedAt > since ? setting.demotedAt : since;
-        const rows = (await m.query(
-          `SELECT state, edit_ratio::float AS ratio FROM work_items
-            WHERE workspace_id = $1 AND staff_id = $2 AND task_type = $3 AND decided_at >= $4
-              AND state IN ('approved', 'edited', 'rejected')`,
-          [setting.workspaceId, setting.staffId, setting.taskType, from],
-        )) as { state: string; ratio: number | null }[];
-        const approvals = rows.filter((row) => row.state !== 'rejected');
-        if (approvals.length < rule.approvals || rows.some((row) => row.state === 'rejected')) continue;
-
-        const ratios = approvals.map((row) => row.ratio ?? 0).sort((a, b) => a - b);
-        const median = ratios[Math.floor(ratios.length / 2)] ?? 0;
-        if (median > rule.maxMedianEditRatio) continue;
-
-        const inserted = (await m.query(
-          `INSERT INTO promotion_offers (id, workspace_id, staff_id, task_type, evidence)
-           VALUES ($5, $1, $2, $3, $4)
-           ON CONFLICT (staff_id, task_type) WHERE state = 'offered' DO NOTHING RETURNING id`,
-          [
-            setting.workspaceId,
-            setting.staffId,
-            setting.taskType,
-            JSON.stringify({ approvals: approvals.length, medianEditRatio: median, windowDays: rule.windowDays }),
-            uuidv7(),
-          ],
-        )) as { id: string }[];
-        if (!inserted.length) continue;
-        offered += 1;
-        await m.save(
-          m.create(ActivityEvent, {
-            workspaceId: setting.workspaceId,
-            staffId: setting.staffId,
-            actor: 'system',
-            type: 'autonomy.promotion_offered',
-            summary: `${task.name} has a clean record: ${approvals.length} approvals. You can let it act on its own.`,
-            detail: { taskType: setting.taskType },
-            costUsd: null,
-          }),
-        );
-      }
-      return offered;
+  /** The same check for one task, run when the owner changes its rules so the answer does not wait for the night. */
+  async evaluateOne(workspaceId: string, staffId: string, taskType: string): Promise<'offered' | 'promoted' | 'none'> {
+    return asSystem(this.db, 'promotion evaluator: check one task after its rules changed', async (m) => {
+      const setting = await m.findOneBy(StaffTaskSetting, { workspaceId, staffId, taskType });
+      if (!setting || setting.autonomy !== 'draft' || setting.autopilotMode === 'off') return 'none';
+      return this.evaluateSetting(m, setting);
     });
+  }
+
+  private async evaluateSetting(m: EntityManager, setting: StaffTaskSetting): Promise<'offered' | 'promoted' | 'none'> {
+    if (!this.registry.hasTask(setting.taskType)) return 'none';
+    const { task } = this.registry.task(setting.taskType);
+    if (!task.promotion || task.risk !== 'acts_external') return 'none';
+
+    const now = this.now();
+    const rules = resolveAutopilotRules(task.promotion, setting.autopilotRules);
+    const rows = await recentDecisions(m, setting, rules, now);
+    const progress = autopilotProgress(rows, rules);
+    if (!progress.met) return 'none';
+
+    const evidence = {
+      approvals: progress.approvals,
+      medianEditRatio: progress.medianEditRatio,
+      windowDays: rules.windowDays,
+    };
+
+    if (setting.autopilotMode === 'auto') {
+      await m.update(
+        StaffTaskSetting,
+        { id: setting.id, workspaceId: setting.workspaceId },
+        { autonomy: 'act', consecutiveRejections: 0 },
+      );
+      await m.save(
+        m.create(AuditEntry, {
+          workspaceId: setting.workspaceId,
+          userId: null,
+          action: 'autonomy.promoted_auto',
+          target: setting.id,
+          detail: { staffId: setting.staffId, taskType: setting.taskType, ...evidence, maxPerDay: rules.maxPerDay },
+          ip: null,
+        }),
+      );
+      await m.save(
+        m.create(ActivityEvent, {
+          workspaceId: setting.workspaceId,
+          staffId: setting.staffId,
+          actor: 'system',
+          type: 'autonomy.promoted_auto',
+          summary: `${task.name} is now on autopilot: ${progress.approvals} approvals with few edits. Up to ${rules.maxPerDay} a day go out without review.`,
+          detail: { taskType: setting.taskType },
+          costUsd: null,
+        }),
+      );
+      return 'promoted';
+    }
+
+    const inserted = (await m.query(
+      `INSERT INTO promotion_offers (id, workspace_id, staff_id, task_type, evidence)
+       VALUES ($5, $1, $2, $3, $4)
+       ON CONFLICT (staff_id, task_type) WHERE state = 'offered' DO NOTHING RETURNING id`,
+      [setting.workspaceId, setting.staffId, setting.taskType, JSON.stringify(evidence), uuidv7()],
+    )) as { id: string }[];
+    if (!inserted.length) return 'none';
+    await m.save(
+      m.create(ActivityEvent, {
+        workspaceId: setting.workspaceId,
+        staffId: setting.staffId,
+        actor: 'system',
+        type: 'autonomy.promotion_offered',
+        summary: `${task.name} has a clean record: ${progress.approvals} approvals. You can let it act on its own.`,
+        detail: { taskType: setting.taskType },
+        costUsd: null,
+      }),
+    );
+    return 'offered';
   }
 
   async decidePromotion(by: Decider, offerId: string, accept: boolean) {

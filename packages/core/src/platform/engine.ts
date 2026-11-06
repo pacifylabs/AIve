@@ -16,6 +16,7 @@ import { Cancel, Defer } from '../errors.js';
 import { applyGuardrails } from '../guardrails/index.js';
 import type { RoleRegistry } from '../roles/registry.js';
 import type { AutonomyLevel, Effect, TaskContext, TaskDefinition } from '../roles/types.js';
+import { autoActionsInLastDay, resolveAutopilotRules } from './autopilot.js';
 import { BudgetService } from './budget.js';
 import { assertAllowedAtAutonomy, EffectExecutor } from './effects.js';
 import type { SocialGateway } from './social-gateway.js';
@@ -203,7 +204,14 @@ export class TaskEngine {
         where: { workspaceId, supersededAt: IsNull(), confirmedAt: Not(IsNull()) },
         order: { createdAt: 'ASC' },
       });
-      return { staff, autonomy: (setting?.autonomy ?? task.defaultAutonomy) as AutonomyLevel, profile, facts };
+      let autonomy = (setting?.autonomy ?? task.defaultAutonomy) as AutonomyLevel;
+      if (autonomy === 'act' && setting && task.risk === 'acts_external' && task.promotion) {
+        // Autopilot's daily limit: past it, this run is a draft for a person, and tomorrow it acts alone again.
+        const { maxPerDay } = resolveAutopilotRules(task.promotion, setting.autopilotRules);
+        const done = await autoActionsInLastDay(m, setting, this.now());
+        if (done >= maxPerDay) autonomy = 'draft';
+      }
+      return { staff, autonomy, profile, facts };
     });
 
     if (loaded.staff.state !== 'active') {
