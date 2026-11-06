@@ -140,7 +140,11 @@ export async function saveSignatureAction(_state: FormState, data: FormData): Pr
   });
   if (!result.ok) return failed(result.problem, data, '/app/accounts', ['signature']);
   revalidatePath('/app/accounts');
-  return { notice: signature ? 'Sign-off saved. New drafts will end with it.' : 'Sign-off removed.' };
+  // The text is echoed back so the box keeps it: React empties an uncontrolled box after a form action.
+  return {
+    notice: signature ? 'Sign-off saved. New drafts will end with it.' : 'Sign-off removed.',
+    values: { signature },
+  };
 }
 
 // ---- Feeds -------------------------------------------------------------------------------------------------
