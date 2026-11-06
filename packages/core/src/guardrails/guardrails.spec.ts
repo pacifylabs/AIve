@@ -10,6 +10,7 @@ import {
   lengthOnNetwork,
   OPT_OUT_LINE,
   optOutPresent,
+  postProblem,
 } from './index.js';
 
 type Draft = { subject: string; body: string };
@@ -96,6 +97,27 @@ describe('bannedTerms', () => {
 
   it('matches whole words only', () => {
     expect(guard.check({ subject: '', body: 'We guaranteedly reply.' }, c).ok).toBe(true);
+  });
+});
+
+describe('postProblem', () => {
+  it('says how far over a network’s limit a post is, counting the link where the publisher adds it to the text', () => {
+    expect(postProblem({ network: 'x', body: 'a'.repeat(280), mediaUrls: [] })).toBeNull();
+    expect(postProblem({ network: 'x', body: 'a'.repeat(281), mediaUrls: [] })).toMatch(/1 character over the 280/);
+    // The link is its own line after the words, and any link counts as 23 on X.
+    expect(
+      postProblem({ network: 'x', body: 'a'.repeat(260), linkUrl: 'https://example.com/a', mediaUrls: [] }),
+    ).toMatch(/over the 280/);
+    expect(
+      postProblem({ network: 'facebook', body: 'a'.repeat(260), linkUrl: 'https://example.com/a', mediaUrls: [] }),
+    ).toBeNull();
+  });
+
+  it('needs a picture or video for Instagram and a video for TikTok', () => {
+    expect(postProblem({ network: 'instagram', body: 'hi', mediaUrls: [] })).toMatch(/picture or a video/);
+    expect(postProblem({ network: 'instagram', body: 'hi', mediaUrls: ['https://c.test/a.jpg'] })).toBeNull();
+    expect(postProblem({ network: 'tiktok', body: 'hi', mediaUrls: ['https://c.test/a.jpg'] })).toMatch(/need a video/);
+    expect(postProblem({ network: 'tiktok', body: 'hi', mediaUrls: ['https://c.test/a.mp4'] })).toBeNull();
   });
 });
 

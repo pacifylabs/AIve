@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { createPublishIntent, postProblem, zonedTimeToUtc } from '@ai-staff/core';
 import {
   AuditEntry,
   ConnectedAccount,
@@ -7,6 +8,8 @@ import {
   In,
   PublishIntent,
   SocialPost,
+  StaffMember,
+  Workspace,
   withTenant,
 } from '@ai-staff/db';
 import { v7 as uuidv7 } from 'uuid';
@@ -142,5 +145,99 @@ export class SocialPostsService {
     return m.save(
       m.create(AuditEntry, { workspaceId: ctx.workspaceId, userId: ctx.userId, action, target, detail: {} }),
     );
+  }
+
+  /**
+   * A post a person writes by hand. The person is the one approving it, so it is queued at once, for the time they chose
+   * or now, under the workspace's Social Media Staff member, which is what the publisher needs to send it. Length and the
+   * media a network needs are checked first, for every account, so nothing is half queued.
+   */
+  compose(
+    ctx: WorkspaceContext,
+    input: {
+      requestId: string;
+      accountIds: string[];
+      body: string;
+      firstComment?: string | undefined;
+      mediaUrls: string[];
+      linkUrl?: string | undefined;
+      scheduledLocal?: string | undefined;
+    },
+  ) {
+    return this.tx(ctx, async (m) => {
+      const staff = await m.findOne(StaffMember, {
+        where: { workspaceId: ctx.workspaceId, roleKey: 'social_media', state: 'active' },
+        order: { createdAt: 'ASC' },
+      });
+      if (!staff) throw AppError.conflict('Hire a Social Media Staff member first: posts go out under theirs.');
+      const wanted = [...new Set(input.accountIds)];
+      const accounts = await m.find(ConnectedAccount, { where: { workspaceId: ctx.workspaceId, id: In(wanted) } });
+      const problems: { path: string; message: string }[] = [];
+      if (accounts.length !== wanted.length) {
+        problems.push({ path: 'accountIds', message: 'One of those accounts is not connected.' });
+      }
+      for (const account of accounts) {
+        if (account.health === 'broken') {
+          problems.push({ path: 'accountIds', message: `${account.name} needs to be reconnected first.` });
+          continue;
+        }
+        const problem = postProblem({
+          network: account.network,
+          body: input.body,
+          linkUrl: input.linkUrl,
+          mediaUrls: input.mediaUrls,
+        });
+        if (problem) problems.push({ path: 'body', message: `${account.name}: ${problem}` });
+      }
+
+      const now = new Date();
+      let when = now;
+      if (input.scheduledLocal) {
+        const workspace = await m.findOneByOrFail(Workspace, { id: ctx.workspaceId });
+        const [date, time] = input.scheduledLocal.split('T') as [string, string];
+        when = zonedTimeToUtc(date, time, workspace.timezone);
+        if (Number.isNaN(when.getTime()))
+          problems.push({ path: 'scheduledLocal', message: 'That is not a real time.' });
+        else if (when.getTime() < now.getTime() - 5 * 60_000) {
+          problems.push({ path: 'scheduledLocal', message: 'That time has passed. Leave it empty to post now.' });
+        } else if (when.getTime() > now.getTime() + 365 * 86_400_000) {
+          problems.push({ path: 'scheduledLocal', message: 'Pick a time within the next year.' });
+        }
+      }
+      if (problems.length) {
+        throw new AppError(400, 'validation_failed', problems[0]!.message, { errors: problems });
+      }
+
+      const results: { accountId: string; postId: string | null; queued: boolean }[] = [];
+      for (const account of accounts) {
+        const made = await createPublishIntent(
+          m,
+          ctx.workspaceId,
+          staff.id,
+          {
+            type: 'createPublishIntent',
+            accountId: account.id,
+            body: input.body,
+            linkUrl: input.linkUrl ?? null,
+            firstComment: input.firstComment ?? null,
+            media: input.mediaUrls,
+            scheduledFor: when.toISOString(),
+            idempotencyKey: `compose:${input.requestId}:${account.id}`,
+          },
+          ctx.userId,
+        );
+        results.push({ accountId: account.id, postId: made.created ? made.postId : null, queued: made.created });
+      }
+      await m.save(
+        m.create(AuditEntry, {
+          workspaceId: ctx.workspaceId,
+          userId: ctx.userId,
+          action: 'social.post_composed',
+          target: staff.id,
+          detail: { accounts: results.length, scheduledFor: when.toISOString() },
+        }),
+      );
+      return results;
+    });
   }
 }

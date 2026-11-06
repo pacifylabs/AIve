@@ -26,6 +26,8 @@ export async function createPublishIntent(
   workspaceId: string,
   staffId: string,
   effect: PublishIntentEffect & { media: string[] },
+  /** Set when a person wrote the post themselves rather than approving a staff draft. */
+  createdBy: string | null = null,
 ): Promise<PublishIntentResult> {
   if (await m.existsBy(PublishIntent, { workspaceId, idempotencyKey: effect.idempotencyKey })) {
     return { created: false, reason: 'Already queued.' };
@@ -51,6 +53,7 @@ export async function createPublishIntent(
       publishedAt: null,
       externalPostId: null,
       permalink: null,
+      createdBy,
     }),
   );
   const intent = await m.save(

@@ -117,6 +117,30 @@ export async function resolvePostAction(data: FormData): Promise<void> {
   revalidatePath('/app/calendar');
 }
 
+// ---- Writing a post by hand ----------------------------------------------------------------------------------
+
+const COMPOSE_FIELDS = ['body', 'firstComment', 'mediaUrls', 'linkUrl', 'scheduledLocal'] as const;
+
+/** Queues a post the person wrote: for every ticked account, now or at the time they chose. */
+export async function composePostAction(_state: FormState, data: FormData): Promise<FormState> {
+  const result = await api<{ postId: string | null; queued: boolean }[]>('/social/posts', {
+    method: 'POST',
+    workspace: true,
+    body: {
+      requestId: field(data, 'requestId'),
+      accountIds: data.getAll('accountId').filter((value): value is string => typeof value === 'string'),
+      body: field(data, 'body'),
+      firstComment: field(data, 'firstComment').trim() || undefined,
+      mediaUrls: lines(field(data, 'mediaUrls')),
+      linkUrl: field(data, 'linkUrl').trim() || undefined,
+      scheduledLocal: field(data, 'scheduledLocal') || undefined,
+    },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/compose', COMPOSE_FIELDS);
+  revalidatePath('/app/calendar');
+  redirect('/app/calendar');
+}
+
 // ---- Sign-offs ---------------------------------------------------------------------------------------------
 
 /** Saves the sign-off added to every post for one account. Empty removes it. It lives in the staff member's settings. */

@@ -24,6 +24,7 @@ export const NAV: NavGroup[] = [
       { label: 'Inbox', href: '/app/inbox', icon: 'inbox', badge: 'inbox' },
       { label: 'Autopilot', href: '/app/autopilot', icon: 'autopilot' },
       { label: 'Calendar', href: '/app/calendar', icon: 'calendar' },
+      { label: 'New post', href: '/app/compose', icon: 'compose' },
     ],
   },
   {

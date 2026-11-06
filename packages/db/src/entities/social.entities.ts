@@ -82,6 +82,10 @@ export class SocialPost extends WorkspaceScopedEntity {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   permalink: string | null;
+
+  /** The person who wrote it by hand in the composer. Null when a staff member drafted it. */
+  @Column({ type: 'uuid', nullable: true })
+  createdBy: string | null;
 }
 
 export type PublishIntentState = 'pending' | 'sending' | 'processing' | 'sent' | 'failed' | 'uncertain' | 'cancelled';

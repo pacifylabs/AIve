@@ -2,6 +2,7 @@ import {
   type Guardrail,
   type GuardrailResult,
   lengthOnNetwork,
+  mediaProblem,
   NETWORK_MAX_CHARACTERS,
   type Network,
   type TaskContext,
@@ -102,19 +103,14 @@ export function fitsNetwork(): Guardrail<PostOutput> {
   };
 }
 
-const VIDEO_LINK = /\.(mp4|mov|m4v|webm)(\?|#|$)/i;
-
 /** Instagram posts are pictures or video, and TikTok posts are video: without that there is nothing to publish. */
 export function requiresMedia(): Guardrail<PostOutput> {
   return {
     name: 'requiresMedia',
     check(output, ctx) {
       const { network, mediaUrls } = target(ctx);
-      if (network === 'instagram' && mediaUrls.length === 0)
-        return fail('Instagram posts need a picture or a video. Add one to this item, then write it again.');
-      if (network === 'tiktok' && !mediaUrls.some((url) => VIDEO_LINK.test(url)))
-        return fail('TikTok posts need a video. Add one to this item, then write it again.');
-      return ok(output);
+      const problem = mediaProblem(network, mediaUrls);
+      return problem ? fail(`${problem} Add one to this item, then write it again.`) : ok(output);
     },
   };
 }

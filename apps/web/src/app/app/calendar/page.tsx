@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { cancelPostAction, resolvePostAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
 
@@ -9,6 +10,8 @@ interface Post {
   state: 'scheduled' | 'published' | 'failed' | 'cancelled';
   scheduledFor: string;
   permalink: string | null;
+  /** Set when a person wrote the post by hand. */
+  createdBy: string | null;
   account: { name: string; network: string; health: string } | null;
   publish: { state: string; error: string | null } | null;
 }
@@ -42,9 +45,14 @@ export default async function CalendarPage() {
 
   return (
     <section className="max-w-3xl space-y-6">
-      <div className="space-y-1">
-        <h1 className="page-title">Calendar</h1>
-        <p className="text-muted">Posts that are scheduled, published or waiting on you. Times are shown in UTC.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="page-title">Calendar</h1>
+          <p className="text-muted">Posts that are scheduled, published or waiting on you. Times are shown in UTC.</p>
+        </div>
+        <Link href="/app/compose" className="btn btn-primary">
+          New post
+        </Link>
       </div>
       {posts.data.length === 0 ? (
         <div className="empty">
@@ -66,7 +74,10 @@ export default async function CalendarPage() {
                       · {post.account?.network} · {new Date(post.scheduledFor).toISOString().slice(11, 16)}
                     </span>
                   </span>
-                  <span className={post.state === 'failed' ? 'text-danger' : 'text-muted'}>{label(post)}</span>
+                  <span className="flex items-center gap-2">
+                    {post.createdBy ? <span className="pill">Written by you</span> : null}
+                    <span className={post.state === 'failed' ? 'text-danger' : 'text-muted'}>{label(post)}</span>
+                  </span>
                 </div>
                 <p className="line-clamp-3 whitespace-pre-wrap text-muted">{post.body}</p>
                 {post.publish?.error && post.state !== 'published' ? (

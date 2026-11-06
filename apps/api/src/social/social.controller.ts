@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import {
   addFeedRequest,
+  composePostRequest,
   connectCredentialsRequest,
   resolvePostRequest,
   selectAccountsRequest,
@@ -110,6 +111,17 @@ export class SocialController {
   @Get('posts')
   postsList(@CurrentWorkspace() ctx: WorkspaceContext, @Query('from') from?: string, @Query('to') to?: string) {
     return this.posts.list(ctx, { from: date(from), to: date(to) });
+  }
+
+  /** Any member may write a post, as any member may approve a draft. It goes out under the Social Media Staff member. */
+  @Post('posts')
+  @HttpCode(201)
+  async compose(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Body(new ZodPipe(composePostRequest)) body: z.output<typeof composePostRequest>,
+  ) {
+    await this.limiter.consume({ key: `social-compose:user:${ctx.userId}`, max: 60, windowSec: 600 });
+    return this.posts.compose(ctx, body);
   }
 
   @Post('posts/:id/cancel')

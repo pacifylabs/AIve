@@ -603,3 +603,115 @@ describe('sign-offs', () => {
     await patch({ signatures: { 'not-an-account': 'hi' } }).expect(400);
   });
 });
+
+describe('writing a post by hand', () => {
+  async function ready(label: string, networks: ('facebook' | 'x' | 'instagram')[] = ['facebook']) {
+    const w = await workspace(label);
+    const accounts: Record<string, string> = {};
+    for (const network of networks) {
+      t.social[network].accounts = [{ externalId: `${network}-1`, name: `${network} page`, kind: 'page' }];
+      const pending = (await signIn(w.as, network)).landed.searchParams.get('pending')!;
+      const [account] = (
+        await t
+          .http()
+          .post(`/v1/social/pending/${pending}/select`)
+          .set(w.as)
+          .send({ externalIds: [`${network}-1`] })
+          .expect(200)
+      ).body as { id: string }[];
+      accounts[network] = account!.id;
+    }
+    await t
+      .http()
+      .post('/v1/staff')
+      .set(w.as)
+      .send({ roleKey: 'social_media', displayName: 'Sam', settings: { accountIds: Object.values(accounts) } })
+      .expect(201);
+    return { ...w, accounts };
+  }
+  const post = (as: Record<string, string>, body: Record<string, unknown>) =>
+    t
+      .http()
+      .post('/v1/social/posts')
+      .set(as)
+      .send({ requestId: uuidv7(), body: 'Hello from us', ...body });
+  const calendar = async (as: Record<string, string>) =>
+    (await t.http().get('/v1/social/posts').set(as).expect(200)).body as {
+      body: string;
+      createdBy: string | null;
+      scheduledFor: string;
+      state: string;
+    }[];
+
+  it('queues the post now for every ticked account, marked as written by the person', async () => {
+    const w = await ready('compose1', ['facebook', 'x']);
+    const response = await post(w.as, { accountIds: Object.values(w.accounts) }).expect(201);
+    expect(response.body).toHaveLength(2);
+    const posts = await calendar(w.as);
+    expect(posts).toHaveLength(2);
+    expect(posts.every((item) => item.state === 'scheduled' && item.createdBy)).toBe(true);
+    expect(Math.abs(new Date(posts[0]!.scheduledFor).getTime() - Date.now())).toBeLessThan(60_000);
+  });
+
+  it('makes one post however many times the same form is sent', async () => {
+    const w = await ready('compose2');
+    const requestId = uuidv7();
+    const body = { requestId, accountIds: [w.accounts.facebook] };
+    await post(w.as, body).expect(201);
+    const again = await post(w.as, body).expect(201);
+    expect(again.body[0].queued).toBe(false);
+    expect(await calendar(w.as)).toHaveLength(1);
+  });
+
+  it('keeps the time the person chose, in the workspace time zone', async () => {
+    const w = await ready('compose3');
+    const future = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    await post(w.as, { accountIds: [w.accounts.facebook], scheduledLocal: `${future}T09:30` }).expect(201);
+    expect((await calendar(w.as))[0]!.scheduledFor).toBe(`${future}T09:30:00.000Z`);
+  });
+
+  it('refuses a post that does not fit one of the accounts, naming it, and queues nothing for any', async () => {
+    const w = await ready('compose4', ['facebook', 'x']);
+    const response = await post(w.as, { accountIds: Object.values(w.accounts), body: 'a'.repeat(300) }).expect(400);
+    expect(response.body.errors).toEqual([
+      { path: 'body', message: expect.stringMatching(/x page: It is 20 characters over the 280/) },
+    ]);
+    expect(await calendar(w.as)).toEqual([]);
+  });
+
+  it('asks for the picture Instagram needs', async () => {
+    const w = await ready('compose5', ['instagram']);
+    const refused = await post(w.as, { accountIds: [w.accounts.instagram] }).expect(400);
+    expect(refused.body.errors[0].message).toMatch(/Instagram posts need a picture or a video/);
+    await post(w.as, { accountIds: [w.accounts.instagram], mediaUrls: ['https://cdn.example.com/a.jpg'] }).expect(201);
+  });
+
+  it('refuses a time that has passed, an empty post, a stranger’s account and a broken account', async () => {
+    const w = await ready('compose6');
+    const other = await ready('compose6b');
+    const body = { accountIds: [w.accounts.facebook] };
+    await post(w.as, { ...body, scheduledLocal: '2020-01-01T09:00' }).expect(400);
+    await post(w.as, { ...body, body: '   ' }).expect(400);
+    await post(w.as, { accountIds: [other.accounts.facebook] }).expect(400);
+    await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) =>
+      m.update(ConnectedAccount, { id: w.accounts.facebook }, { health: 'broken', healthReason: 'Disconnected.' }),
+    );
+    const refused = await post(w.as, body).expect(400);
+    expect(refused.body.errors[0].message).toMatch(/needs to be reconnected/);
+  });
+
+  it('needs a Social Media Staff member, since posts go out under theirs', async () => {
+    const w = await workspace('compose7');
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'P', kind: 'page' }];
+    const pending = (await signIn(w.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(w.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    await post(w.as, { accountIds: [account!.id] }).expect(409);
+  });
+});

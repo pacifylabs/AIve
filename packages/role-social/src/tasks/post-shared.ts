@@ -33,6 +33,9 @@ export function lengthHint(network: Network, reserved = 0): string {
   return limit <= 1_000 ? `Keep it under ${Math.floor(limit * 0.85)} characters.` : 'Keep it short and easy to read.';
 }
 
+/** The link is put on its own line after the words on these networks, so it takes room the model must leave. */
+export const linkSpace = (network: Network): number => (['x', 'telegram', 'discord'].includes(network) ? 24 : 0);
+
 /** Characters a sign-off takes, with the blank line before it. */
 export const signatureSpace = (settings: SocialSettings, accountId: string): number => {
   const signature = signatureFor(settings, accountId);

@@ -190,3 +190,32 @@ export function applyGuardrails<O>(
   }
   return { ok: true, output: current };
 }
+
+const VIDEO_LINK = /\.(mp4|mov|m4v|webm)(\?|#|$)/i;
+
+/** Why a post for this network cannot go out without pictures or video, or null. Shared by drafts and hand-written posts. */
+export function mediaProblem(network: Network, mediaUrls: readonly string[]): string | null {
+  if (network === 'instagram' && mediaUrls.length === 0) return 'Instagram posts need a picture or a video.';
+  if (network === 'tiktok' && !mediaUrls.some((url) => VIDEO_LINK.test(url))) return 'TikTok posts need a video.';
+  return null;
+}
+
+/** Networks whose publisher puts the link on its own line after the words, so it takes room in the post. */
+const LINK_IN_TEXT: readonly Network[] = ['x', 'telegram', 'discord'];
+
+/** Whether a finished post fits its network and has the media it needs. A reason in plain words, or null. */
+export function postProblem(input: {
+  network: Network;
+  body: string;
+  linkUrl?: string | null;
+  mediaUrls: readonly string[];
+}): string | null {
+  const text = input.linkUrl && LINK_IN_TEXT.includes(input.network) ? `${input.body}\n${input.linkUrl}` : input.body;
+  const limit = NETWORK_MAX_CHARACTERS[input.network];
+  const used = lengthOnNetwork(input.network, text);
+  if (used > limit) {
+    const over = used - limit;
+    return `It is ${over} character${over === 1 ? '' : 's'} over the ${limit} that ${input.network} allows.`;
+  }
+  return mediaProblem(input.network, input.mediaUrls);
+}
