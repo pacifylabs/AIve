@@ -1,5 +1,6 @@
 import { connectNetworkAction, disconnectAccountAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
+import { ConnectLoginForm, type LoginField } from './login-form';
 import { PickAccountsForm } from './pick-form';
 
 export const metadata = { title: 'Accounts' };
@@ -16,6 +17,9 @@ interface Network {
   network: string;
   label: string;
   configured: boolean;
+  /** `credentials` networks have no sign-in page: the person pastes a token, app password or webhook address. */
+  auth: 'oauth' | 'credentials';
+  fields: LoginField[];
 }
 interface Pending {
   network: string;
@@ -36,6 +40,10 @@ export default async function AccountsPage({
       : null,
   ]);
   if (!accounts.ok) return <p className="text-danger">{accounts.problem.title}</p>;
+  const usesLogin = new Set(
+    networks.ok ? networks.data.filter((n) => n.auth === 'credentials').map((n) => n.network) : [],
+  );
+  const needsAttention = new Set(accounts.data.filter((account) => account.health !== 'ok').map((a) => a.network));
 
   return (
     <section className="max-w-2xl space-y-8">
@@ -75,7 +83,11 @@ export default async function AccountsPage({
                 ) : null}
               </span>
               <span className="flex items-center gap-4">
-                {account.health !== 'ok' ? (
+                {account.health !== 'ok' && usesLogin.has(account.network) ? (
+                  <a href={`#connect-${account.network}`} className="font-medium text-accent hover:underline">
+                    Reconnect below
+                  </a>
+                ) : account.health !== 'ok' ? (
                   <form action={connectNetworkAction}>
                     <input type="hidden" name="network" value={account.network} />
                     <button type="submit" className="font-medium text-accent hover:underline">
@@ -102,7 +114,18 @@ export default async function AccountsPage({
             ? networks.data.map((network) => (
                 <li key={network.network} className="rounded-xl border border-border bg-surface p-4 text-sm">
                   <p className="font-medium">{network.label}</p>
-                  {network.configured ? (
+                  {network.configured && network.auth === 'credentials' ? (
+                    <details
+                      id={`connect-${network.network}`}
+                      className="mt-2"
+                      open={needsAttention.has(network.network)}
+                    >
+                      <summary className="cursor-pointer font-medium text-accent hover:underline">Connect</summary>
+                      <div className="pt-3">
+                        <ConnectLoginForm network={network.network} fields={network.fields} />
+                      </div>
+                    </details>
+                  ) : network.configured ? (
                     <form action={connectNetworkAction} className="mt-2">
                       <input type="hidden" name="network" value={network.network} />
                       <button type="submit" className="font-medium text-accent hover:underline">

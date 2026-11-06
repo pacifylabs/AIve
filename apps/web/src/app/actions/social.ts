@@ -39,6 +39,36 @@ export async function connectNetworkAction(data: FormData): Promise<void> {
   redirect(result.data.authUrl);
 }
 
+/**
+ * Connects a network that has no sign-in page, from a token, app password or webhook address the person pasted. Boxes
+ * arrive as `plain.<name>` or `secret.<name>`. Only plain ones are sent back to the form after a failure: a secret is
+ * never put back into a page.
+ */
+export async function connectLoginAction(_state: FormState, data: FormData): Promise<FormState> {
+  const network = field(data, 'network');
+  const credentials: Record<string, string> = {};
+  const values: Record<string, string> = {};
+  for (const [key, value] of data.entries()) {
+    if (typeof value !== 'string') continue;
+    if (key.startsWith('plain.')) {
+      credentials[key.slice(6)] = value;
+      values[key] = value;
+    } else if (key.startsWith('secret.')) credentials[key.slice(7)] = value;
+  }
+  const result = await api<{ name: string }[]>(`/social/accounts/connect/${encodeURIComponent(network)}/credentials`, {
+    method: 'POST',
+    workspace: true,
+    body: { credentials },
+  });
+  if (!result.ok) {
+    if (result.problem.status === 401) expired('/app/accounts');
+    return { error: result.problem.errors?.[0]?.message ?? result.problem.title, values };
+  }
+  revalidatePath('/app/accounts');
+  revalidatePath('/app/calendar');
+  return { notice: `Connected ${result.data.map((account) => account.name).join(', ')}.` };
+}
+
 export async function selectAccountsAction(_state: FormState, data: FormData): Promise<FormState> {
   const pending = field(data, 'pending');
   const result = await api(`/social/pending/${encodeURIComponent(pending)}/select`, {
