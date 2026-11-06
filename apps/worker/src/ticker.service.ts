@@ -60,6 +60,12 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
       { pattern: '*/10 * * * *', tz: 'UTC' },
       { name: 'poll_feeds', data: { kind: 'poll_feeds' } },
     );
+    // Every six hours: a login that runs out in two weeks is renewed well before the last day.
+    await this.platform.upsertJobScheduler(
+      'check-accounts',
+      { pattern: '20 */6 * * *', tz: 'UTC' },
+      { name: 'check_accounts', data: { kind: 'check_accounts' } },
+    );
     this.timer = setInterval(() => void this.tick(), this.config.WORKER_TICK_MS);
   }
 

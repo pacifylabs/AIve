@@ -28,6 +28,12 @@ export class AccountTokens {
     const expiring =
       account.tokenExpiresAt && account.tokenExpiresAt.getTime() - this.now().getTime() < REFRESH_AHEAD_MS;
     if (!expiring) return secrets;
+    return this.renew(account, secrets);
+  }
+
+  /** Trades the stored login for a new one now, whatever its expiry says, and stores what comes back. */
+  async renew(account: ConnectedAccount, secrets?: AccountSecrets): Promise<AccountSecrets> {
+    secrets ??= JSON.parse(this.keyring.decrypt(account.secretEnc, accountBinding(account))) as AccountSecrets;
     const refreshed = await this.providers
       .get(account.network)
       .refreshToken(secrets.refreshToken ?? secrets.accessToken);

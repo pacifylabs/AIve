@@ -77,8 +77,9 @@ export default async function AccountsPage({
                 <span className="font-medium">{account.name}</span>
                 <span className="text-muted"> · {account.network}</span>
                 {account.health !== 'ok' ? (
-                  <span className="block text-danger">
-                    Needs to be reconnected{account.healthReason ? `: ${account.healthReason}` : ''}
+                  <span className={account.health === 'degraded' ? 'block text-amber' : 'block text-danger'}>
+                    {account.health === 'degraded' ? 'Needs attention soon' : 'Needs to be reconnected'}
+                    {account.healthReason ? `: ${account.healthReason}` : ''}
                   </span>
                 ) : null}
               </span>

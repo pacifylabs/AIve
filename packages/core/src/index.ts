@@ -3,6 +3,7 @@ export * from './errors.js';
 export * from './fetch/crawl.js';
 export * from './fetch/safe-fetch.js';
 export * from './guardrails/index.js';
+export * from './platform/account-health.js';
 export * from './platform/account-tokens.js';
 export * from './platform/approvals.js';
 export * from './platform/autopilot-service.js';

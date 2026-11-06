@@ -36,4 +36,5 @@ export type PlatformJob =
   | { kind: 'evaluate_promotions' }
   | { kind: 'recheck_dns' }
   | { kind: 'sync_comments' }
-  | { kind: 'poll_feeds' };
+  | { kind: 'poll_feeds' }
+  | { kind: 'check_accounts' };

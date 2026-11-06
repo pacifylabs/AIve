@@ -47,7 +47,7 @@ symbols, which screen readers read badly and search can miss. Not recommended wi
 | P6 | Agency mode: client profiles, roles, approver role | postiz-cheap (roadmap) | Agencies manage many brands | We already have workspaces and RLS; this is a UI and roles question. |
 | P7 | Aggregator for hard networks (TikTok, YouTube, Pinterest) via a paid third-party API | postiz-cheap (uses MuAPI) | Skips per-network app review | **Trade-offs:** vendor holds the user's tokens, lock-in, per-use cost, and their terms bind us. Only as a deliberate Milestone 0 decision. Not planned. |
 | P8 | Browser extension: send a highlighted passage to the staff member as an idea | postiz | Captures ideas where people read | Uses the API from P1 with an "ideas only" key. Page text is untrusted. |
-| P9 | Account health: refresh tokens early, warn before expiry, one-click reconnect | postiz (token refresh) | Today an account only turns `broken` after a post fails | Builds on the existing `broken` state. |
+| P9 | Account health: refresh tokens early, warn before expiry, one-click reconnect | postiz (token refresh) | Today an account only turns `broken` after a post fails | Builds on the existing `broken` state. **Built 2026-11-06:** every six hours a login that runs out within 14 days (Meta, Threads: renewed by trading it for another) is renewed; if that fails, the account is `degraded` three days ahead with the date, `broken` when refused or expired, each with an activity event. Reconnect was already on the Accounts page. Not built: warning by email, and tracking when a refresh token itself runs out (X, TikTok). |
 
 Plain-language write-up with user stories and flowcharts for every item: [IDEAS-EXPLAINED.md](IDEAS-EXPLAINED.md).
 

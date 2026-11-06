@@ -260,7 +260,15 @@ export function StaffCards({ staff, tasks }: { staff: StaffMember[]; tasks: Auto
 
 // ---- Activity ----------------------------------------------------------------------------------------------------
 
-const BAD = new Set(['post.failed', 'account.broken', 'task.dead', 'autonomy.demoted', 'post.uncertain']);
+const BAD = new Set([
+  'post.failed',
+  'account.broken',
+  'account.expired',
+  'task.dead',
+  'autonomy.demoted',
+  'post.uncertain',
+]);
+const WARN = new Set(['account.expiring']);
 const GOOD = new Set(['post.published', 'autonomy.promoted_auto', 'autonomy.promoted']);
 
 export function ActivityCard({ events }: { events: Activity[] }) {
@@ -282,7 +290,7 @@ export function ActivityCard({ events }: { events: Activity[] }) {
               ) : null}
               <span
                 aria-hidden="true"
-                className={`relative mt-1.5 size-[0.6875rem] flex-none rounded-full ring-4 ring-surface ${BAD.has(event.type) ? 'bg-danger' : GOOD.has(event.type) ? 'bg-ok' : 'bg-line-strong'}`}
+                className={`relative mt-1.5 size-[0.6875rem] flex-none rounded-full ring-4 ring-surface ${BAD.has(event.type) ? 'bg-danger' : WARN.has(event.type) ? 'bg-amber' : GOOD.has(event.type) ? 'bg-ok' : 'bg-line-strong'}`}
               />
               <div className="min-w-0 flex-1">
                 <p className="text-sm">{event.summary}</p>
@@ -474,8 +482,12 @@ export function AccountsCard({ accounts }: { accounts: Account[] }) {
               {account.health === 'ok' ? (
                 <span className="pill pill-ok">Healthy</span>
               ) : (
-                <Link href="/app/accounts" className="pill pill-danger" title={account.healthReason ?? undefined}>
-                  Reconnect
+                <Link
+                  href="/app/accounts"
+                  className={account.health === 'degraded' ? 'pill pill-warn' : 'pill pill-danger'}
+                  title={account.healthReason ?? undefined}
+                >
+                  {account.health === 'degraded' ? 'Renew soon' : 'Reconnect'}
                 </Link>
               )}
             </li>

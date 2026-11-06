@@ -39,6 +39,8 @@ export class FixtureSocialProvider implements SocialProvider {
   readonly messages: MessageReplyInput[] = [];
   /** Makes the next reply fail like a real network: `auth`, `rate_limit` or `drop` (sent, never answered). */
   nextReply: 'auth' | 'rate_limit' | 'drop' | null = null;
+  /** Makes the next renewal of a login fail: `auth` (the network refuses it) or `down` (it could not be reached). */
+  nextRefresh: 'auth' | 'down' | null = null;
   next: 'auth' | 'rate_limit' | 'refuse' | 'drop' | 'drop_and_lose' | 'pending' | null = null;
   /** What the following looks at a pending publish find, in order. When empty, a look finds the post ready. */
   checks: ('processing' | 'ready' | 'failed' | 'uncertain' | 'auth' | 'rate_limit' | 'lost')[] = [];
@@ -89,7 +91,11 @@ export class FixtureSocialProvider implements SocialProvider {
   }
 
   refreshToken(): Promise<ProviderTokens> {
-    return Promise.resolve({ accessToken: 'fixture-token-2', expiresInSeconds: 3600 });
+    const failure = this.nextRefresh;
+    this.nextRefresh = null;
+    if (failure === 'auth') return Promise.reject(new ProviderError('The login was refused.', this.network, 'auth'));
+    if (failure === 'down') return Promise.reject(new ProviderError('Could not reach the network.', this.network));
+    return Promise.resolve({ accessToken: 'fixture-token-2', expiresInSeconds: 60 * 86_400 });
   }
 
   listAccounts(): Promise<ProviderAccount[]> {

@@ -1,6 +1,7 @@
 import { Module, type OnApplicationShutdown, Inject } from '@nestjs/common';
 import { type AppConfig, loadConfig, parseKeyring, socialConfig } from '@ai-staff/config';
 import {
+  AccountHealth,
   AccountTokens,
   ApprovalService,
   FeedPoller,
@@ -71,6 +72,11 @@ const notConfigured: ModelProvider = {
       inject: [DataSource, KEYRING, SocialProviders],
       useFactory: (db: DataSource, keyring: Keyring, providers: SocialProviders) =>
         new AccountTokens(db, keyring, providers),
+    },
+    {
+      provide: AccountHealth,
+      inject: [DataSource, KEYRING, AccountTokens],
+      useFactory: (db: DataSource, keyring: Keyring, tokens: AccountTokens) => new AccountHealth(db, keyring, tokens),
     },
     {
       provide: SocialGateway,
