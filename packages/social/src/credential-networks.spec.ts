@@ -310,6 +310,18 @@ describe('Telegram', () => {
     ).rejects.toThrow(/administrator/);
   });
 
+  it('turns the member-list refusal into the same plain instruction, since only admins may read that list', async () => {
+    const { fetcher } = scripted(
+      { ok: true, result: { id: 42, username: 'ourbot' } },
+      { ok: true, result: chat },
+      { status: 400, body: { ok: false, error_code: 400, description: 'Bad Request: member list is inaccessible' } },
+    );
+    const error = await new TelegramProvider(fetcher)
+      .connectWithCredentials({ botToken: '1:a', chat: '@ournews' })
+      .catch((caught: unknown) => caught);
+    expect((error as Error).message).toMatch(/not an administrator of that channel/);
+  });
+
   it('sends the text as plain text, so nothing in it is taken for formatting', async () => {
     const { fetcher, calls } = scripted({ ok: true, result: { message_id: 9 } });
     const result = await new TelegramProvider(fetcher).publishPost({

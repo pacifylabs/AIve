@@ -21,6 +21,9 @@ interface Chat {
   type: string;
 }
 
+const NOT_ADMIN =
+  'The bot is not an administrator of that channel yet. Add it as an administrator who can post, then try again.';
+
 /**
  * Telegram channels and groups, through a bot the person makes with @BotFather. The bot must be an administrator of the
  * channel. The bot token never expires. Text goes as plain text, so nothing in a post can be taken for formatting.
@@ -83,15 +86,23 @@ export class TelegramProvider extends CredentialProvider {
     const member = await this.call<{ status: string; can_post_messages?: boolean }>(token, 'getChatMember', {
       chat_id: chat.id,
       user_id: bot.id,
+    }).catch((error: unknown) => {
+      // A bot that is not an administrator of a channel is not allowed to look at its member list at all, so
+      // Telegram answers with a message about that list. For the person it means one thing: make the bot an admin.
+      if (
+        error instanceof ProviderError &&
+        error.status === 400 &&
+        /member list|not enough rights/i.test(error.message)
+      ) {
+        throw new ProviderError(NOT_ADMIN, this.network);
+      }
+      throw error;
     });
     const isAdmin = member.status === 'administrator' || member.status === 'creator';
     const mayPost =
       chat.type === 'channel' ? isAdmin && member.can_post_messages !== false : isAdmin || member.status === 'member';
     if (!mayPost) {
-      throw new ProviderError(
-        'The bot is not an administrator of that channel yet. Add it as an administrator who can post, then try again.',
-        this.network,
-      );
+      throw new ProviderError(NOT_ADMIN, this.network);
     }
     return {
       tokens: { accessToken: token, refreshToken: null, expiresInSeconds: null },
