@@ -31,12 +31,12 @@ Postgres for every implementation is on Neon, never on Render.
 
 ## Settings the API needs on Render
 
-`NODE_ENV=production`, `API_PORT=10000`, `TRUST_PROXY_HOPS=1`, `APP_URL` and `WEB_ORIGIN` (the web address), `API_PUBLIC_URL` (the API address), `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_SSL=true`, `DB_APP_USER`, `DB_APP_PASSWORD`, `REDIS_URL` (with `/1`), `BULL_PREFIX`, `RATE_LIMIT_PREFIX`, `JWT_ACCESS_SECRET`, `ENCRYPTION_KEYS`, `ENCRYPTION_ACTIVE_KID`, `EMAIL_PROVIDER`, `MAIL_FROM`, `RUN_MIGRATIONS=false`.
+`NODE_ENV=production`, `API_PORT=10000`, `TRUST_PROXY_HOPS=1`, `APP_URL` and `WEB_ORIGIN` (the web address), `API_PUBLIC_URL` (the API address), `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_SSL=true`, `DB_APP_USER`, `DB_APP_PASSWORD`, `REDIS_URL` (with `/1`), `BULL_PREFIX`, `RATE_LIMIT_PREFIX`, `JWT_ACCESS_SECRET`, `ENCRYPTION_KEYS`, `ENCRYPTION_ACTIVE_KID`, `EMAIL_PROVIDER`, `MAIL_FROM`, `RESEND_API_KEY`, `RUN_MIGRATIONS=false`.
 
 The web app on Vercel needs `API_URL` and `SITE_URL`.
 
 ## Known gaps
 
-- **Email is not set up.** `EMAIL_PROVIDER=smtp` points at a placeholder, so sign-up verification emails and password resets fail. Set `EMAIL_PROVIDER=resend` and `RESEND_API_KEY`, with a verified sender in `MAIL_FROM`, to turn them on. Until then, use the seeded review login.
+- **Email** goes through Resend, sent from `AI Staff <no-reply@dosinex.com>` (`EMAIL_PROVIDER=resend`, `MAIL_FROM`, and `RESEND_API_KEY` in Render's settings). The sender is a domain from another product, so give AI Staff its own verified domain before real customers see it.
 - No `ANTHROPIC_API_KEY`, so model tasks fail and retry. No Meta or X keys, so no networks can be connected.
 - Redis is shared and has no persistence. Queued jobs are lost if it restarts.
