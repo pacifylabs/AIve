@@ -2,6 +2,9 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   ApprovalService,
+  type AutopilotChange,
+  AutopilotNotAllowedError,
+  AutopilotService,
   CompanyBrain,
   NotFoundError,
   type ProfileChanges,
@@ -37,6 +40,7 @@ async function translate<T>(work: () => Promise<T>): Promise<T> {
   } catch (error) {
     if (error instanceof WorkItemNotPendingError) throw AppError.conflict(error.message);
     if (error instanceof NotFoundError) throw AppError.notFound(error.message);
+    if (error instanceof AutopilotNotAllowedError) throw AppError.conflict(error.message);
     throw error;
   }
 }
@@ -47,6 +51,7 @@ export class PlatformService {
   constructor(
     @Inject(DataSource) private readonly db: DataSource,
     @Inject(ApprovalService) private readonly approvals: ApprovalService,
+    @Inject(AutopilotService) private readonly autopilot: AutopilotService,
     @Inject(CompanyBrain) private readonly brain: CompanyBrain,
     @InjectQueue(PLATFORM_QUEUE) private readonly platformQueue: Queue<PlatformJob>,
   ) {}
@@ -194,6 +199,24 @@ export class PlatformService {
 
   decidePromotion(ctx: WorkspaceContext, id: string, accept: boolean) {
     return translate(() => this.approvals.decidePromotion(ctx, id, accept));
+  }
+
+  // ---- Autopilot ---------------------------------------------------------------------------------------------
+
+  autopilotOverview(ctx: WorkspaceContext) {
+    return this.autopilot.overview(ctx.workspaceId, ctx.userId);
+  }
+
+  configureAutopilot(ctx: WorkspaceContext, staffId: string, taskType: string, change: AutopilotChange) {
+    return translate(() => this.autopilot.configure(ctx, staffId, taskType, change));
+  }
+
+  enableAutopilot(ctx: WorkspaceContext, staffId: string, taskType: string) {
+    return translate(() => this.autopilot.enableNow(ctx, staffId, taskType));
+  }
+
+  stopAutopilot(ctx: WorkspaceContext, staffId: string, taskType: string) {
+    return translate(() => this.autopilot.stop(ctx, staffId, taskType));
   }
 
   // ---- Activity and spending ---------------------------------------------------------------------------------

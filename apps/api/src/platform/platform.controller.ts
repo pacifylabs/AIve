@@ -15,19 +15,23 @@ import {
 import {
   addFactRequest,
   approveWorkItemRequest,
+  configureAutopilotRequest,
   decidePromotionRequest,
+  enableAutopilotRequest,
   rejectWorkItemRequest,
   spendCapRequest,
   updateCompanyProfileRequest,
   updateFactRequest,
   updateStaffRequest,
 } from '@ai-staff/contracts';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { AccessTokenGuard } from '../auth/access-token.guard.js';
 import { UuidPipe } from '../common/uuid.pipe.js';
 import { ZodPipe } from '../common/zod.pipe.js';
 import { CurrentWorkspace, RequireRole, type WorkspaceContext, WorkspaceGuard } from '../workspaces/workspace.guard.js';
 import { PlatformService } from './platform.service.js';
+
+const taskTypeParam = z.string().regex(/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/, 'Not a task type.');
 
 /** The approval inbox. Any member may approve or reject. */
 @Controller('inbox')
@@ -153,6 +157,45 @@ export class StaffController {
     @Body(new ZodPipe(decidePromotionRequest)) body: z.output<typeof decidePromotionRequest>,
   ) {
     return this.platform.decidePromotion(ctx, id, body.accept);
+  }
+
+  /** Every task that publishes or sends, with its autopilot mode, rules and progress. */
+  @Get('autopilot')
+  autopilot(@CurrentWorkspace() ctx: WorkspaceContext) {
+    return this.platform.autopilotOverview(ctx);
+  }
+
+  @Put('staff/:id/autopilot/:taskType')
+  @RequireRole('admin')
+  configureAutopilot(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Param('taskType', new ZodPipe(taskTypeParam)) taskType: string,
+    @Body(new ZodPipe(configureAutopilotRequest)) body: z.output<typeof configureAutopilotRequest>,
+  ) {
+    return this.platform.configureAutopilot(ctx, id, taskType, body);
+  }
+
+  /** Skips the record: the owner trusts the task now. Owners only, and only with an explicit confirmation. */
+  @Post('staff/:id/autopilot/:taskType/enable')
+  @RequireRole('owner')
+  enableAutopilot(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Param('taskType', new ZodPipe(taskTypeParam)) taskType: string,
+    @Body(new ZodPipe(enableAutopilotRequest)) _body: z.output<typeof enableAutopilotRequest>,
+  ) {
+    return this.platform.enableAutopilot(ctx, id, taskType);
+  }
+
+  @Post('staff/:id/autopilot/:taskType/stop')
+  @RequireRole('admin')
+  stopAutopilot(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Param('taskType', new ZodPipe(taskTypeParam)) taskType: string,
+  ) {
+    return this.platform.stopAutopilot(ctx, id, taskType);
   }
 
   @Get('activity')

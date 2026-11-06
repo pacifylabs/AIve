@@ -50,6 +50,28 @@ export const decidePromotionRequest = z.object({
   accept: z.boolean(),
 });
 
+/**
+ * Autopilot: the owner's rules for letting a task that publishes or sends stop waiting for approval. The limits match
+ * AUTOPILOT_LIMITS in core, which clamps again; they are repeated here so a bad number gets a clear message.
+ */
+export const autopilotRulesRequest = z
+  .object({
+    approvals: z.number().int().min(5, 'Ask for at least 5 approvals.').max(200),
+    maxMedianEditRatio: z.number().min(0).max(0.3, 'Allow at most 30% of the text to be changed.'),
+    windowDays: z.number().int().min(7, 'Look back at least 7 days.').max(90),
+    maxPerDay: z.number().int().min(1).max(50, 'Allow at most 50 a day without review.'),
+  })
+  .partial();
+
+export const configureAutopilotRequest = z.object({
+  mode: z.enum(['off', 'ask', 'auto']),
+  rules: autopilotRulesRequest.default({}),
+});
+
+export const enableAutopilotRequest = z.object({
+  confirm: z.literal(true, 'Confirm that you want this task to act without your approval.'),
+});
+
 export const spendCapRequest = z.object({
   monthlyCapUsd: z.number().positive().max(100_000),
   alertAtPct: z.number().int().min(1).max(100).default(80),

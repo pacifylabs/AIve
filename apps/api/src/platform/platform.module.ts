@@ -1,6 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ApprovalService, CompanyBrain, RoleRegistry } from '@ai-staff/core';
+import { ApprovalService, AutopilotService, CompanyBrain, RoleRegistry } from '@ai-staff/core';
 import { buildProductionRegistry } from '@ai-staff/roles';
 import { DataSource } from '@ai-staff/db';
 import { AuthModule } from '../auth/auth.module.js';
@@ -35,6 +35,12 @@ import { PLATFORM_QUEUE, PlatformService } from './platform.service.js';
       provide: ApprovalService,
       inject: [DataSource, RoleRegistry],
       useFactory: (db: DataSource, registry: RoleRegistry) => new ApprovalService(db, registry),
+    },
+    {
+      provide: AutopilotService,
+      inject: [DataSource, RoleRegistry, ApprovalService],
+      useFactory: (db: DataSource, registry: RoleRegistry, approvals: ApprovalService) =>
+        new AutopilotService(db, registry, approvals),
     },
     { provide: CompanyBrain, inject: [DataSource], useFactory: (db: DataSource) => new CompanyBrain(db) },
     PlatformService,
