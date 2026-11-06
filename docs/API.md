@@ -54,6 +54,10 @@ Request and response schemas live in `packages/contracts` (zod), and OpenAPI is 
 | GET | `/v1/staff/:id/activity` | activity log |
 | GET | `/v1/staff/:id/report?period=` | |
 | POST | `/v1/staff/:id/promotions/:offerId/accept` · `/decline` | |
+| GET | `/v1/autopilot` | Tasks that publish or send, with mode, rules, progress and offers (any member). |
+| PUT | `/v1/staff/:id/autopilot/:taskType` | `{ mode: off\|ask\|auto, rules?: { approvals, windowDays, maxMedianEditRatio, maxPerDay } }` (admin). |
+| POST | `/v1/staff/:id/autopilot/:taskType/enable` | Turn on now, skipping the record. Body `{ confirm: true }` (owner). |
+| POST | `/v1/staff/:id/autopilot/:taskType/stop` | Back to approval, mode `ask` (admin). |
 
 ## Connectors
 

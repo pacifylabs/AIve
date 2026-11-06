@@ -15,9 +15,18 @@ const DECISIONS: Record<string, string> = {
 export default async function InboxPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const { view } = await searchParams;
   const decided = view === 'decided';
-  const items = await apiOrRedirect<InboxItem[]>(`/inbox${decided ? '?view=decided' : ''}`, '/app/inbox', {
-    workspace: true,
-  });
+  const [items, autopilot] = await Promise.all([
+    apiOrRedirect<InboxItem[]>(`/inbox${decided ? '?view=decided' : ''}`, '/app/inbox', { workspace: true }),
+    apiOrRedirect<{ staffName: string; autonomy: string; mode: string; progress: { met: boolean } }[]>(
+      '/autopilot',
+      '/app/inbox',
+      { workspace: true },
+    ),
+  ]);
+  // Staff whose record already meets your rules but who still wait for you: a nudge to review less.
+  const ready = autopilot.ok
+    ? autopilot.data.filter((task) => task.autonomy === 'draft' && task.mode !== 'off' && task.progress.met)
+    : [];
 
   return (
     <section className="space-y-6">
@@ -43,6 +52,16 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           </Link>
         </nav>
       </div>
+
+      {ready.length > 0 ? (
+        <p className="rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+          {[...new Set(ready.map((task) => task.staffName))].join(' and ')} {ready.length > 1 ? 'have' : 'has'} a clean
+          record.{' '}
+          <Link href="/app/autopilot" className="font-medium underline">
+            Review less: set up autopilot
+          </Link>
+        </p>
+      ) : null}
 
       {!items.ok ? (
         <p className="text-danger">{items.problem.title}</p>

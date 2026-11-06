@@ -134,3 +134,66 @@ export async function prefillAction(_state: FormState): Promise<FormState> {
   revalidatePath('/app/company');
   return { notice: 'Reading your website. Suggestions appear below for you to confirm.' };
 }
+
+// ---- Autopilot ---------------------------------------------------------------------------------------------
+
+const AUTOPILOT_FIELDS = ['mode', 'approvals', 'windowDays', 'editPercent', 'maxPerDay'] as const;
+
+const autopilotPath = (data: FormData) =>
+  `/staff/${encodeURIComponent(field(data, 'staffId'))}/autopilot/${encodeURIComponent(field(data, 'taskType'))}`;
+
+/** A blank box means "use the default", so it is left out of the rules rather than sent as zero. */
+function numberField(data: FormData, name: string): number | undefined {
+  const text = field(data, name).trim();
+  return text === '' ? undefined : Number(text);
+}
+
+export async function saveAutopilotAction(_state: FormState, data: FormData): Promise<FormState> {
+  const percent = numberField(data, 'editPercent');
+  const rules = {
+    approvals: numberField(data, 'approvals'),
+    windowDays: numberField(data, 'windowDays'),
+    maxMedianEditRatio: percent === undefined ? undefined : percent / 100,
+    maxPerDay: numberField(data, 'maxPerDay'),
+  };
+  const result = await api(autopilotPath(data), {
+    method: 'PUT',
+    workspace: true,
+    body: { mode: field(data, 'mode'), rules },
+  });
+  if (!result.ok) {
+    return result.problem.status === 401 ? expired('/app/autopilot') : failed(result.problem, data, AUTOPILOT_FIELDS);
+  }
+  revalidatePath('/app/autopilot');
+  return { notice: 'Saved.' };
+}
+
+export async function enableAutopilotAction(_state: FormState, data: FormData): Promise<FormState> {
+  const result = await api(`${autopilotPath(data)}/enable`, {
+    method: 'POST',
+    workspace: true,
+    body: { confirm: field(data, 'confirm') === 'yes' },
+  });
+  if (!result.ok) {
+    return result.problem.status === 401 ? expired('/app/autopilot') : failed(result.problem, data, []);
+  }
+  revalidatePath('/app/autopilot');
+  revalidatePath('/app/inbox');
+  return { notice: 'Autopilot is on.' };
+}
+
+export async function stopAutopilotAction(data: FormData): Promise<void> {
+  const result = await api(`${autopilotPath(data)}/stop`, { method: 'POST', workspace: true });
+  if (!result.ok && result.problem.status === 401) expired('/app/autopilot');
+  revalidatePath('/app/autopilot');
+}
+
+export async function decideOfferAction(data: FormData): Promise<void> {
+  const result = await api(`/promotions/${encodeURIComponent(field(data, 'offerId'))}`, {
+    method: 'POST',
+    workspace: true,
+    body: { accept: field(data, 'accept') === 'yes' },
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/autopilot');
+  revalidatePath('/app/autopilot');
+}

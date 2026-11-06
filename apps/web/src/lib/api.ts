@@ -8,7 +8,7 @@ const API_URL = process.env.API_URL ?? 'http://localhost:3100';
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: Problem };
 
 interface CallOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Send the signed-in user's access token. */
   auth?: boolean;

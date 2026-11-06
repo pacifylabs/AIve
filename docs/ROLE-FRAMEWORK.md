@@ -89,11 +89,40 @@ asset manifest. A task can declare `promotable: false`, which the platform enfor
 | `drafts` (suggestions shown in-app only) | off, act | act |
 | `acts_external` (publishes, sends, replies) | off, draft, act (only after promotion) | draft |
 
-Promotion is offered, never automatic. Demotion back to `draft` is automatic when:
+Promotion is offered by default. The owner can instead choose **autopilot** for a task (below), which switches it on by
+itself once rules the owner set are met. Demotion back to `draft` is automatic when:
 - complaints exceed the role's threshold;
 - the bounce rate exceeds it;
 - a person rejects 3 consecutive actions taken on its own;
 - the connector is reconnected (with new scopes or a new account).
+
+### Autopilot (owner-controlled)
+
+Autopilot is how an owner relieves the review load. It applies to `acts_external` tasks that declare a `promotion` rule
+(publish and send tasks; replies have none, so they are never sent unattended). Per task the owner chooses a mode:
+
+| Mode | Effect |
+|---|---|
+| `ask` (default) | The nightly check offers promotion when the rules are met; a person accepts. |
+| `auto` | The task switches to `act` by itself when the rules are met (checked at once on save, then nightly). |
+| `off` | Never offered. Every draft waits for approval. |
+
+The rules start from the role's `PromotionRule` and the owner may change them inside platform limits
+(`AUTOPILOT_LIMITS` in `packages/core/src/platform/autopilot.ts`): approvals 5 to 200, window 7 to 90 days, median edit
+at most 30%, and `maxPerDay` 1 to 50 (default 10). Any rejection inside the window blocks it. An owner may also turn a
+task on **now** without the record, with an explicit confirmation.
+
+What autopilot never removes:
+
+- Guardrails keep running. A draft that fails one becomes a flagged inbox item instead of an action.
+- `maxPerDay`: past it, the engine runs the task at `draft` until the 24-hour count drops (runs that finished without
+  needing a person are counted).
+- Demotion (three rejections in a row, and the other triggers above) returns the task to `draft` **and mode `ask`**, so
+  it is never switched on again without a person choosing.
+- Complaints and sensitive topics escalate, and replies are never auto-sent.
+
+Every change is audited (`autopilot.configured`, `autonomy.promoted_auto`, `autonomy.enabled_now`, `autonomy.stopped`)
+and shown in the activity feed.
 
 ## Guardrails (shared library)
 
