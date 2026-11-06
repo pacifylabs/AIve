@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { accountBinding, Keyring } from '@ai-staff/core';
 import {
+  asSystem,
   AuditEntry,
   ConnectedAccount,
   DataSource,
@@ -23,6 +24,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { AppError } from '../common/app-error.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.module.js';
 import { REDIS } from '../redis/redis.module.js';
+import { readSignedRequest } from './signed-request.js';
 import type { WorkspaceContext } from '../workspaces/workspace.guard.js';
 
 const STATE_TTL_SEC = 10 * 60;
@@ -280,35 +282,77 @@ export class SocialAccountsService {
     await this.tx(ctx, async (m) => {
       const account = await m.findOneBy(ConnectedAccount, { workspaceId: ctx.workspaceId, id });
       if (!account) throw AppError.notFound('Account not found.');
-      await m.update(
-        PublishIntent,
-        { workspaceId: ctx.workspaceId, accountId: id, state: 'pending' },
-        { state: 'cancelled', error: 'The account was disconnected.' },
-      );
-      await m.update(
-        SocialPost,
-        { workspaceId: ctx.workspaceId, accountId: id, state: 'scheduled' },
-        { state: 'cancelled' },
-      );
-      await m.update(
-        ConnectedAccount,
-        { id },
-        {
-          secretEnc: this.keyring.encrypt(JSON.stringify({ accessToken: '' }), accountBinding(account)),
-          tokenExpiresAt: null,
-          health: 'broken',
-          healthReason: 'Disconnected.',
-        },
-      );
-      await m.save(
-        m.create(AuditEntry, {
-          workspaceId: ctx.workspaceId,
-          userId: ctx.userId,
-          action: 'social.account_disconnected',
-          target: id,
-          detail: { name: account.name },
-        }),
-      );
+      await this.wipe(m, account, 'Disconnected.', 'social.account_disconnected', ctx.userId);
     });
+  }
+
+  /** Threads tells us, with a signed message, that a person removed the app or asked for their data to be deleted. */
+  async threadsRevoked(kind: 'deauthorize' | 'data-deletion', signed: string) {
+    const person = readSignedRequest(signed, this.config.THREADS_APP_SECRET ?? '');
+    if (!person) throw new AppError(400, 'validation_failed', 'That request was not signed by Threads.');
+    const removed = await this.revokeFromNetwork(
+      'threads',
+      person.userId,
+      kind === 'deauthorize' ? 'deauthorized' : 'deletion_requested',
+    );
+    // The code only has to be unguessable and quotable; the page it leads to says what was done.
+    const code = randomBytes(12).toString('base64url');
+    return { removed, code, statusUrl: `${this.config.WEB_ORIGIN.replace(/\/+$/, '')}/data-deletion?code=${code}` };
+  }
+
+  private async wipe(
+    m: EntityManager,
+    account: ConnectedAccount,
+    reason: string,
+    action: string,
+    userId: string | null,
+  ) {
+    const where = { workspaceId: account.workspaceId, accountId: account.id };
+    await m.update(PublishIntent, { ...where, state: 'pending' }, { state: 'cancelled', error: reason });
+    await m.update(SocialPost, { ...where, state: 'scheduled' }, { state: 'cancelled' });
+    await m.update(
+      ConnectedAccount,
+      { id: account.id },
+      {
+        secretEnc: this.keyring.encrypt(JSON.stringify({ accessToken: '' }), accountBinding(account)),
+        tokenExpiresAt: null,
+        health: 'broken',
+        healthReason: reason,
+      },
+    );
+    await m.save(
+      m.create(AuditEntry, {
+        workspaceId: account.workspaceId,
+        userId,
+        action,
+        target: account.id,
+        detail: { name: account.name },
+      }),
+    );
+  }
+
+  /**
+   * The network says the person took our access away (deauthorize) or asked for their data to be deleted. The account is
+   * found by the network's own id for it, in every workspace that connected it, and treated like a disconnect: what was
+   * waiting is stopped and the tokens are wiped. The workspace's own post history is theirs and stays.
+   */
+  async revokeFromNetwork(network: SocialNetwork, externalId: string, why: 'deauthorized' | 'deletion_requested') {
+    const found = await asSystem(this.db, 'a network reported that a person removed our access', (m) =>
+      m.find(ConnectedAccount, { where: { network, externalId } }),
+    );
+    for (const account of found) {
+      await withTenant(this.db, { workspaceId: account.workspaceId, userId: null }, (m) =>
+        this.wipe(
+          m,
+          account,
+          why === 'deauthorized'
+            ? `${account.name} removed this app's access on the network. Connect again to post.`
+            : `${account.name} asked the network to delete their data, so the connection was removed.`,
+          `social.account_${why}`,
+          null,
+        ),
+      );
+    }
+    return found.length;
   }
 }

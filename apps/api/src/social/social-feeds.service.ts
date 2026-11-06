@@ -103,11 +103,7 @@ export class SocialFeedsService {
     return { id: feed.id, queued: result === 'skipped' ? 0 : result.queued };
   }
 
-  update(
-    ctx: WorkspaceContext,
-    id: string,
-    body: { accountIds?: string[]; note?: string | null; paused?: boolean },
-  ) {
+  update(ctx: WorkspaceContext, id: string, body: { accountIds?: string[]; note?: string | null; paused?: boolean }) {
     return this.tx(ctx, async (m) => {
       const feed = await this.find(m, ctx, id);
       if (body.accountIds) {

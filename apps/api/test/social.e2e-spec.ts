@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import {
   ConnectedAccount,
   createDataSource,
@@ -10,6 +11,9 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { signedInUser, startApp, type TestApp } from './helpers/app.js';
+
+// The key Threads signs its callbacks with, set before the app reads its settings.
+process.env.THREADS_APP_SECRET = 'threads-test-secret';
 
 let t: TestApp;
 let db: DataSource;
@@ -376,9 +380,7 @@ describe('networks that connect with a pasted login', () => {
       { externalId: 'did:plc:one', name: 'one.example', username: 'one.example', kind: 'profile' },
     ];
     const first = await connect(as, 'telegram', { token: 'secret-one' }).expect(200);
-    expect(first.body).toEqual([
-      expect.objectContaining({ network: 'telegram', name: 'one.example', health: 'ok' }),
-    ]);
+    expect(first.body).toEqual([expect.objectContaining({ network: 'telegram', name: 'one.example', health: 'ok' })]);
     expect(JSON.stringify(first.body)).not.toContain('secret-one');
 
     await connect(as, 'telegram', { token: 'secret-two' }).expect(200);
@@ -498,5 +500,69 @@ describe('feeds', () => {
 
     await t.http().delete(`/v1/social/feeds/${id}`).set(w.as).expect(204);
     expect((await t.http().get('/v1/social/feeds').set(w.as).expect(200)).body).toEqual([]);
+  });
+});
+
+describe('Threads removing our access', () => {
+  const sign = (userId: string, secret = 'threads-test-secret') => {
+    const payload = Buffer.from(JSON.stringify({ algorithm: 'HMAC-SHA256', user_id: userId })).toString('base64url');
+    return `${createHmac('sha256', secret).update(payload).digest('base64url')}.${payload}`;
+  };
+  async function threadsAccount(label: string) {
+    const w = await workspace(label);
+    const externalId = `th-${uuidv7()}`;
+    const account = await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) =>
+      m.save(
+        m.create(ConnectedAccount, {
+          workspaceId: w.workspaceId,
+          network: 'threads',
+          externalId,
+          name: '@northfield',
+          username: 'northfield',
+          parentExternalId: null,
+          secretEnc: 'placeholder',
+          tokenExpiresAt: null,
+          scopes: [],
+          health: 'ok',
+          healthReason: null,
+          lastCheckedAt: null,
+          metadata: {},
+        }),
+      ),
+    );
+    return { ...w, account, externalId };
+  }
+  const health = (workspaceId: string, id: string) =>
+    withTenant(db, { workspaceId, userId: null }, (m) => m.findOneByOrFail(ConnectedAccount, { id }));
+  const call = (path: string, signed: string) =>
+    t.http().post(`/v1/social/threads/${path}`).type('form').send({ signed_request: signed });
+
+  it('disconnects the account when Threads says the person removed the app', async () => {
+    const w = await threadsAccount('revoke1');
+    await call('deauthorize', sign(w.externalId)).expect(200);
+    const after = await health(w.workspaceId, w.account.id);
+    expect(after.health).toBe('broken');
+    expect(after.healthReason).toMatch(/removed this app's access/);
+    expect(after.secretEnc).not.toBe('placeholder');
+  });
+
+  it('answers a deletion request with a page and a code, and removes the connection', async () => {
+    const w = await threadsAccount('revoke2');
+    const response = await call('data-deletion', sign(w.externalId)).expect(200);
+    expect(response.body.confirmation_code).toMatch(/^[\w-]{16}$/);
+    expect(response.body.url).toContain(`/data-deletion?code=${response.body.confirmation_code}`);
+    expect((await health(w.workspaceId, w.account.id)).healthReason).toMatch(/asked the network to delete/);
+  });
+
+  it('ignores a message that is not signed with the Threads secret, and leaves the account alone', async () => {
+    const w = await threadsAccount('revoke3');
+    await call('deauthorize', sign(w.externalId, 'someone-elses-secret')).expect(400);
+    await call('deauthorize', 'not-a-signed-request').expect(400);
+    await t.http().post('/v1/social/threads/deauthorize').send({}).expect(400);
+    expect((await health(w.workspaceId, w.account.id)).health).toBe('ok');
+  });
+
+  it('does nothing, quietly, for a person we never connected', async () => {
+    await call('deauthorize', sign('nobody-we-know')).expect(200);
   });
 });

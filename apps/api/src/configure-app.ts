@@ -13,6 +13,8 @@ export function configureApp(app: INestApplication): void {
   // Only trust X-Forwarded-For when a known number of proxies sits in front; otherwise clients could pick their own IP.
   if (config.TRUST_PROXY_HOPS > 0) express.set('trust proxy', config.TRUST_PROXY_HOPS);
   express.useBodyParser('json', { limit: '100kb' });
+  // Meta's callbacks arrive as a form.
+  express.useBodyParser('urlencoded', { extended: false, limit: '10kb' });
   express.enableCors({ origin: config.WEB_ORIGIN, credentials: true });
   express.use((_req: unknown, res: { setHeader(name: string, value: string): void }, next: () => void) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');

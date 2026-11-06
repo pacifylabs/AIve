@@ -39,7 +39,7 @@ The web app on Vercel needs `API_URL` and `SITE_URL`.
 
 Each network is listed as "not available yet" until its keys are set on Render. Callbacks to register are `API_PUBLIC_URL` + `/v1/social/callback/<network>`.
 
-- **Threads:** `THREADS_APP_ID`, `THREADS_APP_SECRET`, from the Threads use case of a Meta app. Until Meta approves `threads_content_publish`, only people added as Threads testers on the app can connect.
+- **Threads:** `THREADS_APP_ID`, `THREADS_APP_SECRET`, from the Threads use case of a Meta app. Until Meta approves `threads_content_publish`, only people added as Threads testers on the app can connect. In the app's settings, redirect URI `…/v1/social/callback/threads`, deauthorize callback `…/v1/social/threads/deauthorize`, and data deletion URL `…/v1/social/threads/data-deletion` (all under `API_PUBLIC_URL`). Both callbacks check Meta's signature with `THREADS_APP_SECRET`; a deauthorize or deletion request disconnects the matching account, and the deletion reply points to the public page `/data-deletion` on the web app. Facebook and Instagram need the same pair later, which means storing the Facebook user id at connect time.
 - **TikTok:** `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, from a TikTok developer app with Login Kit and Content Posting API. Videos are fetched from a web address, which must be on a domain verified in the TikTok app. Until TikTok audits the app, posts only go to a private TikTok account.
 - **Telegram and Discord** need no keys: the person pastes a bot token or webhook.
 

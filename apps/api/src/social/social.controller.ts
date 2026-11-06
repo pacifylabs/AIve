@@ -197,4 +197,25 @@ export class SocialCallbackController {
     });
     response.redirect(302, where);
   }
+
+  /** Threads calls these when a person removes the app, or asks for their data to be deleted. Signed, not signed in. */
+  @Post('threads/deauthorize')
+  @HttpCode(200)
+  async threadsDeauthorize(@Body('signed_request') signed: unknown, @Req() request: Request) {
+    await this.limiter.consume({ key: `social-revoke:ip:${request.ip ?? 'unknown'}`, max: 60, windowSec: 60 });
+    await this.accounts.threadsRevoked('deauthorize', typeof signed === 'string' ? signed.slice(0, 2000) : '');
+    return {};
+  }
+
+  @Post('threads/data-deletion')
+  @HttpCode(200)
+  async threadsDataDeletion(@Body('signed_request') signed: unknown, @Req() request: Request) {
+    await this.limiter.consume({ key: `social-revoke:ip:${request.ip ?? 'unknown'}`, max: 60, windowSec: 60 });
+    const done = await this.accounts.threadsRevoked(
+      'data-deletion',
+      typeof signed === 'string' ? signed.slice(0, 2000) : '',
+    );
+    // The shape Meta documents for a data deletion callback: where to check, and a code to quote.
+    return { url: done.statusUrl, confirmation_code: done.code };
+  }
 }
