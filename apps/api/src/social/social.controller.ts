@@ -6,13 +6,20 @@ import {
   HttpCode,
   Inject,
   Param,
+  Patch,
   Post,
   Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { connectCredentialsRequest, resolvePostRequest, selectAccountsRequest } from '@ai-staff/contracts';
+import {
+  addFeedRequest,
+  connectCredentialsRequest,
+  resolvePostRequest,
+  selectAccountsRequest,
+  updateFeedRequest,
+} from '@ai-staff/contracts';
 import type { Request, Response } from 'express';
 import type { z } from 'zod';
 import { AccessTokenGuard } from '../auth/access-token.guard.js';
@@ -22,6 +29,7 @@ import { ZodPipe } from '../common/zod.pipe.js';
 import { RateLimiter } from '../redis/rate-limiter.service.js';
 import { CurrentWorkspace, RequireRole, type WorkspaceContext, WorkspaceGuard } from '../workspaces/workspace.guard.js';
 import { isNetwork, SocialAccountsService } from './social-accounts.service.js';
+import { SocialFeedsService } from './social-feeds.service.js';
 import { SocialPostsService } from './social-posts.service.js';
 
 const network = (value: string) => {
@@ -41,6 +49,7 @@ export class SocialController {
   constructor(
     @Inject(SocialAccountsService) private readonly accounts: SocialAccountsService,
     @Inject(SocialPostsService) private readonly posts: SocialPostsService,
+    @Inject(SocialFeedsService) private readonly feeds: SocialFeedsService,
     @Inject(RateLimiter) private readonly limiter: RateLimiter,
   ) {}
 
@@ -118,6 +127,48 @@ export class SocialController {
     @Body(new ZodPipe(resolvePostRequest)) body: z.output<typeof resolvePostRequest>,
   ) {
     return this.posts.resolve(ctx, id, body.outcome, body.permalink);
+  }
+
+  @Get('feeds')
+  feedList(@CurrentWorkspace() ctx: WorkspaceContext) {
+    return this.feeds.list(ctx);
+  }
+
+  @Post('feeds')
+  @HttpCode(201)
+  @RequireRole('admin')
+  async feedAdd(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Body(new ZodPipe(addFeedRequest)) body: z.output<typeof addFeedRequest>,
+  ) {
+    // Adding reads an address a person typed from our servers, so tries are limited per person.
+    await this.limiter.consume({ key: `feeds:add:user:${ctx.userId}`, max: 20, windowSec: 600 });
+    return this.feeds.add(ctx, body);
+  }
+
+  @Patch('feeds/:id')
+  @RequireRole('admin')
+  feedUpdate(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(updateFeedRequest)) body: z.output<typeof updateFeedRequest>,
+  ) {
+    return this.feeds.update(ctx, id, body);
+  }
+
+  @Post('feeds/:id/check')
+  @HttpCode(200)
+  @RequireRole('admin')
+  async feedCheck(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id', UuidPipe) id: string) {
+    await this.limiter.consume({ key: `feeds:check:user:${ctx.userId}`, max: 30, windowSec: 600 });
+    return this.feeds.checkNow(ctx, id);
+  }
+
+  @Delete('feeds/:id')
+  @HttpCode(204)
+  @RequireRole('admin')
+  async feedRemove(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id', UuidPipe) id: string) {
+    await this.feeds.remove(ctx, id);
   }
 }
 

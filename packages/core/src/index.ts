@@ -12,6 +12,7 @@ export * from './platform/budget.js';
 export * from './platform/effects.js';
 export * from './platform/dispatcher.js';
 export * from './platform/engine.js';
+export * from './platform/feeds.js';
 export * from './platform/inbound.js';
 export * from './platform/mail-effects.js';
 export * from './platform/prefill.js';

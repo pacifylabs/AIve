@@ -84,14 +84,7 @@ export class SocialPost extends WorkspaceScopedEntity {
   permalink: string | null;
 }
 
-export type PublishIntentState =
-  | 'pending'
-  | 'sending'
-  | 'processing'
-  | 'sent'
-  | 'failed'
-  | 'uncertain'
-  | 'cancelled';
+export type PublishIntentState = 'pending' | 'sending' | 'processing' | 'sent' | 'failed' | 'uncertain' | 'cancelled';
 
 @Entity('publish_intents')
 export class PublishIntent extends WorkspaceScopedEntity {
@@ -230,4 +223,69 @@ export class ReplyIntent extends WorkspaceScopedEntity {
 
   @Column({ type: 'varchar', length: 400, nullable: true })
   error: string | null;
+}
+
+// ---- Feeds -----------------------------------------------------------------------------------------------------
+
+export type FeedState = 'active' | 'paused' | 'error';
+
+/** A blog or news feed a person added so a staff member drafts a post for each new article. */
+@Entity('content_feeds')
+export class ContentFeed extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid' })
+  staffId: string;
+
+  @Column({ type: 'varchar', length: 2000 })
+  url: string;
+
+  @Column({ type: 'varchar', length: 300, nullable: true })
+  title: string | null;
+
+  @Column({ type: 'uuid', array: true, default: [] })
+  accountIds: string[];
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  note: string | null;
+
+  @Column({ type: 'varchar', length: 12, default: 'active' })
+  state: FeedState;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  lastCheckedAt: Date | null;
+
+  @Column({ type: 'timestamptz' })
+  nextCheckAt: Date;
+
+  @Column({ type: 'integer', default: 0 })
+  failures: number;
+
+  @Column({ type: 'varchar', length: 400, nullable: true })
+  lastError: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  createdBy: string | null;
+}
+
+@Entity('feed_items')
+export class FeedItem extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid' })
+  feedId: string;
+
+  @Column({ type: 'varchar', length: 1000 })
+  guid: string;
+
+  @Column({ type: 'varchar', length: 500 })
+  title: string;
+
+  @Column({ type: 'varchar', length: 2000 })
+  link: string;
+
+  @Column({ type: 'text', nullable: true })
+  summary: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  publishedAt: Date | null;
+
+  @Column({ type: 'varchar', length: 12, default: 'queued' })
+  state: 'queued' | 'backlog';
 }

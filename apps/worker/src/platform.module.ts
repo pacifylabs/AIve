@@ -3,6 +3,7 @@ import { type AppConfig, loadConfig, parseKeyring, socialConfig } from '@ai-staf
 import {
   AccountTokens,
   ApprovalService,
+  FeedPoller,
   Keyring,
   MailDispatcher,
   MailInbox,
@@ -117,6 +118,11 @@ const notConfigured: ModelProvider = {
       provide: ApprovalService,
       inject: [DataSource, RoleRegistry],
       useFactory: (db: DataSource, registry: RoleRegistry) => new ApprovalService(db, registry),
+    },
+    {
+      provide: FeedPoller,
+      inject: [DataSource],
+      useFactory: (db: DataSource) => new FeedPoller(db),
     },
     {
       provide: WebsitePrefill,

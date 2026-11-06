@@ -35,4 +35,5 @@ export type PlatformJob =
   | { kind: 'prefill'; workspaceId: string }
   | { kind: 'evaluate_promotions' }
   | { kind: 'recheck_dns' }
-  | { kind: 'sync_comments' };
+  | { kind: 'sync_comments' }
+  | { kind: 'poll_feeds' };

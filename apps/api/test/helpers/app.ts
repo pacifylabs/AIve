@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../../src/app.module.js';
 import { configureApp } from '../../src/configure-app.js';
 import { Mailer, type OutgoingMail } from '../../src/mail/mail.module.js';
+import { FeedError, FeedPoller } from '@ai-staff/core';
 import { FixtureSocialProvider, SocialProviders } from '@ai-staff/social';
 
 /** Collects platform emails instead of sending them, so tests can read codes and links. */
@@ -69,6 +70,15 @@ export async function startApp(): Promise<TestApp> {
     .useValue(mail)
     .overrideProvider(SocialProviders)
     .useValue(new SocialProviders({}, Object.values(social)))
+    // No test reads a real website: an address containing "not-a-feed" is refused the way a web page would be.
+    .overrideProvider(FeedPoller)
+    .useValue({
+      preview: (url: string) =>
+        url.includes('not-a-feed')
+          ? Promise.reject(new FeedError('That address is a web page, not a feed address.'))
+          : Promise.resolve({ title: 'Blog', articles: [] }),
+      poll: () => Promise.resolve({ queued: 1 }),
+    })
     .compile();
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);

@@ -54,6 +54,12 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
       { pattern: '*/5 * * * *', tz: 'UTC' },
       { name: 'sync_comments', data: { kind: 'sync_comments' } },
     );
+    // Which feeds are due is decided in Postgres, so a short interval here costs one cheap query.
+    await this.platform.upsertJobScheduler(
+      'poll-feeds',
+      { pattern: '*/10 * * * *', tz: 'UTC' },
+      { name: 'poll_feeds', data: { kind: 'poll_feeds' } },
+    );
     this.timer = setInterval(() => void this.tick(), this.config.WORKER_TICK_MS);
   }
 

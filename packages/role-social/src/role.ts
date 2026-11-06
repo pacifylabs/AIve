@@ -1,5 +1,6 @@
 import type { RoleDefinition } from '@ai-staff/core';
 import { socialSettingsSchema } from './settings.js';
+import { draftFromArticle } from './tasks/draft-from-article.js';
 import { draftPost } from './tasks/draft-post.js';
 import { captureMetrics, planMetrics } from './tasks/metrics.js';
 import { planWeek } from './tasks/plan-week.js';
@@ -42,7 +43,7 @@ export const socialMediaRole: RoleDefinition = {
     { key: 'neverPost', question: 'Anything you never post about?', target: { setting: 'neverPost' } },
     { key: 'cadence', question: 'How often per network?', target: { setting: 'cadence' } },
   ],
-  tasks: [planWeek, startDrafts, draftPost, triageEngagement, planMetrics, captureMetrics, weeklyReport],
+  tasks: [planWeek, startDrafts, draftPost, draftFromArticle, triageEngagement, planMetrics, captureMetrics, weeklyReport],
   subscribes: [
     {
       event: 'social.plan_approved',
@@ -61,6 +62,19 @@ export const socialMediaRole: RoleDefinition = {
       event: 'post.published',
       task: 'social_media.plan_metrics',
       input: (payload) => (uuid(payload.postId) ? { postId: payload.postId } : null),
+    },
+    {
+      event: 'content.article_found',
+      task: 'social_media.draft_from_article',
+      input: (payload) =>
+        uuid(payload.feedItemId) && uuid(payload.accountId) && typeof payload.network === 'string'
+          ? {
+              feedItemId: payload.feedItemId,
+              accountId: payload.accountId,
+              network: payload.network,
+              handle: typeof payload.handle === 'string' ? payload.handle : null,
+            }
+          : null,
     },
   ],
   emits: ['social.plan_approved'],

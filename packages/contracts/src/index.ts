@@ -3,4 +3,5 @@ export * from './errors.js';
 export * from './workspaces.js';
 export * from './early-access.js';
 export * from './platform.js';
+export * from './feeds.js';
 export * from './sales.js';

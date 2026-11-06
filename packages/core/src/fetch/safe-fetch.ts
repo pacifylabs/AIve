@@ -112,13 +112,23 @@ const publicFetch = (async (input: string | URL, init?: RequestInit): Promise<Re
   });
 }) as typeof fetch;
 
+interface FetchOptions {
+  /** The Accept header, naming what is wanted. */
+  accept: string;
+  /** What the answer's content type must look like, or the body is refused. */
+  contentType: RegExp;
+  maxBytes: number;
+  notTextMessage: string;
+}
+
 /**
- * Reads a public web page as text. Every hop of a redirect is checked again, the page is capped in size and time, and
- * only text comes back. What the page says is data for the agent to weigh; it is never an instruction.
+ * Reads a public address as text. Every hop of a redirect is checked again, the answer is capped in size and time, and
+ * only the expected kind of content comes back. What it says is data to weigh; it is never an instruction.
  */
-export async function safeFetchText(
+async function fetchPublicText(
   raw: string,
-  fetcher: typeof fetch = publicFetch,
+  options: FetchOptions,
+  fetcher: typeof fetch,
 ): Promise<{ url: string; text: string; contentType: string }> {
   let current = raw;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
@@ -126,7 +136,7 @@ export async function safeFetchText(
     const response = await fetcher(url, {
       redirect: 'manual',
       signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: { Accept: 'text/html,text/plain;q=0.9', 'User-Agent': 'AIStaffResearch/1.0' },
+      headers: { Accept: options.accept, 'User-Agent': 'AIStaffResearch/1.0' },
     });
     if (response.status >= 300 && response.status < 400) {
       const next = response.headers.get('location');
@@ -136,7 +146,7 @@ export async function safeFetchText(
     }
     if (!response.ok) throw new Error(`The page answered ${response.status}.`);
     const contentType = response.headers.get('content-type') ?? '';
-    if (!/text\/|application\/xhtml/i.test(contentType)) throw new UnsafeUrlError('That is not a page of text.');
+    if (!options.contentType.test(contentType)) throw new UnsafeUrlError(options.notTextMessage);
     const reader = response.body?.getReader();
     const chunks: Uint8Array[] = [];
     let total = 0;
@@ -145,14 +155,52 @@ export async function safeFetchText(
       if (done) break;
       total += value.length;
       chunks.push(value);
-      if (total >= MAX_BYTES) {
+      if (total >= options.maxBytes) {
         await reader.cancel();
         break;
       }
     }
-    return { url: url.toString(), text: Buffer.concat(chunks).toString('utf8').slice(0, MAX_BYTES), contentType };
+    return {
+      url: url.toString(),
+      text: Buffer.concat(chunks).toString('utf8').slice(0, options.maxBytes),
+      contentType,
+    };
   }
   throw new UnsafeUrlError('That page redirected too many times.');
+}
+
+/** Reads a public web page as text. */
+export function safeFetchText(
+  raw: string,
+  fetcher: typeof fetch = publicFetch,
+): Promise<{ url: string; text: string; contentType: string }> {
+  return fetchPublicText(
+    raw,
+    {
+      accept: 'text/html,text/plain;q=0.9',
+      contentType: /text\/|application\/xhtml/i,
+      maxBytes: MAX_BYTES,
+      notTextMessage: 'That is not a page of text.',
+    },
+    fetcher,
+  );
+}
+
+/** Reads a public RSS or Atom feed. Feeds are bigger than a page's first screen, so the cap is higher. */
+export function safeFetchFeed(
+  raw: string,
+  fetcher: typeof fetch = publicFetch,
+): Promise<{ url: string; text: string; contentType: string }> {
+  return fetchPublicText(
+    raw,
+    {
+      accept: 'application/rss+xml,application/atom+xml,application/xml;q=0.9,text/xml;q=0.9',
+      contentType: /xml|rss|atom|text\/plain/i,
+      maxBytes: 600_000,
+      notTextMessage: 'That address is not a feed. Use the feed address, usually ending in /feed or /rss.',
+    },
+    fetcher,
+  );
 }
 
 /** A page boiled down to what a person would read: title, description and the first run of text. */

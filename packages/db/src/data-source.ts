@@ -33,6 +33,8 @@ import {
   ReplyIntent,
   SocialEngagement,
   SocialMetric,
+  ContentFeed,
+  FeedItem,
   SocialPost,
 } from './entities/social.entities.js';
 import { Invitation, Membership, Workspace } from './entities/workspace.entities.js';
@@ -46,6 +48,7 @@ import { SocialReplies1793836800000 } from './migrations/0007-social-replies.js'
 import { Autopilot1793923200000 } from './migrations/0008-autopilot.js';
 import { MoreNetworks1794009600000 } from './migrations/0009-more-networks.js';
 import { PendingPublishes1794096000000 } from './migrations/0010-pending-publishes.js';
+import { ContentFeeds1794182400000 } from './migrations/0011-content-feeds.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -82,6 +85,8 @@ export const entities = [
   PublishIntent,
   SocialEngagement,
   SocialMetric,
+  ContentFeed,
+  FeedItem,
   ReplyIntent,
 ];
 export const migrations = [
@@ -95,6 +100,7 @@ export const migrations = [
   Autopilot1793923200000,
   MoreNetworks1794009600000,
   PendingPublishes1794096000000,
+  ContentFeeds1794182400000,
 ];
 
 export interface ConnectionOptions {

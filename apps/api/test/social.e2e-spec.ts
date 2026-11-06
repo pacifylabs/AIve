@@ -413,3 +413,90 @@ describe('networks that connect with a pasted login', () => {
     await connect(as, 'bluesky', { token: 'bad' }).expect(429);
   });
 });
+
+describe('feeds', () => {
+  async function hired(label: string) {
+    const w = await workspace(label);
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'Northfield', kind: 'page' }];
+    const pending = (await signIn(w.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(w.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    await t
+      .http()
+      .post('/v1/staff')
+      .set(w.as)
+      .send({ roleKey: 'social_media', displayName: 'Sam', settings: { accountIds: [account!.id], cadence: 2 } })
+      .expect(201);
+    return { ...w, account: account! };
+  }
+  const add = (as: Record<string, string>, body: Record<string, unknown>) =>
+    t.http().post('/v1/social/feeds').set(as).send(body);
+
+  it('adds a feed, lists it with its accounts, and refuses the same address twice', async () => {
+    const w = await hired('feed1');
+    const body = { url: 'https://blog.example.com/feed.xml', accountIds: [w.account.id] };
+    const created = await add(w.as, body).expect(201);
+    expect(created.body).toMatchObject({ queued: 1 });
+    const list = (await t.http().get('/v1/social/feeds').set(w.as).expect(200)).body as Record<string, unknown>[];
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ url: body.url, state: 'active', accountIds: [w.account.id], articles: [] });
+    await add(w.as, body).expect(409);
+  });
+
+  it('refuses an address that is not a feed, naming the box, and saves nothing', async () => {
+    const w = await hired('feed2');
+    const response = await add(w.as, { url: 'https://example.com/not-a-feed', accountIds: [w.account.id] }).expect(400);
+    expect(response.body.errors[0]).toMatchObject({ path: 'url' });
+    expect((await t.http().get('/v1/social/feeds').set(w.as).expect(200)).body).toEqual([]);
+  });
+
+  it('only accepts web addresses and accounts of its own workspace', async () => {
+    const a = await hired('feed3a');
+    const b = await hired('feed3b');
+    await add(a.as, { url: 'file:///etc/passwd', accountIds: [a.account.id] }).expect(400);
+    await add(a.as, { url: 'https://blog.example.com/feed', accountIds: [] }).expect(400);
+    const stranger = await add(b.as, { url: 'https://blog.example.com/feed', accountIds: [a.account.id] }).expect(400);
+    expect(stranger.body.errors[0].path).toBe('accountIds');
+  });
+
+  it('needs a Social Media Staff member to write the posts', async () => {
+    const w = await workspace('feed4');
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'P', kind: 'page' }];
+    const pending = (await signIn(w.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(w.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    await add(w.as, { url: 'https://blog.example.com/feed', accountIds: [account!.id] }).expect(409);
+  });
+
+  it('pauses, resumes, checks and removes a feed, and another workspace cannot touch it', async () => {
+    const w = await hired('feed5');
+    const other = await hired('feed5b');
+    const { id } = (await add(w.as, { url: 'https://blog.example.com/a.xml', accountIds: [w.account.id] }).expect(201))
+      .body as { id: string };
+
+    await t.http().patch(`/v1/social/feeds/${id}`).set(other.as).send({ paused: true }).expect(404);
+    await t.http().delete(`/v1/social/feeds/${id}`).set(other.as).expect(404);
+
+    await t.http().patch(`/v1/social/feeds/${id}`).set(w.as).send({ paused: true }).expect(200);
+    await t.http().post(`/v1/social/feeds/${id}/check`).set(w.as).expect(409);
+    await t.http().patch(`/v1/social/feeds/${id}`).set(w.as).send({ paused: false }).expect(200);
+    const checked = await t.http().post(`/v1/social/feeds/${id}/check`).set(w.as).expect(200);
+    expect(checked.body).toMatchObject({ queued: 1, state: 'active' });
+    await t.http().patch(`/v1/social/feeds/${id}`).set(w.as).send({}).expect(400);
+
+    await t.http().delete(`/v1/social/feeds/${id}`).set(w.as).expect(204);
+    expect((await t.http().get('/v1/social/feeds').set(w.as).expect(200)).body).toEqual([]);
+  });
+});
