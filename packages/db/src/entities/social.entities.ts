@@ -84,7 +84,14 @@ export class SocialPost extends WorkspaceScopedEntity {
   permalink: string | null;
 }
 
-export type PublishIntentState = 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'cancelled';
+export type PublishIntentState =
+  | 'pending'
+  | 'sending'
+  | 'processing'
+  | 'sent'
+  | 'failed'
+  | 'uncertain'
+  | 'cancelled';
 
 @Entity('publish_intents')
 export class PublishIntent extends WorkspaceScopedEntity {
@@ -117,6 +124,23 @@ export class PublishIntent extends WorkspaceScopedEntity {
 
   @Column({ type: 'varchar', length: 300, nullable: true })
   externalPostId: string | null;
+
+  /** Set while the network is still working on it: what to ask about, and what the provider kept with it. */
+  @Column({ type: 'varchar', length: 300, nullable: true })
+  ticket: string | null;
+
+  @Column({ type: 'jsonb', default: {} })
+  ticketData: Record<string, unknown>;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  processingSince: Date | null;
+
+  /** The next look at the ticket. Pushed forward before each look, so it doubles as the lease. */
+  @Column({ type: 'timestamptz', nullable: true })
+  checkAfter: Date | null;
+
+  @Column({ type: 'integer', default: 0 })
+  checks: number;
 }
 
 export type EngagementClass = 'question' | 'praise' | 'complaint' | 'buying_intent' | 'spam' | 'other';
