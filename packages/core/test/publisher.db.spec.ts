@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   accountBinding,
   APPROVED_PAYLOAD,
+  checkDelayMs,
   type Effect,
   EffectExecutor,
   type EffectOrigin,
@@ -253,6 +254,136 @@ describe('publish intents and the publisher', () => {
     s.network.addComment = () => Promise.reject(new Error('comments are off'));
     expect(await s.publishDue()).toEqual(['sent']);
     expect((await s.post()).state).toBe('published');
+  });
+});
+
+describe('a network that is still working on a post', () => {
+  /** Queues a post, lets the network answer "still working", and returns what the tests need to look at it. */
+  async function processing() {
+    const t = await setup();
+    t.network.next = 'pending';
+    await t.queue();
+    expect(await t.publishDue()).toEqual(['processing']);
+    const looks = async () => {
+      const out = [];
+      for (const due of await t.publisher.dueChecks())
+        if (due.workspaceId === t.workspaceId) out.push(await t.publisher.check(due.workspaceId, due.id));
+      return out;
+    };
+    return { ...t, looks };
+  }
+
+  it('keeps the ticket, posts nothing yet, and publishes once a look finds it ready', async () => {
+    const t = await processing();
+    const [intent] = await t.intents();
+    expect(intent).toMatchObject({ state: 'processing', checks: 0 });
+    expect(intent!.ticket).toMatch(/^ticket-fixture-post-/);
+    expect((await t.post()).state).toBe('scheduled');
+    expect(t.network.posts).toHaveLength(0);
+
+    // Not before its time: the first look is 15 seconds away.
+    expect(await t.looks()).toEqual([]);
+    t.time.advance(20_000);
+    t.network.checks = ['processing', 'ready'];
+    expect(await t.looks()).toEqual(['processing']);
+    expect((await t.intents())[0]).toMatchObject({ state: 'processing', checks: 1 });
+
+    t.time.advance(checkDelayMs(1) + 1_000);
+    expect(await t.looks()).toEqual(['sent']);
+    expect((await t.intents())[0]).toMatchObject({ state: 'sent' });
+    expect(await t.post()).toMatchObject({ state: 'published', permalink: expect.stringContaining('fixture.test') });
+    expect(t.network.posts).toHaveLength(1);
+    expect((await events(db, t.workspaceId)).some((event) => event.type === 'post.published')).toBe(true);
+    expect((await activity(db, t.workspaceId)).some((entry) => entry.type === 'post.processing')).toBe(true);
+  });
+
+  it('spaces the looks further apart, up to five minutes', () => {
+    expect([1, 2, 3, 4, 5, 6, 20].map((checks) => checkDelayMs(checks) / 1000)).toEqual([
+      30, 60, 120, 240, 300, 300, 300,
+    ]);
+  });
+
+  it('lets only one worker look at a ticket at a time', async () => {
+    const t = await processing();
+    t.time.advance(20_000);
+    t.network.checks = ['processing', 'processing'];
+    const [due] = await t.publisher.dueChecks();
+    const results = await Promise.all([
+      t.publisher.check(t.workspaceId, due!.id),
+      t.publisher.check(t.workspaceId, due!.id),
+    ]);
+    expect([...results].sort()).toEqual(['processing', 'skipped']);
+    expect(t.network.checked).toHaveLength(1);
+  });
+
+  it('fails the post, and posts nothing, when the network says it could not process it', async () => {
+    const t = await processing();
+    t.time.advance(20_000);
+    t.network.checks = ['failed'];
+    expect(await t.looks()).toEqual(['failed']);
+    expect((await t.intents())[0]).toMatchObject({ state: 'failed', error: 'The network could not process it.' });
+    expect((await t.post()).state).toBe('failed');
+    expect(t.network.posts).toHaveLength(0);
+  });
+
+  it('treats a last step that was sent and never answered as uncertain, and never repeats it', async () => {
+    const t = await processing();
+    t.time.advance(20_000);
+    t.network.checks = ['uncertain'];
+    expect(await t.looks()).toEqual(['uncertain']);
+    expect((await t.intents())[0]).toMatchObject({ state: 'uncertain' });
+    // Nothing queues it again: it is not due to publish, and no more looks are made.
+    t.time.advance(3_600_000);
+    expect(await t.publishDue()).toEqual([]);
+    expect(await t.looks()).toEqual([]);
+    expect(t.network.posts).toHaveLength(0);
+    expect((await t.publisher.uncertain()).some((row) => row.workspaceId === t.workspaceId)).toBe(true);
+  });
+
+  it('asks a person once the network has taken 30 minutes', async () => {
+    const t = await processing();
+    t.network.checks = Array.from({ length: 40 }, () => 'processing' as const);
+    let last: string[] = [];
+    for (let minute = 0; minute < 40 && (await t.intents())[0]!.state === 'processing'; minute += 1) {
+      t.time.advance(60_000 * 1.2);
+      last = await t.looks();
+    }
+    expect(last).toEqual(['uncertain']);
+    expect((await t.intents())[0]).toMatchObject({ state: 'uncertain', checkAfter: null });
+    expect((await t.intents())[0]!.error).toContain('30 minutes');
+  });
+
+  it('a login problem pauses the looks, keeps the post, and resumes after reconnecting without posting twice', async () => {
+    const t = await processing();
+    t.time.advance(20_000);
+    t.network.checks = ['auth', 'ready'];
+    expect(await t.looks()).toEqual(['held']);
+    expect(
+      (await inWorkspace(db, t.workspaceId, (m) => m.findOneByOrFail(ConnectedAccount, { id: t.account.id }))).health,
+    ).toBe('broken');
+    expect((await t.intents())[0]!.state).toBe('processing');
+
+    t.time.advance(11 * 60_000);
+    expect(await t.looks()).toEqual([]); // a broken account is not looked at
+    await inWorkspace(db, t.workspaceId, (m) =>
+      m.update(ConnectedAccount, { id: t.account.id }, { health: 'ok', healthReason: null }),
+    );
+    expect(await t.looks()).toEqual(['sent']);
+    expect(t.network.posts).toHaveLength(1);
+  });
+
+  it('treats a limit, or a look that got no answer, as a pause and nothing more', async () => {
+    const t = await processing();
+    t.time.advance(20_000);
+    t.network.checks = ['rate_limit', 'lost'];
+    expect(await t.looks()).toEqual(['processing']);
+    const waitUntil = (await t.intents())[0]!.checkAfter!.getTime();
+    expect(waitUntil - t.time.now().getTime()).toBeGreaterThanOrEqual(5 * 60_000);
+
+    t.time.advance(6 * 60_000);
+    expect(await t.looks()).toEqual(['processing']);
+    expect((await t.intents())[0]).toMatchObject({ state: 'processing', checks: 2 });
+    expect(t.network.posts).toHaveLength(0);
   });
 });
 
