@@ -102,6 +102,17 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
           })),
         );
       }
+      // A post the network is still processing (a video) is looked at again when its time comes.
+      const looks = await this.publisher.dueChecks();
+      if (looks.length) {
+        await this.publish.addBulk(
+          looks.map((look) => ({
+            name: 'check',
+            data: { kind: 'check' as const, workspaceId: look.workspaceId, intentId: look.id },
+            opts: { jobId: `check-${look.id}-${look.checks}` },
+          })),
+        );
+      }
       const stuckReplies = await this.replies.reapStuck();
       const replies = await this.replies.due();
       if (replies.length) {
@@ -134,6 +145,7 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
         sends.length ||
         stuckPosts ||
         posts.length ||
+        looks.length ||
         unclear.length ||
         stuckReplies ||
         replies.length
