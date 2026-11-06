@@ -57,7 +57,16 @@ describe('connecting a social account', () => {
   it('lists networks and says which are configured', async () => {
     const w = await workspace('net1');
     const res = await t.http().get('/v1/social/networks').set(w.as).expect(200);
-    expect(res.body.map((n: { network: string }) => n.network)).toEqual(['facebook', 'instagram', 'linkedin', 'x']);
+    expect(res.body.map((n: { network: string }) => n.network)).toEqual([
+      'facebook',
+      'instagram',
+      'linkedin',
+      'x',
+      'bluesky',
+      'mastodon',
+      'telegram',
+      'discord',
+    ]);
   });
 
   it('walks the sign-in, offers the accounts, saves the chosen one, and never returns a token', async () => {
@@ -320,5 +329,69 @@ describe('hiring Social Media Staff', () => {
       .set(a.as)
       .send({ roleKey: 'social_media', displayName: 'Sam', settings: { accountIds: [account!.id], cadence: 2 } })
       .expect(201);
+  });
+});
+
+describe('networks that connect with a pasted login', () => {
+  const connect = (as: Record<string, string>, network: string, credentials: Record<string, string>) =>
+    t.http().post(`/v1/social/accounts/connect/${network}/credentials`).set(as).send({ credentials });
+
+  it('lists them as ready, with the boxes to fill in', async () => {
+    const { as } = await workspace('cred1');
+    const list = (await t.http().get('/v1/social/networks').set(as).expect(200)).body as {
+      network: string;
+      auth: string;
+      configured: boolean;
+      fields: { name: string; hint: string }[];
+    }[];
+    expect(list.find((entry) => entry.network === 'bluesky')).toMatchObject({
+      auth: 'credentials',
+      configured: true,
+      fields: [expect.objectContaining({ name: 'token' })],
+    });
+    expect(list.find((entry) => entry.network === 'facebook')).toMatchObject({ auth: 'oauth', fields: [] });
+  });
+
+  it('saves the account, shows it without any secret, and connects it again without making a second one', async () => {
+    const { as, workspaceId } = await workspace('cred2');
+    t.social.bluesky.accounts = [
+      { externalId: 'did:plc:one', name: 'one.bsky.social', username: 'one.bsky.social', kind: 'profile' },
+    ];
+    const first = await connect(as, 'bluesky', { token: 'secret-one' }).expect(200);
+    expect(first.body).toEqual([
+      expect.objectContaining({ network: 'bluesky', name: 'one.bsky.social', health: 'ok' }),
+    ]);
+    expect(JSON.stringify(first.body)).not.toContain('secret-one');
+
+    await connect(as, 'bluesky', { token: 'secret-two' }).expect(200);
+    const listed = (await t.http().get('/v1/social/accounts').set(as).expect(200)).body as { id: string }[];
+    expect(listed).toHaveLength(1);
+    expect(JSON.stringify(listed)).not.toContain('secret');
+
+    // What is stored is encrypted, never the token as typed.
+    const stored = await withTenant(db, { workspaceId, userId: null }, (m) =>
+      m.find(ConnectedAccount, { where: { workspaceId } }),
+    );
+    expect(stored[0]!.secretEnc).not.toContain('secret');
+  });
+
+  it('refuses a login the network does not accept, with its words, and saves nothing', async () => {
+    const { as } = await workspace('cred3');
+    const response = await connect(as, 'bluesky', { token: 'bad' }).expect(400);
+    expect(response.body.errors).toEqual([{ path: 'credentials', message: 'The fixture refused that token.' }]);
+    expect((await t.http().get('/v1/social/accounts').set(as).expect(200)).body).toEqual([]);
+  });
+
+  it('is only for networks without a sign-in page, and only for networks that exist', async () => {
+    const { as } = await workspace('cred4');
+    await connect(as, 'x', { token: 'a' }).expect(409);
+    await connect(as, 'myspace', { token: 'a' }).expect(404);
+    await t.http().post('/v1/social/accounts/connect/bluesky/credentials').set(as).send({}).expect(400);
+  });
+
+  it('limits attempts, since each one calls another company’s server', async () => {
+    const { as } = await workspace('cred5');
+    for (let attempt = 0; attempt < 10; attempt += 1) await connect(as, 'bluesky', { token: 'bad' }).expect(400);
+    await connect(as, 'bluesky', { token: 'bad' }).expect(429);
   });
 });

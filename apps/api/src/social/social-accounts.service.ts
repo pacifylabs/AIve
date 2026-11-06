@@ -181,7 +181,19 @@ export class SocialAccountsService {
         errors: [{ path: 'externalIds', message: 'Choose at least one account.' }],
       });
     }
-    const saved = await this.tx(ctx, async (m) => {
+    const saved = await this.saveAccounts(ctx, pending.network, tokens, chosen);
+    await this.redis.del(`social:pending:${id}`);
+    return saved.map(publicAccount);
+  }
+
+  /** Stores accounts with their encrypted tokens. Saving one that exists again refreshes it and clears a broken state. */
+  private async saveAccounts(
+    ctx: WorkspaceContext,
+    network: SocialNetwork,
+    tokens: ProviderTokens,
+    chosen: ProviderAccount[],
+  ) {
+    return this.tx(ctx, async (m) => {
       const out: ConnectedAccount[] = [];
       for (const account of chosen) {
         const secrets = {
@@ -192,7 +204,7 @@ export class SocialAccountsService {
         const seconds = account.expiresInSeconds === undefined ? tokens.expiresInSeconds : account.expiresInSeconds;
         const existing = await m.findOneBy(ConnectedAccount, {
           workspaceId: ctx.workspaceId,
-          network: pending.network,
+          network: network,
           externalId: account.externalId,
         });
         const accountId = existing?.id ?? uuidv7();
@@ -217,7 +229,7 @@ export class SocialAccountsService {
             m.create(ConnectedAccount, {
               id: accountId,
               workspaceId: ctx.workspaceId,
-              network: pending.network,
+              network: network,
               externalId: account.externalId,
               lastCheckedAt: null,
               ...fields,
@@ -231,14 +243,36 @@ export class SocialAccountsService {
             userId: ctx.userId,
             action: existing ? 'social.account_reconnected' : 'social.account_connected',
             target: accountId,
-            detail: { network: pending.network, name: account.name },
+            detail: { network: network, name: account.name },
           }),
         );
       }
       return out;
     });
-    await this.redis.del(`social:pending:${id}`);
-    return saved.map(publicAccount);
+  }
+
+  /**
+   * Connecting a network that has no sign-in page: the person pastes a token, app password or webhook address. The
+   * network is asked whether it works before anything is saved, and only the resulting session is kept, encrypted. What
+   * was typed is never logged or returned. A wrong value comes back as a message the person can act on.
+   */
+  async connectWithCredentials(ctx: WorkspaceContext, network: SocialNetwork, credentials: Record<string, string>) {
+    const provider = this.providers.get(network);
+    if (provider.authKind !== 'credentials' || !provider.connectWithCredentials) {
+      throw AppError.conflict(`${provider.label} connects through its own sign-in page.`);
+    }
+    let connection;
+    try {
+      connection = await provider.connectWithCredentials(credentials);
+    } catch (error) {
+      if (error instanceof ProviderError) {
+        const message = error.message.slice(0, 300);
+        throw new AppError(400, 'validation_failed', message, { errors: [{ path: 'credentials', message }] });
+      }
+      throw error;
+    }
+    if (!connection.accounts.length) throw AppError.conflict(`No ${provider.label} was found for that login.`);
+    return (await this.saveAccounts(ctx, network, connection.tokens, connection.accounts)).map(publicAccount);
   }
 
   /** Disconnecting stops everything waiting to post, wipes the tokens, and keeps the history. */

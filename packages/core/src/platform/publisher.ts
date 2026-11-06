@@ -158,6 +158,7 @@ export class PostPublisher {
         mediaUrls: post.media,
         linkUrl: post.linkUrl,
         metadata: { username: account.username },
+        idempotencyKey: intent.idempotencyKey,
       });
       let note: string | null = result.note ?? null;
       if (post.firstComment && provider.addComment) {

@@ -5,6 +5,8 @@ import {
   Cancel,
   type Effect,
   factsOnly,
+  NETWORK_MAX_CHARACTERS,
+  type Network,
   type TaskDefinition,
 } from '@ai-staff/core';
 import { ConnectedAccount } from '@ai-staff/db';
@@ -24,7 +26,7 @@ import { settingsOf } from '../settings.js';
 const input = z.object({
   planItemId: z.string().optional(),
   accountId: z.uuid(),
-  network: z.enum(['facebook', 'instagram', 'linkedin', 'x']),
+  network: z.enum(['facebook', 'instagram', 'linkedin', 'x', 'bluesky', 'mastodon', 'telegram', 'discord']),
   handle: z.string().nullish(),
   accountName: z.string().optional(),
   scheduledFor: z.string(),
@@ -36,6 +38,12 @@ const input = z.object({
     .default([]),
 });
 type Input = z.infer<typeof input>;
+
+/** A tight limit is told to the model up front, with room to spare, so the draft is not rejected for being long. */
+function lengthHint(network: Network): string {
+  const limit = NETWORK_MAX_CHARACTERS[network];
+  return limit <= 1_000 ? `Keep it under ${Math.floor(limit * 0.85)} characters.` : 'Keep it short and easy to read.';
+}
 
 const outputSchema = z.object({
   body: z.string().min(1).max(5000),
@@ -74,7 +82,7 @@ export const draftPost: TaskDefinition<Input, PostOutput> = {
       ].join('\n\n'),
       user: [
         `Write one post for ${account.name} on ${task.network}. Topic: ${task.pillar}. Angle: ${task.angle}.`,
-        task.network === 'x' ? 'Keep it under 250 characters.' : 'Keep it short and easy to read.',
+        lengthHint(task.network),
         settings.hashtags.max
           ? `Suggest at most ${settings.hashtags.max} hashtags, without the # sign.`
           : 'Do not use hashtags.',

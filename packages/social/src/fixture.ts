@@ -1,5 +1,7 @@
 import {
   type AuthUrlInput,
+  type CredentialConnection,
+  type CredentialField,
   type ExchangeCodeInput,
   type FoundPost,
   type PostRef,
@@ -25,6 +27,9 @@ export class FixtureSocialProvider implements SocialProvider {
   readonly label: string;
   readonly supportsNativeScheduling = false;
   readonly usesPkce = false;
+  /** `credentials` makes the fixture stand in for a network with no sign-in page (Bluesky, Telegram and the like). */
+  readonly authKind: 'oauth' | 'credentials';
+  readonly credentialFields: readonly CredentialField[];
   readonly posts: (PublishInput & { externalPostId: string; at: Date })[] = [];
   readonly comments: CommentInput[] = [];
   readonly messages: MessageReplyInput[] = [];
@@ -36,8 +41,32 @@ export class FixtureSocialProvider implements SocialProvider {
   accounts: ProviderAccount[] = [{ externalId: 'fixture-account', name: 'Fixture account', kind: 'page' }];
   private counter = 0;
 
-  constructor(readonly network: SocialNetwork) {
+  constructor(
+    readonly network: SocialNetwork,
+    options: { credentials?: boolean } = {},
+  ) {
     this.label = `${network} (fixture)`;
+    this.authKind = options.credentials ? 'credentials' : 'oauth';
+    this.credentialFields = options.credentials
+      ? [
+          {
+            name: 'token',
+            label: 'Token',
+            secret: true,
+            hint: 'Any value; "bad" is refused, as a wrong token would be.',
+          },
+        ]
+      : [];
+  }
+
+  connectWithCredentials(input: Record<string, string>): Promise<CredentialConnection> {
+    if (input.token === 'bad') {
+      return Promise.reject(new ProviderError('The fixture refused that token.', this.network, 'auth', 401));
+    }
+    return Promise.resolve({
+      tokens: { accessToken: `fixture-secret-${input.token ?? ''}`, refreshToken: null, expiresInSeconds: null },
+      accounts: this.accounts,
+    });
   }
 
   isConfigured() {

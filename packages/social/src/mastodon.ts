@@ -75,7 +75,9 @@ export class MastodonProvider extends CredentialProvider {
     super();
   }
 
-  private call<T>(host: string, path: string, token: string, init: RequestInit = {}) {
+  private async call<T>(host: string, path: string, token: string, init: RequestInit = {}) {
+    // Every call, not only the first: the name is checked each time it is used.
+    await this.options.hostGuard?.(host);
     return callApi<T>(
       this.network,
       `https://${host}/api/v1/${path}`,
@@ -89,7 +91,6 @@ export class MastodonProvider extends CredentialProvider {
 
   async connectWithCredentials(input: Record<string, string>): Promise<CredentialConnection> {
     const host = normalizeInstance(this.field(input, 'instance'));
-    await this.options.hostGuard?.(host);
     const token = this.field(input, 'accessToken');
     const me = await this.call<{ id: string; username: string; display_name?: string }>(
       host,

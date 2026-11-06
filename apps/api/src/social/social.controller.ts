@@ -12,7 +12,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { resolvePostRequest, selectAccountsRequest } from '@ai-staff/contracts';
+import { connectCredentialsRequest, resolvePostRequest, selectAccountsRequest } from '@ai-staff/contracts';
 import type { Request, Response } from 'express';
 import type { z } from 'zod';
 import { AccessTokenGuard } from '../auth/access-token.guard.js';
@@ -41,6 +41,7 @@ export class SocialController {
   constructor(
     @Inject(SocialAccountsService) private readonly accounts: SocialAccountsService,
     @Inject(SocialPostsService) private readonly posts: SocialPostsService,
+    @Inject(RateLimiter) private readonly limiter: RateLimiter,
   ) {}
 
   @Get('networks')
@@ -58,6 +59,20 @@ export class SocialController {
   @RequireRole('admin')
   connect(@CurrentWorkspace() ctx: WorkspaceContext, @Param('network') name: string) {
     return this.accounts.start(ctx, network(name));
+  }
+
+  /** For networks with no sign-in page: the person pastes a token, app password or webhook address. */
+  @Post('accounts/connect/:network/credentials')
+  @HttpCode(200)
+  @RequireRole('admin')
+  async connectWithCredentials(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('network') name: string,
+    @Body(new ZodPipe(connectCredentialsRequest)) body: z.output<typeof connectCredentialsRequest>,
+  ) {
+    // Each attempt calls another company's server with something a person typed, so tries are limited per person.
+    await this.limiter.consume({ key: `social-credentials:user:${ctx.userId}`, max: 10, windowSec: 600 });
+    return this.accounts.connectWithCredentials(ctx, network(name), body.credentials);
   }
 
   @Get('pending/:id')

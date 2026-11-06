@@ -44,6 +44,7 @@ import { SocialPublishing1793664000000 } from './migrations/0005-social-publishi
 import { SocialEngagement1793750400000 } from './migrations/0006-social-engagement.js';
 import { SocialReplies1793836800000 } from './migrations/0007-social-replies.js';
 import { Autopilot1793923200000 } from './migrations/0008-autopilot.js';
+import { MoreNetworks1794009600000 } from './migrations/0009-more-networks.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -91,6 +92,7 @@ export const migrations = [
   SocialEngagement1793750400000,
   SocialReplies1793836800000,
   Autopilot1793923200000,
+  MoreNetworks1794009600000,
 ];
 
 export interface ConnectionOptions {

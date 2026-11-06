@@ -81,6 +81,16 @@ export const selectAccountsRequest = z.object({
   externalIds: z.array(z.string().min(1).max(200)).min(1).max(50),
 });
 
+/**
+ * What a person pastes to connect a network that has no sign-in page: a token, app password or webhook address, with
+ * the account it belongs to. The boxes differ per network (see the network list), so this only bounds the shape.
+ */
+export const connectCredentialsRequest = z.object({
+  credentials: z
+    .record(z.string().min(1).max(40), z.string().max(2000))
+    .refine((fields) => Object.keys(fields).length <= 6, 'Too many fields.'),
+});
+
 export const resolvePostRequest = z.object({
   /** `published`: it is on the network after all. `retry`: queue it again. */
   outcome: z.enum(['published', 'retry']),

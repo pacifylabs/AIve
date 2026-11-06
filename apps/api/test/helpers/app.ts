@@ -39,7 +39,12 @@ export interface TestApp {
   app: INestApplication;
   mail: CaptureMailer;
   /** Stand-ins for the networks: tests script what they return. */
-  social: { facebook: FixtureSocialProvider; instagram: FixtureSocialProvider; x: FixtureSocialProvider };
+  social: {
+    facebook: FixtureSocialProvider;
+    instagram: FixtureSocialProvider;
+    x: FixtureSocialProvider;
+    bluesky: FixtureSocialProvider;
+  };
   /** A client with its own IP address, so each test looks like a different visitor to the rate limits. */
   http: (ip?: string) => Client;
   close: () => Promise<void>;
@@ -57,6 +62,7 @@ export async function startApp(): Promise<TestApp> {
     facebook: new FixtureSocialProvider('facebook'),
     instagram: new FixtureSocialProvider('instagram'),
     x: new FixtureSocialProvider('x'),
+    bluesky: new FixtureSocialProvider('bluesky', { credentials: true }),
   };
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(Mailer)

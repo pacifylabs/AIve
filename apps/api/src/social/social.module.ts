@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { socialConfig } from '@ai-staff/config';
+import { assertPublicHost } from '@ai-staff/core';
 import { SocialProviders } from '@ai-staff/social';
 import { AuthModule } from '../auth/auth.module.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.module.js';
@@ -14,7 +15,7 @@ import { SocialCallbackController, SocialController } from './social.controller.
     {
       provide: SocialProviders,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig) => new SocialProviders(socialConfig(config)),
+      useFactory: (config: AppConfig) => new SocialProviders({ ...socialConfig(config), hostGuard: assertPublicHost }),
     },
     SocialAccountsService,
     SocialPostsService,

@@ -106,6 +106,19 @@ describe('lengthFor', () => {
     );
   });
 
+  it('counts every Mastodon link as 23 characters too, and Bluesky by what a person sees', () => {
+    expect(lengthOnNetwork('mastodon', `See https://example.org/${'a'.repeat(300)}`)).toBe('See '.length + 23);
+    expect(lengthOnNetwork('bluesky', '👩‍👩‍👧 hello')).toBe(7);
+    expect(lengthOnNetwork('telegram', 'é'.repeat(10))).toBe(10);
+  });
+
+  it('knows each new network’s limit', () => {
+    expect(lengthFor<Draft>('bluesky', 'body').check({ subject: '', body: '🙂'.repeat(300) }, ctx([])).ok).toBe(true);
+    expect(lengthFor<Draft>('bluesky', 'body').check({ subject: '', body: '🙂'.repeat(301) }, ctx([])).ok).toBe(false);
+    expect(lengthFor<Draft>('discord', 'body').check({ subject: '', body: 'a'.repeat(2001) }, ctx([])).ok).toBe(false);
+    expect(lengthFor<Draft>('telegram', 'body').check({ subject: '', body: 'a'.repeat(4096) }, ctx([])).ok).toBe(true);
+  });
+
   it('fails a post that is too long for the network instead of cutting it', () => {
     const guard = lengthFor<Draft>('x', 'body');
     expect(guard.check({ subject: '', body: 'a'.repeat(280) }, ctx([])).ok).toBe(true);
