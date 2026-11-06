@@ -76,6 +76,10 @@ async function hire(p: ReturnType<typeof platform>, roleKey: 'dummy' | 'cap') {
   const actor = { workspaceId: ws.workspaceId, userId: ws.userId };
   await p.brain.addFact(actor, 'price', 'Starter plan: $1,200 a year');
   const staff = await hireStaff(db, p.registry, actor, { roleKey, displayName: 'Dee', settings: {} });
+  // Tests share one database, and the engine tests count every due schedule in it. These staff run only when asked.
+  await inWorkspace(db, ws.workspaceId, (m) =>
+    m.query(`UPDATE staff_task_settings SET schedule = NULL WHERE workspace_id = $1`, [ws.workspaceId]),
+  );
   return { ...ws, actor, staff };
 }
 
@@ -98,6 +102,8 @@ async function approveRuns(
   for (const item of await workItems(db, who.workspaceId)) {
     if (item.state === 'pending') await p.approvals.approve(who.actor, item.id);
   }
+  // Approving emits events, and the engine tests expect to be the only ones with events waiting in the shared database.
+  await p.triggers.dispatchEvents();
 }
 
 describe('autopilot rules', () => {
