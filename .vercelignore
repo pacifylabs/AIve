@@ -1,0 +1,11 @@
+# Keep CLI uploads small: build output and caches are rebuilt on Vercel.
+.git
+.turbo
+.vercel
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/*.tsbuildinfo
+docs
+infra
