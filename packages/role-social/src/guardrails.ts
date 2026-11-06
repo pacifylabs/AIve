@@ -85,15 +85,19 @@ export function fitsNetwork(): Guardrail<PostOutput> {
   };
 }
 
-/** Instagram posts are pictures or video: without media there is nothing to publish. */
+const VIDEO_LINK = /\.(mp4|mov|m4v|webm)(\?|#|$)/i;
+
+/** Instagram posts are pictures or video, and TikTok posts are video: without that there is nothing to publish. */
 export function requiresMedia(): Guardrail<PostOutput> {
   return {
     name: 'requiresMedia',
     check(output, ctx) {
       const { network, mediaUrls } = target(ctx);
-      return network === 'instagram' && mediaUrls.length === 0
-        ? fail('Instagram posts need a picture or a video. Add one to this item, then write it again.')
-        : ok(output);
+      if (network === 'instagram' && mediaUrls.length === 0)
+        return fail('Instagram posts need a picture or a video. Add one to this item, then write it again.');
+      if (network === 'tiktok' && !mediaUrls.some((url) => VIDEO_LINK.test(url)))
+        return fail('TikTok posts need a video. Add one to this item, then write it again.');
+      return ok(output);
     },
   };
 }

@@ -44,7 +44,7 @@ export interface TestApp {
     facebook: FixtureSocialProvider;
     instagram: FixtureSocialProvider;
     x: FixtureSocialProvider;
-    bluesky: FixtureSocialProvider;
+    telegram: FixtureSocialProvider;
   };
   /** A client with its own IP address, so each test looks like a different visitor to the rate limits. */
   http: (ip?: string) => Client;
@@ -63,7 +63,7 @@ export async function startApp(): Promise<TestApp> {
     facebook: new FixtureSocialProvider('facebook'),
     instagram: new FixtureSocialProvider('instagram'),
     x: new FixtureSocialProvider('x'),
-    bluesky: new FixtureSocialProvider('bluesky', { credentials: true }),
+    telegram: new FixtureSocialProvider('telegram', { credentials: true }),
   };
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(Mailer)

@@ -20,7 +20,7 @@ import {
   requiresMedia,
 } from '../guardrails.js';
 
-export const NETWORKS = ['facebook', 'instagram', 'linkedin', 'x', 'bluesky', 'mastodon', 'telegram', 'discord'] as const;
+export const NETWORKS = ['facebook', 'instagram', 'threads', 'tiktok', 'linkedin', 'x', 'telegram', 'discord'] as const;
 
 /** A tight limit is told to the model up front, with room to spare, so the draft is not rejected for being long. */
 export function lengthHint(network: Network): string {

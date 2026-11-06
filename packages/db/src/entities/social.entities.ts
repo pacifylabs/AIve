@@ -2,7 +2,7 @@ import { Column, Entity } from 'typeorm';
 import { WorkspaceScopedEntity } from './base.entity.js';
 
 export type SocialNetworkKey =
-  'facebook' | 'instagram' | 'linkedin' | 'x' | 'bluesky' | 'mastodon' | 'telegram' | 'discord';
+  'facebook' | 'instagram' | 'threads' | 'tiktok' | 'linkedin' | 'x' | 'telegram' | 'discord';
 export type AccountHealth = 'ok' | 'degraded' | 'broken';
 
 @Entity('connected_accounts')

@@ -46,7 +46,11 @@ export const draftFromArticle: TaskDefinition<Input, PostOutput> = {
     if (!article) throw new Cancel('That article was removed.');
     if (!account) throw new Cancel('That account is no longer connected.');
     if (account.health === 'broken') throw new Cancel('That account needs to be reconnected first.');
-    if (task.network === 'instagram') throw new Cancel('Instagram posts need a picture, so no draft was written.');
+    if (task.network === 'instagram' || task.network === 'tiktok') {
+      throw new Cancel(
+        `${task.network === 'tiktok' ? 'TikTok' : 'Instagram'} posts need a picture or video, so no draft was written.`,
+      );
+    }
     const company = companyBlock(ctx, settings);
     const text = [article.title, article.summary].filter(Boolean).join('\n\n');
     ctx.evidence?.push(text);

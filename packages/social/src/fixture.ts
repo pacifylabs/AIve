@@ -31,7 +31,7 @@ export class FixtureSocialProvider implements SocialProvider {
   readonly label: string;
   readonly supportsNativeScheduling = false;
   readonly usesPkce = false;
-  /** `credentials` makes the fixture stand in for a network with no sign-in page (Bluesky, Telegram and the like). */
+  /** `credentials` makes the fixture stand in for a network with no sign-in page (Telegram, Discord and the like). */
   readonly authKind: 'oauth' | 'credentials';
   readonly credentialFields: readonly CredentialField[];
   readonly posts: (PublishInput & { externalPostId: string; at: Date })[] = [];

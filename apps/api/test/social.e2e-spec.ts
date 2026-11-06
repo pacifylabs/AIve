@@ -61,9 +61,9 @@ describe('connecting a social account', () => {
       'facebook',
       'instagram',
       'linkedin',
+      'threads',
+      'tiktok',
       'x',
-      'bluesky',
-      'mastodon',
       'telegram',
       'discord',
     ]);
@@ -362,7 +362,7 @@ describe('networks that connect with a pasted login', () => {
       configured: boolean;
       fields: { name: string; hint: string }[];
     }[];
-    expect(list.find((entry) => entry.network === 'bluesky')).toMatchObject({
+    expect(list.find((entry) => entry.network === 'telegram')).toMatchObject({
       auth: 'credentials',
       configured: true,
       fields: [expect.objectContaining({ name: 'token' })],
@@ -372,16 +372,16 @@ describe('networks that connect with a pasted login', () => {
 
   it('saves the account, shows it without any secret, and connects it again without making a second one', async () => {
     const { as, workspaceId } = await workspace('cred2');
-    t.social.bluesky.accounts = [
-      { externalId: 'did:plc:one', name: 'one.bsky.social', username: 'one.bsky.social', kind: 'profile' },
+    t.social.telegram.accounts = [
+      { externalId: 'did:plc:one', name: 'one.example', username: 'one.example', kind: 'profile' },
     ];
-    const first = await connect(as, 'bluesky', { token: 'secret-one' }).expect(200);
+    const first = await connect(as, 'telegram', { token: 'secret-one' }).expect(200);
     expect(first.body).toEqual([
-      expect.objectContaining({ network: 'bluesky', name: 'one.bsky.social', health: 'ok' }),
+      expect.objectContaining({ network: 'telegram', name: 'one.example', health: 'ok' }),
     ]);
     expect(JSON.stringify(first.body)).not.toContain('secret-one');
 
-    await connect(as, 'bluesky', { token: 'secret-two' }).expect(200);
+    await connect(as, 'telegram', { token: 'secret-two' }).expect(200);
     const listed = (await t.http().get('/v1/social/accounts').set(as).expect(200)).body as { id: string }[];
     expect(listed).toHaveLength(1);
     expect(JSON.stringify(listed)).not.toContain('secret');
@@ -395,7 +395,7 @@ describe('networks that connect with a pasted login', () => {
 
   it('refuses a login the network does not accept, with its words, and saves nothing', async () => {
     const { as } = await workspace('cred3');
-    const response = await connect(as, 'bluesky', { token: 'bad' }).expect(400);
+    const response = await connect(as, 'telegram', { token: 'bad' }).expect(400);
     expect(response.body.errors).toEqual([{ path: 'credentials', message: 'The fixture refused that token.' }]);
     expect((await t.http().get('/v1/social/accounts').set(as).expect(200)).body).toEqual([]);
   });
@@ -404,13 +404,13 @@ describe('networks that connect with a pasted login', () => {
     const { as } = await workspace('cred4');
     await connect(as, 'x', { token: 'a' }).expect(409);
     await connect(as, 'myspace', { token: 'a' }).expect(404);
-    await t.http().post('/v1/social/accounts/connect/bluesky/credentials').set(as).send({}).expect(400);
+    await t.http().post('/v1/social/accounts/connect/telegram/credentials').set(as).send({}).expect(400);
   });
 
   it('limits attempts, since each one calls another company’s server', async () => {
     const { as } = await workspace('cred5');
-    for (let attempt = 0; attempt < 10; attempt += 1) await connect(as, 'bluesky', { token: 'bad' }).expect(400);
-    await connect(as, 'bluesky', { token: 'bad' }).expect(429);
+    for (let attempt = 0; attempt < 10; attempt += 1) await connect(as, 'telegram', { token: 'bad' }).expect(400);
+    await connect(as, 'telegram', { token: 'bad' }).expect(429);
   });
 });
 

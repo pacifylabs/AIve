@@ -125,8 +125,7 @@ export function bannedTerms<O>(...fields: TextFields<O>[]): Guardrail<O> {
   };
 }
 
-export type Network =
-  'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'x' | 'bluesky' | 'mastodon' | 'telegram' | 'discord';
+export type Network = 'facebook' | 'instagram' | 'threads' | 'linkedin' | 'tiktok' | 'x' | 'telegram' | 'discord';
 
 /** Post length limits per network (from KudiBooks `PLATFORM_LIMITS`, plus LinkedIn Pages). */
 export const NETWORK_MAX_CHARACTERS: Readonly<Record<Network, number>> = {
@@ -135,37 +134,32 @@ export const NETWORK_MAX_CHARACTERS: Readonly<Record<Network, number>> = {
   linkedin: 3_000,
   tiktok: 2_200,
   x: 280,
-  bluesky: 300,
-  // Servers set their own limit; 500 is a stock Mastodon's.
-  mastodon: 500,
+  threads: 500,
   telegram: 4_096,
   discord: 2_000,
 };
 
-/** X and Mastodon count any link as 23 characters, however long it is. */
-const FIXED_LINK_LENGTH = 23;
-const FIXED_LINK_NETWORKS: readonly Network[] = ['x', 'mastodon'];
+const EMOJI = /^\p{Extended_Pictographic}/u;
 
-/** Characters a person sees, so an emoji or an accented letter is one. Bluesky counts this way. */
-function visibleLength(text: string): number {
-  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
-    let count = 0;
-    for (const _ of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)) count += 1;
-    return count;
-  }
-  return [...text].length;
-}
+/** X counts any link as 23 characters, however long it is. */
+const FIXED_LINK_LENGTH = 23;
+const FIXED_LINK_NETWORKS: readonly Network[] = ['x'];
 
 /**
- * How many characters a post takes on a network. X and Mastodon count any link as 23 characters, Bluesky counts what a
- * person sees, and the rest count what is typed.
+ * How many characters a post takes on a network. X counts any link as 23 characters, Threads counts an emoji as the
+ * bytes it takes (Meta's rule), and the rest count what is typed.
  */
 export function lengthOnNetwork(network: Network, text: string): number {
   if (FIXED_LINK_NETWORKS.includes(network)) {
     const links = text.match(/https?:\/\/\S+/g) ?? [];
     return text.replace(/https?:\/\/\S+/g, '').length + links.length * FIXED_LINK_LENGTH;
   }
-  return network === 'bluesky' ? visibleLength(text) : text.length;
+  if (network === 'threads') {
+    let count = 0;
+    for (const symbol of text) count += EMOJI.test(symbol) ? new TextEncoder().encode(symbol).length : 1;
+    return count;
+  }
+  return text.length;
 }
 
 /** The text must fit the network. Too long fails rather than being cut, since a cut post can change its meaning. */

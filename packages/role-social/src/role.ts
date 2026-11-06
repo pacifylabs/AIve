@@ -43,7 +43,16 @@ export const socialMediaRole: RoleDefinition = {
     { key: 'neverPost', question: 'Anything you never post about?', target: { setting: 'neverPost' } },
     { key: 'cadence', question: 'How often per network?', target: { setting: 'cadence' } },
   ],
-  tasks: [planWeek, startDrafts, draftPost, draftFromArticle, triageEngagement, planMetrics, captureMetrics, weeklyReport],
+  tasks: [
+    planWeek,
+    startDrafts,
+    draftPost,
+    draftFromArticle,
+    triageEngagement,
+    planMetrics,
+    captureMetrics,
+    weeklyReport,
+  ],
   subscribes: [
     {
       event: 'social.plan_approved',

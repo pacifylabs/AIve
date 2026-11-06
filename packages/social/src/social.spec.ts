@@ -263,10 +263,10 @@ describe('SocialProviders', () => {
       ['facebook', false],
       ['instagram', false],
       ['linkedin', true],
+      ['threads', false],
+      ['tiktok', false],
       ['x', false],
-      // Connected with a token or app password, so there is no app of ours to configure.
-      ['bluesky', true],
-      ['mastodon', true],
+      // Connected with a token or webhook, so there is no app of ours to configure.
       ['telegram', true],
       ['discord', true],
     ]);

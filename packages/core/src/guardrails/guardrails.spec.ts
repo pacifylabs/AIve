@@ -106,15 +106,22 @@ describe('lengthFor', () => {
     );
   });
 
-  it('counts every Mastodon link as 23 characters too, and Bluesky by what a person sees', () => {
-    expect(lengthOnNetwork('mastodon', `See https://example.org/${'a'.repeat(300)}`)).toBe('See '.length + 23);
-    expect(lengthOnNetwork('bluesky', '👩‍👩‍👧 hello')).toBe(7);
+  it('counts what is typed on every other network', () => {
     expect(lengthOnNetwork('telegram', 'é'.repeat(10))).toBe(10);
+    expect(lengthOnNetwork('threads', `See https://example.org/${'a'.repeat(300)}`)).toBe(
+      'See https://example.org/'.length + 300,
+    );
+  });
+
+  it('counts a Threads emoji as the bytes it takes, as Meta does', () => {
+    expect(lengthOnNetwork('threads', 'hi 🙂')).toBe(3 + 4);
+    expect(lengthFor<Draft>('threads', 'body').check({ subject: '', body: '🙂'.repeat(125) }, ctx([])).ok).toBe(true);
+    expect(lengthFor<Draft>('threads', 'body').check({ subject: '', body: '🙂'.repeat(126) }, ctx([])).ok).toBe(false);
   });
 
   it('knows each new network’s limit', () => {
-    expect(lengthFor<Draft>('bluesky', 'body').check({ subject: '', body: '🙂'.repeat(300) }, ctx([])).ok).toBe(true);
-    expect(lengthFor<Draft>('bluesky', 'body').check({ subject: '', body: '🙂'.repeat(301) }, ctx([])).ok).toBe(false);
+    expect(lengthFor<Draft>('threads', 'body').check({ subject: '', body: 'a'.repeat(500) }, ctx([])).ok).toBe(true);
+    expect(lengthFor<Draft>('threads', 'body').check({ subject: '', body: 'a'.repeat(501) }, ctx([])).ok).toBe(false);
     expect(lengthFor<Draft>('discord', 'body').check({ subject: '', body: 'a'.repeat(2001) }, ctx([])).ok).toBe(false);
     expect(lengthFor<Draft>('telegram', 'body').check({ subject: '', body: 'a'.repeat(4096) }, ctx([])).ok).toBe(true);
   });

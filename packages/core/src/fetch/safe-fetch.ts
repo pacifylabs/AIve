@@ -1,4 +1,3 @@
-import { ProviderError } from '@ai-staff/social';
 import { request as requestHttp, type RequestOptions } from 'node:http';
 import { request as requestHttps } from 'node:https';
 import { Readable } from 'node:stream';
@@ -36,21 +35,6 @@ export function isPrivateAddress(address: string): boolean {
 }
 
 export class UnsafeUrlError extends Error {}
-
-/**
- * For calls to a server a person typed in (a Mastodon server): its name must resolve to public addresses only. Checked
- * before every call, not only when the account is connected, so a name that later points inside our network is refused.
- */
-export async function assertPublicHost(host: string): Promise<void> {
-  try {
-    await assertPublicUrl(`https://${host}`);
-  } catch (error) {
-    if (error instanceof UnsafeUrlError) {
-      throw new ProviderError(`${host} is not a public server, so we cannot post there.`, 'mastodon');
-    }
-    throw error;
-  }
-}
 
 /** Checks one address before it is fetched: web protocols only, no credentials in it, and the name must resolve to public addresses only. */
 export async function assertPublicUrl(raw: string): Promise<URL> {

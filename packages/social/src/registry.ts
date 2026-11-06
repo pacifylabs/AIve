@@ -1,9 +1,9 @@
-import { BlueskyProvider } from './bluesky.js';
 import { DiscordProvider } from './discord.js';
-import { MastodonProvider, type HostGuard } from './mastodon.js';
 import { MetaProvider, type MetaConfig } from './meta.js';
 import { ProviderError, SOCIAL_NETWORKS, type SocialNetwork, type SocialProvider } from './provider.js';
 import { TelegramProvider } from './telegram.js';
+import { ThreadsProvider, type ThreadsConfig } from './threads.js';
+import { TikTokProvider, type TikTokConfig } from './tiktok.js';
 import { XProvider, type XConfig } from './x.js';
 
 /** Names for networks that have no client yet, so a screen can still list them properly. */
@@ -12,8 +12,8 @@ const NETWORK_LABELS: Record<SocialNetwork, string> = {
   instagram: 'Instagram business account',
   linkedin: 'LinkedIn Page',
   x: 'X account',
-  bluesky: 'Bluesky account',
-  mastodon: 'Mastodon account',
+  threads: 'Threads profile',
+  tiktok: 'TikTok account',
   telegram: 'Telegram channel or group',
   discord: 'Discord channel',
 };
@@ -21,8 +21,8 @@ const NETWORK_LABELS: Record<SocialNetwork, string> = {
 export interface SocialConfig {
   meta?: MetaConfig;
   x?: XConfig;
-  /** Stops a Mastodon server name that points inside our own network from being called. The API passes one in. */
-  hostGuard?: HostGuard;
+  threads?: ThreadsConfig;
+  tiktok?: TikTokConfig;
 }
 
 /**
@@ -38,8 +38,8 @@ export class SocialProviders {
     this.providers.set('facebook', new MetaProvider('facebook', meta));
     this.providers.set('instagram', new MetaProvider('instagram', meta));
     this.providers.set('x', new XProvider(config.x ?? { clientId: '', clientSecret: '' }));
-    this.providers.set('bluesky', new BlueskyProvider());
-    this.providers.set('mastodon', new MastodonProvider({ hostGuard: config.hostGuard }));
+    this.providers.set('threads', new ThreadsProvider(config.threads ?? { appId: '', appSecret: '' }));
+    this.providers.set('tiktok', new TikTokProvider(config.tiktok ?? { clientKey: '', clientSecret: '' }));
     this.providers.set('telegram', new TelegramProvider());
     this.providers.set('discord', new DiscordProvider());
     for (const provider of overrides) this.providers.set(provider.network, provider);

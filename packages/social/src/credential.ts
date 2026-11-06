@@ -78,27 +78,3 @@ export abstract class CredentialProvider implements SocialProvider {
     if (input.mediaUrls.length) throw new ProviderError(why, this.network);
   }
 }
-
-/** Counts what a person sees as one character, so an emoji or an accented letter is one, not several. */
-export function graphemeCount(text: string): number {
-  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
-    let count = 0;
-    for (const _ of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)) count += 1;
-    return count;
-  }
-  return [...text].length;
-}
-
-/** The words of a post with its markup removed, for matching a post the network returns as HTML. */
-export function plainText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>\s*<p>/gi, '\n\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
-}

@@ -63,8 +63,8 @@ const NETWORK_LABEL: Record<string, string> = {
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
   x: 'X',
-  bluesky: 'Bluesky',
-  mastodon: 'Mastodon',
+  threads: 'Threads',
+  tiktok: 'TikTok',
   telegram: 'Telegram',
   discord: 'Discord',
 };

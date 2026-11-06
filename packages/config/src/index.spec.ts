@@ -105,6 +105,8 @@ describe('social network settings', () => {
     expect(socialConfig(config)).toEqual({
       meta: { appId: '', appSecret: '', graphVersion: 'v21.0', messaging: false },
       x: { clientId: '', clientSecret: '' },
+      threads: { appId: '', appSecret: '' },
+      tiktok: { clientKey: '', clientSecret: '' },
     });
   });
 
@@ -116,8 +118,14 @@ describe('social network settings', () => {
       META_MESSAGING: 'true',
       X_CLIENT_ID: 'x',
       X_CLIENT_SECRET: 'y',
+      THREADS_APP_ID: 't',
+      THREADS_APP_SECRET: 'u',
+      TIKTOK_CLIENT_KEY: 'k',
+      TIKTOK_CLIENT_SECRET: 'v',
     });
     expect(socialConfig(config).meta).toMatchObject({ appId: 'id', messaging: true });
+    expect(socialConfig(config).threads).toEqual({ appId: 't', appSecret: 'u' });
+    expect(socialConfig(config).tiktok).toEqual({ clientKey: 'k', clientSecret: 'v' });
     expect(() => loadConfig({ ...valid, META_GRAPH_VERSION: '21' })).toThrow(ConfigError);
   });
 });

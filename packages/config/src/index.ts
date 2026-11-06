@@ -73,6 +73,12 @@ export const configSchema = z
     /** X API app (OAuth 2.0 client). */
     X_CLIENT_ID: z.string().min(1).optional(),
     X_CLIENT_SECRET: z.string().min(1).optional(),
+    /** Threads app (shown under the Threads use case of a Meta app; it has its own id and secret). */
+    THREADS_APP_ID: z.string().min(1).optional(),
+    THREADS_APP_SECRET: z.string().min(1).optional(),
+    /** TikTok developer app (Login Kit and Content Posting API). */
+    TIKTOK_CLIENT_KEY: z.string().min(1).optional(),
+    TIKTOK_CLIENT_SECRET: z.string().min(1).optional(),
     /** How often the worker schedules, delivers events, reaps dead runs and queues due work. */
     WORKER_TICK_MS: z.coerce.number().int().min(1000).max(60_000).default(5_000),
   })
@@ -125,7 +131,16 @@ export function parseKeyring(config: Pick<AppConfig, 'ENCRYPTION_KEYS'>): Map<st
 export function socialConfig(
   config: Pick<
     AppConfig,
-    'META_APP_ID' | 'META_APP_SECRET' | 'META_GRAPH_VERSION' | 'META_MESSAGING' | 'X_CLIENT_ID' | 'X_CLIENT_SECRET'
+    | 'META_APP_ID'
+    | 'META_APP_SECRET'
+    | 'META_GRAPH_VERSION'
+    | 'META_MESSAGING'
+    | 'X_CLIENT_ID'
+    | 'X_CLIENT_SECRET'
+    | 'THREADS_APP_ID'
+    | 'THREADS_APP_SECRET'
+    | 'TIKTOK_CLIENT_KEY'
+    | 'TIKTOK_CLIENT_SECRET'
   >,
 ) {
   return {
@@ -136,5 +151,7 @@ export function socialConfig(
       messaging: config.META_MESSAGING,
     },
     x: { clientId: config.X_CLIENT_ID ?? '', clientSecret: config.X_CLIENT_SECRET ?? '' },
+    threads: { appId: config.THREADS_APP_ID ?? '', appSecret: config.THREADS_APP_SECRET ?? '' },
+    tiktok: { clientKey: config.TIKTOK_CLIENT_KEY ?? '', clientSecret: config.TIKTOK_CLIENT_SECRET ?? '' },
   };
 }

@@ -98,6 +98,14 @@ describe('social guardrails', () => {
       requiresMedia().check(post('Hi'), ctxFor({ network: 'instagram', mediaUrls: ['https://c.test/a.jpg'] })).ok,
     ).toBe(true);
     expect(requiresMedia().check(post('Hi'), ctxFor({ network: 'facebook' })).ok).toBe(true);
+    // TikTok takes a video and nothing else, so a picture does not do.
+    expect(requiresMedia().check(post('Hi'), ctxFor({ network: 'tiktok', mediaUrls: [] })).ok).toBe(false);
+    expect(
+      requiresMedia().check(post('Hi'), ctxFor({ network: 'tiktok', mediaUrls: ['https://c.test/a.jpg'] })).ok,
+    ).toBe(false);
+    expect(
+      requiresMedia().check(post('Hi'), ctxFor({ network: 'tiktok', mediaUrls: ['https://c.test/a.mp4?x=1'] })).ok,
+    ).toBe(true);
   });
 
   it('refuses a mention of any account but its own', () => {

@@ -14,7 +14,6 @@ import {
   TaskEngine,
   Triggers,
   WebsitePrefill,
-  assertPublicHost,
 } from '@ai-staff/core';
 import { createDataSource, DataSource, type Mailbox } from '@ai-staff/db';
 import { AnthropicProvider, type ModelProvider } from '@ai-staff/llm';
@@ -65,7 +64,7 @@ const notConfigured: ModelProvider = {
     {
       provide: SocialProviders,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig) => new SocialProviders({ ...socialConfig(config), hostGuard: assertPublicHost }),
+      useFactory: (config: AppConfig) => new SocialProviders(socialConfig(config)),
     },
     {
       provide: AccountTokens,

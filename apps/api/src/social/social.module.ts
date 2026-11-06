@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { socialConfig } from '@ai-staff/config';
-import { assertPublicHost, FeedPoller } from '@ai-staff/core';
+import { FeedPoller } from '@ai-staff/core';
 import { DataSource } from '@ai-staff/db';
 import { SocialProviders } from '@ai-staff/social';
 import { AuthModule } from '../auth/auth.module.js';
@@ -17,7 +17,7 @@ import { SocialCallbackController, SocialController } from './social.controller.
     {
       provide: SocialProviders,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig) => new SocialProviders({ ...socialConfig(config), hostGuard: assertPublicHost }),
+      useFactory: (config: AppConfig) => new SocialProviders(socialConfig(config)),
     },
     { provide: FeedPoller, inject: [DataSource], useFactory: (db: DataSource) => new FeedPoller(db) },
     SocialAccountsService,

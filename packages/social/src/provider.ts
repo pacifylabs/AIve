@@ -1,15 +1,15 @@
 /**
- * The networks Social Media Staff posts to. Facebook, Instagram, LinkedIn and X sign in through the network; Bluesky,
- * Mastodon, Telegram and Discord connect with a token or app password the person creates themselves, so they need no
- * app review. TikTok and YouTube arrive with video (Milestone 4b).
+ * The networks Social Media Staff posts to. Facebook, Instagram, Threads, TikTok, LinkedIn and X sign in through the
+ * network; Telegram and Discord connect with a token or webhook the person creates themselves, so they need no app
+ * review. YouTube arrives with video (Milestone 4b).
  */
 export const SOCIAL_NETWORKS = [
   'facebook',
   'instagram',
   'linkedin',
+  'threads',
+  'tiktok',
   'x',
-  'bluesky',
-  'mastodon',
   'telegram',
   'discord',
 ] as const;
@@ -233,6 +233,8 @@ export class ProviderError extends Error {
     readonly status?: number,
     /** True when the request was never answered, so the network may or may not have acted on it. */
     readonly unknownOutcome = false,
+    /** The network's own name for the problem, where it gives one (TikTok does). */
+    readonly code?: string,
   ) {
     super(message);
     this.name = 'ProviderError';
@@ -243,8 +245,10 @@ export class ProviderError extends Error {
 const META_AUTH_CODES = new Set([102, 190, 200, 10]);
 const META_RATE_CODES = new Set([4, 17, 32, 341, 613]);
 
-function classify(status: number, body: { error?: { code?: number } | string }): ProviderErrorKind {
-  const code = typeof body.error === 'object' ? body.error?.code : undefined;
+function classify(status: number, body: { error?: { code?: number | string } | string }): ProviderErrorKind {
+  const raw = typeof body.error === 'object' ? body.error?.code : undefined;
+  // Only Meta's numeric codes mean anything here; another network's text code is read by that network's own provider.
+  const code = typeof raw === 'number' ? raw : undefined;
   if (status === 429 || (code !== undefined && META_RATE_CODES.has(code))) return 'rate_limit';
   if (status === 401 || (code !== undefined && META_AUTH_CODES.has(code))) return 'auth';
   return 'other';
@@ -281,7 +285,7 @@ export async function callApi<T>(
   }
   if (!response.ok) {
     const body = payload as {
-      error?: { message?: string; code?: number } | string;
+      error?: { message?: string; code?: number | string } | string;
       error_description?: string;
       message?: string;
       detail?: string;
@@ -301,6 +305,7 @@ export async function callApi<T>(
       classify(response.status, body),
       response.status,
       response.status >= 500,
+      typeof body.error === 'object' && body.error?.code !== undefined ? String(body.error.code) : undefined,
     );
   }
   return payload as T;

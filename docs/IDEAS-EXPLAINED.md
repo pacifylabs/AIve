@@ -22,7 +22,7 @@ idea below keeps that rule.
 - **Staff member**: the AI worker, such as the Social Media Staff. It plans and drafts. It does not publish on its own.
 - **Inbox**: the screen where drafts wait for a person to approve, edit or reject them.
 - **Guardrails**: rules checked on every draft, such as "only use facts from the company profile" and "no banned words".
-- **Network**: a social site, such as X, LinkedIn or Bluesky.
+- **Network**: a social site, such as X, LinkedIn or Threads.
 - **Provider**: the piece of code that talks to one network.
 - **Publisher**: the background worker that sends approved posts at the right time.
 - **Uncertain**: a post where the network never answered. We never send it again automatically, because it may have gone up.
@@ -81,6 +81,8 @@ So we do not rebuild it:
 ### S1. More networks that need no long approval
 
 Add Bluesky, Mastodon, Telegram, Discord, Nostr and Lemmy as places the staff member can post.
+
+> Update 2026-11-06: Bluesky and Mastodon were built and then removed at the owner's request. Telegram and Discord stay. The story below uses Bluesky only as the example of a token-based sign-in.
 
 These networks let you connect with a simple token or app password. Meta, LinkedIn and X can take weeks to approve our
 app. The new ones let us publish for real, and run demos, in the meantime.
