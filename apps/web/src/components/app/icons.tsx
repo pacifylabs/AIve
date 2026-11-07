@@ -111,6 +111,12 @@ const PATHS = {
       <path d="m14.5 7.5 3 3" />
     </>
   ),
+  templates: (
+    <>
+      <rect x="4" y="3.5" width="16" height="17" rx="2.5" />
+      <path d="M8 8.5h8M8 12.5h8M8 16.5h4.5" />
+    </>
+  ),
   feeds: (
     <>
       <path d="M5 5a14 14 0 0 1 14 14M5 11a8 8 0 0 1 8 8" />

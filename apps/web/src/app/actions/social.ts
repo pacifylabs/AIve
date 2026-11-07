@@ -133,12 +133,90 @@ export async function composePostAction(_state: FormState, data: FormData): Prom
       firstComment: field(data, 'firstComment').trim() || undefined,
       mediaUrls: lines(field(data, 'mediaUrls')),
       linkUrl: field(data, 'linkUrl').trim() || undefined,
+      tagId: field(data, 'tagId') || undefined,
       scheduledLocal: field(data, 'scheduledLocal') || undefined,
     },
   });
   if (!result.ok) return failed(result.problem, data, '/app/compose', COMPOSE_FIELDS);
   revalidatePath('/app/calendar');
   redirect('/app/calendar');
+}
+
+// ---- Tags and templates -------------------------------------------------------------------------------------
+
+/** Makes a tag, or changes one when an id is sent. */
+export async function saveTagAction(_state: FormState, data: FormData): Promise<FormState> {
+  const id = field(data, 'id');
+  const result = await api(id ? `/social/tags/${encodeURIComponent(id)}` : '/social/tags', {
+    method: id ? 'PATCH' : 'POST',
+    workspace: true,
+    body: { name: field(data, 'name'), colour: field(data, 'colour') || 'blue' },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/templates', ['name', 'colour']);
+  revalidatePath('/app/templates');
+  revalidatePath('/app/calendar');
+  revalidatePath('/app/compose');
+  return { notice: id ? 'Tag saved.' : 'Tag added.', values: id ? { name: field(data, 'name') } : {} };
+}
+
+export async function deleteTagAction(data: FormData): Promise<void> {
+  const result = await api(`/social/tags/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'DELETE',
+    workspace: true,
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/templates');
+  revalidatePath('/app/templates');
+  revalidatePath('/app/calendar');
+  revalidatePath('/app/compose');
+}
+
+const TEMPLATE_FIELDS = ['name', 'body', 'firstComment', 'mediaUrls', 'linkUrl'] as const;
+
+/** Saves a template, or changes one when an id is sent. */
+export async function saveTemplateAction(_state: FormState, data: FormData): Promise<FormState> {
+  const id = field(data, 'id');
+  const result = await api(id ? `/social/templates/${encodeURIComponent(id)}` : '/social/templates', {
+    method: id ? 'PATCH' : 'POST',
+    workspace: true,
+    body: {
+      name: field(data, 'name'),
+      body: field(data, 'body'),
+      firstComment: field(data, 'firstComment').trim() || undefined,
+      mediaUrls: lines(field(data, 'mediaUrls')),
+      linkUrl: field(data, 'linkUrl').trim() || undefined,
+      accountIds: data.getAll('accountId').filter((value): value is string => typeof value === 'string'),
+      tagId: field(data, 'tagId') || null,
+    },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/templates', TEMPLATE_FIELDS);
+  revalidatePath('/app/templates');
+  revalidatePath('/app/compose');
+  return {
+    notice: id ? 'Template saved.' : 'Template added.',
+    values: id ? echo(data, (name) => TEMPLATE_FIELDS.includes(name as (typeof TEMPLATE_FIELDS)[number])) : {},
+  };
+}
+
+export async function deleteTemplateAction(data: FormData): Promise<void> {
+  const result = await api(`/social/templates/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'DELETE',
+    workspace: true,
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/templates');
+  revalidatePath('/app/templates');
+  revalidatePath('/app/compose');
+}
+
+/** Puts a tag on a post already on the calendar, or takes it off (an empty choice). */
+export async function setPostTagAction(data: FormData): Promise<void> {
+  const result = await api(`/social/posts/${encodeURIComponent(field(data, 'id'))}/tag`, {
+    method: 'PATCH',
+    workspace: true,
+    body: { tagId: field(data, 'tagId') || null },
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/calendar');
+  revalidatePath('/app/calendar');
+  revalidatePath('/app/templates');
 }
 
 // ---- Sign-offs ---------------------------------------------------------------------------------------------

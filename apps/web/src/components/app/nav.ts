@@ -41,6 +41,7 @@ export const NAV: NavGroup[] = [
     items: [
       { label: 'Accounts', href: '/app/accounts', icon: 'accounts' },
       { label: 'Feeds', href: '/app/feeds', icon: 'feeds' },
+      { label: 'Templates and tags', href: '/app/templates', icon: 'templates' },
     ],
   },
   {
