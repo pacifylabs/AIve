@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { cancelPostAction, resolvePostAction } from '@/app/actions/social';
+import { type Tag, TagPill } from '@/components/app/tag';
+import { cancelPostAction, resolvePostAction, setPostTagAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
 
 export const metadata = { title: 'Calendar' };
@@ -12,6 +13,7 @@ interface Post {
   permalink: string | null;
   /** Set when a person wrote the post by hand. */
   createdBy: string | null;
+  tag: Tag | null;
   account: { name: string; network: string; health: string } | null;
   publish: { state: string; error: string | null } | null;
 }
@@ -33,9 +35,16 @@ function label(post: Post): string {
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
-export default async function CalendarPage() {
-  const posts = await apiOrRedirect<Post[]>('/social/posts', '/app/calendar', { workspace: true });
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ tag?: string }> }) {
+  const { tag } = await searchParams;
+  const [posts, tags] = await Promise.all([
+    apiOrRedirect<Post[]>(`/social/posts${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`, '/app/calendar', {
+      workspace: true,
+    }),
+    apiOrRedirect<Tag[]>('/social/tags', '/app/calendar', { workspace: true }),
+  ]);
   if (!posts.ok) return <p className="text-danger">{posts.problem.title}</p>;
+  const allTags = tags.ok ? tags.data : [];
 
   const days = new Map<string, Post[]>();
   for (const post of posts.data) {
@@ -54,6 +63,28 @@ export default async function CalendarPage() {
           New post
         </Link>
       </div>
+      {allTags.length ? (
+        <nav aria-label="Filter by tag" className="flex flex-wrap items-center gap-2 text-sm">
+          <Link
+            href="/app/calendar"
+            aria-current={tag ? undefined : 'page'}
+            className={tag ? 'pill' : 'pill pill-accent'}
+          >
+            All posts
+          </Link>
+          {allTags.map((item) => (
+            <Link
+              key={item.id}
+              href={`/app/calendar?tag=${item.id}`}
+              aria-current={tag === item.id ? 'page' : undefined}
+            >
+              <span className={tag === item.id ? 'rounded-full ring-2 ring-accent' : ''}>
+                <TagPill tag={item} />
+              </span>
+            </Link>
+          ))}
+        </nav>
+      ) : null}
       {posts.data.length === 0 ? (
         <div className="empty">
           <h2 className="font-medium">No posts yet</h2>
@@ -75,6 +106,7 @@ export default async function CalendarPage() {
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
+                    {post.tag ? <TagPill tag={post.tag} /> : null}
                     {post.createdBy ? <span className="pill">Written by you</span> : null}
                     <span className={post.state === 'failed' ? 'text-danger' : 'text-muted'}>{label(post)}</span>
                   </span>
@@ -83,7 +115,31 @@ export default async function CalendarPage() {
                 {post.publish?.error && post.state !== 'published' ? (
                   <p className="text-xs text-danger">{post.publish.error}</p>
                 ) : null}
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  {allTags.length ? (
+                    <form action={setPostTagAction} className="flex items-center gap-2">
+                      <input type="hidden" name="id" value={post.id} />
+                      <label className="sr-only" htmlFor={`tag-${post.id}`}>
+                        Tag for this post
+                      </label>
+                      <select
+                        id={`tag-${post.id}`}
+                        name="tagId"
+                        defaultValue={post.tag?.id ?? ''}
+                        className="field w-auto py-1 text-xs"
+                      >
+                        <option value="">No tag</option>
+                        {allTags.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="submit" className="text-xs font-medium text-accent hover:underline">
+                        Set tag
+                      </button>
+                    </form>
+                  ) : null}
                   {post.permalink ? (
                     <a href={post.permalink} className="text-accent hover:underline" rel="noreferrer" target="_blank">
                       View post
