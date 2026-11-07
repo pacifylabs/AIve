@@ -7,6 +7,7 @@ import {
   type EntityManager,
   In,
   PublishIntent,
+  PostTag,
   SocialPost,
   StaffMember,
   Workspace,
@@ -15,6 +16,7 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 import { AppError } from '../common/app-error.js';
 import type { WorkspaceContext } from '../workspaces/workspace.guard.js';
+import { tagExists } from './post-library.service.js';
 
 @Injectable()
 export class SocialPostsService {
@@ -25,7 +27,7 @@ export class SocialPostsService {
   }
 
   /** Posts for the calendar, oldest first, each with its account's name and what the publisher last said. */
-  list(ctx: WorkspaceContext, filter: { from?: Date; to?: Date } = {}) {
+  list(ctx: WorkspaceContext, filter: { from?: Date; to?: Date; tagId?: string } = {}) {
     return this.tx(ctx, async (m) => {
       const query = m
         .getRepository(SocialPost)
@@ -35,20 +37,24 @@ export class SocialPostsService {
         .limit(200);
       if (filter.from) query.andWhere('post.scheduledFor >= :from', { from: filter.from });
       if (filter.to) query.andWhere('post.scheduledFor < :to', { to: filter.to });
+      if (filter.tagId) query.andWhere('post.tagId = :tagId', { tagId: filter.tagId });
       const posts = await query.getMany();
-      const [accounts, intents] = await Promise.all([
+      const [accounts, intents, tags] = await Promise.all([
         m.find(ConnectedAccount, {
           where: { workspaceId: ctx.workspaceId, id: In([...new Set(posts.map((p) => p.accountId))]) },
         }),
         m.find(PublishIntent, { where: { workspaceId: ctx.workspaceId, postId: In(posts.map((p) => p.id)) } }),
+        m.find(PostTag, { where: { workspaceId: ctx.workspaceId } }),
       ]);
       return posts.map((post) => {
         const intent = intents
           .filter((i) => i.postId === post.id)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
         const account = accounts.find((a) => a.id === post.accountId);
+        const tag = tags.find((t) => t.id === post.tagId);
         return {
           ...post,
+          tag: tag ? { id: tag.id, name: tag.name, colour: tag.colour } : null,
           account: account
             ? { id: account.id, name: account.name, network: account.network, health: account.health }
             : null,
@@ -161,6 +167,7 @@ export class SocialPostsService {
       firstComment?: string | undefined;
       mediaUrls: string[];
       linkUrl?: string | undefined;
+      tagId?: string | undefined;
       scheduledLocal?: string | undefined;
     },
   ) {
@@ -188,6 +195,10 @@ export class SocialPostsService {
           mediaUrls: input.mediaUrls,
         });
         if (problem) problems.push({ path: 'body', message: `${account.name}: ${problem}` });
+      }
+
+      if (input.tagId && !(await tagExists(m, ctx.workspaceId, input.tagId))) {
+        problems.push({ path: 'tagId', message: 'That tag does not exist.' });
       }
 
       const now = new Date();
@@ -224,7 +235,7 @@ export class SocialPostsService {
             scheduledFor: when.toISOString(),
             idempotencyKey: `compose:${input.requestId}:${account.id}`,
           },
-          ctx.userId,
+          { createdBy: ctx.userId, tagId: input.tagId ?? null },
         );
         results.push({ accountId: account.id, postId: made.created ? made.postId : null, queued: made.created });
       }

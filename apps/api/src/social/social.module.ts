@@ -6,6 +6,7 @@ import { SocialProviders } from '@ai-staff/social';
 import { AuthModule } from '../auth/auth.module.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.module.js';
 import { SocialAccountsService } from './social-accounts.service.js';
+import { PostLibraryService } from './post-library.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
 import { SocialPostsService } from './social-posts.service.js';
 import { SocialCallbackController, SocialController } from './social.controller.js';
@@ -23,6 +24,7 @@ import { SocialCallbackController, SocialController } from './social.controller.
     SocialAccountsService,
     SocialPostsService,
     SocialFeedsService,
+    PostLibraryService,
   ],
 })
 export class SocialModule {}

@@ -6,6 +6,7 @@ import {
   HttpCode,
   Inject,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -16,6 +17,9 @@ import {
 import {
   addFeedRequest,
   composePostRequest,
+  setPostTagRequest,
+  tagRequest,
+  templateRequest,
   connectCredentialsRequest,
   resolvePostRequest,
   selectAccountsRequest,
@@ -30,6 +34,7 @@ import { ZodPipe } from '../common/zod.pipe.js';
 import { RateLimiter } from '../redis/rate-limiter.service.js';
 import { CurrentWorkspace, RequireRole, type WorkspaceContext, WorkspaceGuard } from '../workspaces/workspace.guard.js';
 import { isNetwork, SocialAccountsService } from './social-accounts.service.js';
+import { PostLibraryService } from './post-library.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
 import { SocialPostsService } from './social-posts.service.js';
 
@@ -51,6 +56,7 @@ export class SocialController {
     @Inject(SocialAccountsService) private readonly accounts: SocialAccountsService,
     @Inject(SocialPostsService) private readonly posts: SocialPostsService,
     @Inject(SocialFeedsService) private readonly feeds: SocialFeedsService,
+    @Inject(PostLibraryService) private readonly library: PostLibraryService,
     @Inject(RateLimiter) private readonly limiter: RateLimiter,
   ) {}
 
@@ -109,8 +115,13 @@ export class SocialController {
   }
 
   @Get('posts')
-  postsList(@CurrentWorkspace() ctx: WorkspaceContext, @Query('from') from?: string, @Query('to') to?: string) {
-    return this.posts.list(ctx, { from: date(from), to: date(to) });
+  postsList(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('tag', new ParseUUIDPipe({ optional: true })) tagId?: string,
+  ) {
+    return this.posts.list(ctx, { from: date(from), to: date(to), tagId });
   }
 
   /** Any member may write a post, as any member may approve a draft. It goes out under the Social Media Staff member. */
@@ -122,6 +133,73 @@ export class SocialController {
   ) {
     await this.limiter.consume({ key: `social-compose:user:${ctx.userId}`, max: 60, windowSec: 600 });
     return this.posts.compose(ctx, body);
+  }
+
+  @Patch('posts/:id/tag')
+  setTag(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(setPostTagRequest)) body: z.output<typeof setPostTagRequest>,
+  ) {
+    return this.library.setPostTag(ctx, id, body.tagId);
+  }
+
+  @Get('tags')
+  tags(@CurrentWorkspace() ctx: WorkspaceContext) {
+    return this.library.listTags(ctx);
+  }
+
+  @Post('tags')
+  @HttpCode(201)
+  createTag(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Body(new ZodPipe(tagRequest)) body: z.output<typeof tagRequest>,
+  ) {
+    return this.library.createTag(ctx, body);
+  }
+
+  @Patch('tags/:id')
+  updateTag(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(tagRequest)) body: z.output<typeof tagRequest>,
+  ) {
+    return this.library.updateTag(ctx, id, body);
+  }
+
+  @Delete('tags/:id')
+  @HttpCode(204)
+  async deleteTag(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id', UuidPipe) id: string) {
+    await this.library.deleteTag(ctx, id);
+  }
+
+  @Get('templates')
+  templates(@CurrentWorkspace() ctx: WorkspaceContext) {
+    return this.library.listTemplates(ctx);
+  }
+
+  @Post('templates')
+  @HttpCode(201)
+  createTemplate(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Body(new ZodPipe(templateRequest)) body: z.output<typeof templateRequest>,
+  ) {
+    return this.library.createTemplate(ctx, body);
+  }
+
+  @Patch('templates/:id')
+  updateTemplate(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(templateRequest)) body: z.output<typeof templateRequest>,
+  ) {
+    return this.library.updateTemplate(ctx, id, body);
+  }
+
+  @Delete('templates/:id')
+  @HttpCode(204)
+  async deleteTemplate(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id', UuidPipe) id: string) {
+    await this.library.deleteTemplate(ctx, id);
   }
 
   @Post('posts/:id/cancel')

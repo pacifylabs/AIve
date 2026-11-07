@@ -715,3 +715,177 @@ describe('writing a post by hand', () => {
     await post(w.as, { accountIds: [account!.id] }).expect(409);
   });
 });
+
+describe('colour tags and post templates', () => {
+  async function ready(label: string) {
+    const w = await workspace(label);
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'Northfield', kind: 'page' }];
+    const pending = (await signIn(w.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(w.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    await t
+      .http()
+      .post('/v1/staff')
+      .set(w.as)
+      .send({ roleKey: 'social_media', displayName: 'Sam', settings: { accountIds: [account!.id] } })
+      .expect(201);
+    return { ...w, account: account! };
+  }
+  const tag = (as: Record<string, string>, name: string, colour = 'blue') =>
+    t.http().post('/v1/social/tags').set(as).send({ name, colour });
+
+  it('keeps tags with one colour from the fixed set, one name each, and counts the posts that carry them', async () => {
+    const w = await ready('tag1');
+    const launch = (await tag(w.as, 'Launch', 'amber').expect(201)).body as { id: string };
+    await tag(w.as, 'launch', 'red').expect(409);
+    await tag(w.as, 'Odd', 'chartreuse').expect(400);
+    await tag(w.as, '   ', 'blue').expect(400);
+    await t
+      .http()
+      .post('/v1/social/posts')
+      .set(w.as)
+      .send({ requestId: uuidv7(), accountIds: [w.account.id], body: 'Hi', tagId: launch.id })
+      .expect(201);
+    const list = (await t.http().get('/v1/social/tags').set(w.as).expect(200)).body as {
+      name: string;
+      posts: number;
+    }[];
+    expect(list).toEqual([expect.objectContaining({ name: 'Launch', colour: 'amber', posts: 1 })]);
+    await t
+      .http()
+      .patch(`/v1/social/tags/${launch.id}`)
+      .set(w.as)
+      .send({ name: 'Launches', colour: 'green' })
+      .expect(200);
+  });
+
+  it('shows the tag on the calendar, filters by it, and lets a staff draft be tagged afterwards', async () => {
+    const w = await ready('tag2');
+    const a = (await tag(w.as, 'Offers', 'teal').expect(201)).body as { id: string };
+    const b = (await tag(w.as, 'News', 'pink').expect(201)).body as { id: string };
+    const send = (body: string, tagId?: string) =>
+      t
+        .http()
+        .post('/v1/social/posts')
+        .set(w.as)
+        .send({ requestId: uuidv7(), accountIds: [w.account.id], body, tagId })
+        .expect(201);
+    await send('One', a.id);
+    await send('Two', b.id);
+    await send('Three');
+    const all = (await t.http().get('/v1/social/posts').set(w.as).expect(200)).body as { body: string; tag: unknown }[];
+    expect(all).toHaveLength(3);
+    const offers = (await t.http().get('/v1/social/posts').query({ tag: a.id }).set(w.as).expect(200)).body as {
+      body: string;
+      tag: { name: string; colour: string };
+    }[];
+    expect(offers.map((p) => [p.body, p.tag.name, p.tag.colour])).toEqual([['One', 'Offers', 'teal']]);
+
+    const untagged = all.find((p) => p.tag === null) as unknown as { id: string };
+    await t.http().patch(`/v1/social/posts/${untagged.id}/tag`).set(w.as).send({ tagId: b.id }).expect(200);
+    expect(
+      ((await t.http().get('/v1/social/posts').query({ tag: b.id }).set(w.as).expect(200)).body as unknown[]).length,
+    ).toBe(2);
+    await t.http().patch(`/v1/social/posts/${untagged.id}/tag`).set(w.as).send({ tagId: null }).expect(200);
+    await t.http().get('/v1/social/posts').query({ tag: 'not-a-uuid' }).set(w.as).expect(400);
+  });
+
+  it('deleting a tag keeps its posts, without the tag, and another workspace cannot use it', async () => {
+    const w = await ready('tag3');
+    const other = await ready('tag3b');
+    const gone = (await tag(w.as, 'Temp', 'gray').expect(201)).body as { id: string };
+    await t
+      .http()
+      .post('/v1/social/posts')
+      .set(w.as)
+      .send({ requestId: uuidv7(), accountIds: [w.account.id], body: 'Hi', tagId: gone.id })
+      .expect(201);
+    await t
+      .http()
+      .post('/v1/social/posts')
+      .set(other.as)
+      .send({ requestId: uuidv7(), accountIds: [other.account.id], body: 'Hi', tagId: gone.id })
+      .expect(400);
+    await t.http().delete(`/v1/social/tags/${gone.id}`).set(other.as).expect(404);
+    await t.http().delete(`/v1/social/tags/${gone.id}`).set(w.as).expect(204);
+    const posts = (await t.http().get('/v1/social/posts').set(w.as).expect(200)).body as { tag: unknown }[];
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.tag).toBeNull();
+  });
+
+  it('saves, lists, edits and deletes templates, with their usual accounts and tag', async () => {
+    const w = await ready('tpl1');
+    const labelled = (await tag(w.as, 'Tips', 'purple').expect(201)).body as { id: string };
+    const body = {
+      name: 'Friday tip',
+      body: 'Tip of the week: {{tip}}',
+      linkUrl: 'https://northfield.test/tips',
+      accountIds: [w.account.id],
+      tagId: labelled.id,
+    };
+    const created = (await t.http().post('/v1/social/templates').set(w.as).send(body).expect(201)).body as {
+      id: string;
+    };
+    await t
+      .http()
+      .post('/v1/social/templates')
+      .set(w.as)
+      .send({ ...body, name: 'friday TIP' })
+      .expect(409);
+    await t
+      .http()
+      .patch(`/v1/social/templates/${created.id}`)
+      .set(w.as)
+      .send({ ...body, body: 'New words' })
+      .expect(200);
+    const list = (await t.http().get('/v1/social/templates').set(w.as).expect(200)).body as Record<string, unknown>[];
+    expect(list).toEqual([
+      expect.objectContaining({
+        name: 'Friday tip',
+        body: 'New words',
+        tagId: labelled.id,
+        accountIds: [w.account.id],
+      }),
+    ]);
+    // Removing the tag leaves the template without one.
+    await t.http().delete(`/v1/social/tags/${labelled.id}`).set(w.as).expect(204);
+    expect(
+      ((await t.http().get('/v1/social/templates').set(w.as).expect(200)).body as { tagId: string | null }[])[0]!.tagId,
+    ).toBeNull();
+    await t.http().delete(`/v1/social/templates/${created.id}`).set(w.as).expect(204);
+    await t.http().delete(`/v1/social/templates/${created.id}`).set(w.as).expect(404);
+  });
+
+  it('refuses a template with an account or tag that is not the workspace’s, or no text', async () => {
+    const w = await ready('tpl2');
+    const other = await ready('tpl2b');
+    const base = { name: 'T', body: 'Hello', accountIds: [] as string[] };
+    await t
+      .http()
+      .post('/v1/social/templates')
+      .set(w.as)
+      .send({ ...base, accountIds: [other.account.id] })
+      .expect(400);
+    await t
+      .http()
+      .post('/v1/social/templates')
+      .set(w.as)
+      .send({ ...base, tagId: uuidv7() })
+      .expect(400);
+    await t
+      .http()
+      .post('/v1/social/templates')
+      .set(w.as)
+      .send({ ...base, body: '  ' })
+      .expect(400);
+    // Templates are private to their workspace.
+    await t.http().post('/v1/social/templates').set(w.as).send(base).expect(201);
+    expect((await t.http().get('/v1/social/templates').set(other.as).expect(200)).body).toEqual([]);
+  });
+});

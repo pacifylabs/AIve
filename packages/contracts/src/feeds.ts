@@ -34,8 +34,36 @@ export const composePostRequest = z.object({
     .url({ protocol: /^https?$/ })
     .max(500)
     .optional(),
+  tagId: z.uuid().optional(),
   scheduledLocal: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Use a date and time.')
     .optional(),
 });
+
+export const TAG_COLOURS = ['blue', 'teal', 'green', 'amber', 'red', 'pink', 'purple', 'gray'] as const;
+
+/** A colour tag: a short name and one colour from a fixed set. */
+export const tagRequest = z.object({
+  name: z.string().trim().min(1, 'Give the tag a name.').max(40),
+  colour: z.enum(TAG_COLOURS),
+});
+
+/** A post written once and started from again. Accounts are suggestions, chosen again each time. */
+export const templateRequest = z.object({
+  name: z.string().trim().min(1, 'Give the template a name.').max(80),
+  body: z.string().trim().min(1, 'Write the text of the template.').max(5000),
+  firstComment: z.string().trim().max(1000).optional(),
+  mediaUrls: z
+    .array(z.url({ protocol: /^https$/ }))
+    .max(10)
+    .default([]),
+  linkUrl: z
+    .url({ protocol: /^https?$/ })
+    .max(500)
+    .optional(),
+  accountIds: z.array(z.uuid()).max(10).default([]),
+  tagId: z.uuid().nullable().optional(),
+});
+
+export const setPostTagRequest = z.object({ tagId: z.uuid().nullable() });
