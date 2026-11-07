@@ -1,4 +1,5 @@
 import { DiscordProvider } from './discord.js';
+import { LinkedInProvider, type LinkedInConfig, type MediaFetcher } from './linkedin.js';
 import { MetaProvider, type MetaConfig } from './meta.js';
 import { ProviderError, SOCIAL_NETWORKS, type SocialNetwork, type SocialProvider } from './provider.js';
 import { TelegramProvider } from './telegram.js';
@@ -10,7 +11,7 @@ import { XProvider, type XConfig } from './x.js';
 const NETWORK_LABELS: Record<SocialNetwork, string> = {
   facebook: 'Facebook Page',
   instagram: 'Instagram business account',
-  linkedin: 'LinkedIn Page',
+  linkedin: 'LinkedIn profile or Page',
   x: 'X account',
   threads: 'Threads profile',
   tiktok: 'TikTok account',
@@ -21,7 +22,10 @@ const NETWORK_LABELS: Record<SocialNetwork, string> = {
 export interface SocialConfig {
   meta?: MetaConfig;
   x?: XConfig;
+  linkedin?: LinkedInConfig;
   threads?: ThreadsConfig;
+  /** Reads a public picture for networks that must be sent the file. Supplied by the platform, which owns the safe fetch. */
+  fetchMedia?: MediaFetcher;
   tiktok?: TikTokConfig;
 }
 
@@ -38,6 +42,12 @@ export class SocialProviders {
     this.providers.set('facebook', new MetaProvider('facebook', meta));
     this.providers.set('instagram', new MetaProvider('instagram', meta));
     this.providers.set('x', new XProvider(config.x ?? { clientId: '', clientSecret: '' }));
+    this.providers.set(
+      'linkedin',
+      new LinkedInProvider(config.linkedin ?? { clientId: '', clientSecret: '', pages: false, version: '202610' }, {
+        fetchMedia: config.fetchMedia,
+      }),
+    );
     this.providers.set('threads', new ThreadsProvider(config.threads ?? { appId: '', appSecret: '' }));
     this.providers.set('tiktok', new TikTokProvider(config.tiktok ?? { clientKey: '', clientSecret: '' }));
     this.providers.set('telegram', new TelegramProvider());

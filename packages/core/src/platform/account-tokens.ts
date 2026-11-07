@@ -23,6 +23,11 @@ export class AccountTokens {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
+  /** Whether this network's login can be renewed without the person. LinkedIn's cannot. */
+  canRenew(account: Pick<ConnectedAccount, 'network'>): boolean {
+    return this.providers.get(account.network).canRenewLogin !== false;
+  }
+
   async fresh(account: ConnectedAccount): Promise<AccountSecrets> {
     const secrets = JSON.parse(this.keyring.decrypt(account.secretEnc, accountBinding(account))) as AccountSecrets;
     const expiring =

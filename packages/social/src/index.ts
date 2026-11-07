@@ -1,6 +1,7 @@
 export * from './credential.js';
 export * from './discord.js';
 export * from './fixture.js';
+export * from './linkedin.js';
 export * from './meta.js';
 export * from './provider.js';
 export * from './registry.js';

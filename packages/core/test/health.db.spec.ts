@@ -123,6 +123,48 @@ describe('account health', () => {
     expect(after.healthReason).toBeNull();
   });
 
+  it('does not try to renew a login the network will not renew, and warns a week ahead', async () => {
+    const s = await setup();
+    const linkedin = new FixtureSocialProvider('linkedin');
+    Object.defineProperty(linkedin, 'canRenewLogin', { value: false });
+    const providers = new SocialProviders({}, [linkedin]);
+    const tokens = new AccountTokens(db, keyring, providers, s.time.now);
+    const health = new AccountHealth(db, keyring, tokens, s.time.now);
+    const id = await inWorkspace(db, s.workspaceId, async (m) => {
+      const id = uuidv7();
+      await m.save(
+        m.create(ConnectedAccount, {
+          id,
+          workspaceId: s.workspaceId,
+          network: 'linkedin',
+          externalId: 'urn:li:person:abc',
+          name: 'Ada Obi',
+          username: null,
+          parentExternalId: null,
+          secretEnc: keyring.encrypt(
+            JSON.stringify({ accessToken: 'tok' }),
+            accountBinding({ workspaceId: s.workspaceId, id }),
+          ),
+          tokenExpiresAt: new Date(s.time.now().getTime() + 20 * DAY),
+          scopes: [],
+          health: 'ok',
+          healthReason: null,
+          lastCheckedAt: null,
+          metadata: {},
+        }),
+      );
+      return id;
+    });
+    await health.sweep();
+    expect((await s.get(id)).health).toBe('ok');
+    s.time.advance(14 * DAY); // six days left
+    await health.sweep();
+    const warned = await s.get(id);
+    expect(warned.health).toBe('degraded');
+    expect(warned.healthReason).toMatch(/cannot be renewed in the background/);
+    expect(keyring.decrypt(warned.secretEnc, accountBinding(warned))).not.toContain('fixture-token-2');
+  });
+
   it('marks a login that has already run out as broken without asking the network', async () => {
     const s = await setup();
     const id = await s.add(-1);

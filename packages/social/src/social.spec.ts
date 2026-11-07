@@ -257,20 +257,20 @@ describe('XProvider', () => {
 });
 
 describe('SocialProviders', () => {
-  it('lists every network, saying which are configured, and lets a fixture stand in for LinkedIn', () => {
-    const providers = new SocialProviders({}, [new FixtureSocialProvider('linkedin')]);
+  it('lists every network, saying which are configured, and lets a fixture stand in for X', () => {
+    const providers = new SocialProviders({}, [new FixtureSocialProvider('x')]);
     expect(providers.catalogue().map((entry) => [entry.network, entry.configured])).toEqual([
       ['facebook', false],
       ['instagram', false],
-      ['linkedin', true],
+      ['linkedin', false],
       ['threads', false],
       ['tiktok', false],
-      ['x', false],
+      ['x', true],
       // Connected with a token or webhook, so there is no app of ours to configure.
       ['telegram', true],
       ['discord', true],
     ]);
-    expect(() => new SocialProviders().get('linkedin')).toThrow(/cannot post to linkedin/);
+    expect(new SocialProviders().get('linkedin').isConfigured()).toBe(false);
   });
 });
 

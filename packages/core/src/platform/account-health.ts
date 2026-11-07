@@ -5,8 +5,8 @@ import { type AccountSecrets, accountBinding, type AccountTokens } from './accou
 
 /** A login with no refresh token (Meta, Threads) is traded for a new one this long before it runs out. */
 const RENEW_WITHIN_MS = 14 * 86_400_000;
-/** If renewing keeps failing, the person is told this long before the login runs out. */
-const WARN_WITHIN_MS = 3 * 86_400_000;
+/** If renewing keeps failing, or cannot be done, the person is told this long before the login runs out. */
+const WARN_WITHIN_MS = 7 * 86_400_000;
 /** What a warning starts with, so a later success can tell its own warning from some other reason. */
 const WARNING_START = 'The login for';
 
@@ -16,7 +16,7 @@ export type HealthOutcome = 'renewed' | 'warned' | 'broken' | 'skipped';
  * Looks after the logins of connected accounts before a post depends on them. A network whose login is renewed by
  * trading it for another (Meta, Threads) cannot be renewed once it has run out, and nothing used to touch a login unless a
  * post was due in its last ten minutes. So each login that runs out within two weeks is renewed here. If that fails the
- * account is marked `degraded` three days ahead, with the date, and `broken` when the network refuses the login or it
+ * account is marked `degraded` a week ahead, with the date, and `broken` when the network refuses the login or it
  * has run out, so the person sees it on the Accounts page and in the activity log instead of finding it by a failed post.
  * Logins that come with a refresh token renew themselves when a post needs them, and are left alone here.
  */
@@ -62,6 +62,14 @@ export class AccountHealth {
       return 'broken';
     }
     try {
+      // A login the network will not let us renew is not asked to: the person is warned a week ahead instead.
+      if (!this.tokens.canRenew(account)) {
+        if (remaining < WARN_WITHIN_MS && account.health === 'ok') {
+          await this.warn(account, 'LinkedIn logins cannot be renewed in the background');
+          return 'warned';
+        }
+        return 'skipped';
+      }
       await this.tokens.renew(account, secrets);
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 120) : 'unknown error';
@@ -75,13 +83,7 @@ export class AccountHealth {
         return 'broken';
       }
       if (remaining < WARN_WITHIN_MS && account.health === 'ok') {
-        const day = account.tokenExpiresAt.toISOString().slice(0, 10);
-        await this.mark(
-          account,
-          'degraded',
-          `${WARNING_START} ${account.name} runs out on ${day}, and renewing it automatically did not work (${message}). Connect it again to keep posting.`,
-          'account.expiring',
-        );
+        await this.warn(account, `renewing it automatically did not work (${message})`);
         return 'warned';
       }
       return 'skipped';
@@ -92,6 +94,16 @@ export class AccountHealth {
       );
     }
     return 'renewed';
+  }
+
+  private warn(account: ConnectedAccount, why: string) {
+    const day = account.tokenExpiresAt!.toISOString().slice(0, 10);
+    return this.mark(
+      account,
+      'degraded',
+      `${WARNING_START} ${account.name} runs out on ${day}: ${why}. Connect it again to keep posting.`,
+      'account.expiring',
+    );
   }
 
   private async mark(account: ConnectedAccount, health: 'degraded' | 'broken', reason: string, type: string) {

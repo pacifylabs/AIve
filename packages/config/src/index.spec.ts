@@ -105,6 +105,7 @@ describe('social network settings', () => {
     expect(socialConfig(config)).toEqual({
       meta: { appId: '', appSecret: '', graphVersion: 'v21.0', messaging: false },
       x: { clientId: '', clientSecret: '' },
+      linkedin: { clientId: '', clientSecret: '', pages: false, version: '202610' },
       threads: { appId: '', appSecret: '' },
       tiktok: { clientKey: '', clientSecret: '' },
     });
@@ -118,12 +119,23 @@ describe('social network settings', () => {
       META_MESSAGING: 'true',
       X_CLIENT_ID: 'x',
       X_CLIENT_SECRET: 'y',
+      LINKEDIN_CLIENT_ID: 'li',
+      LINKEDIN_CLIENT_SECRET: 'ls',
+      LINKEDIN_PAGES: 'true',
+      LINKEDIN_VERSION: '202611',
       THREADS_APP_ID: 't',
       THREADS_APP_SECRET: 'u',
       TIKTOK_CLIENT_KEY: 'k',
       TIKTOK_CLIENT_SECRET: 'v',
     });
     expect(socialConfig(config).meta).toMatchObject({ appId: 'id', messaging: true });
+    expect(socialConfig(config).linkedin).toEqual({
+      clientId: 'li',
+      clientSecret: 'ls',
+      pages: true,
+      version: '202611',
+    });
+    expect(() => loadConfig({ ...valid, LINKEDIN_VERSION: '2026-11' })).toThrow(ConfigError);
     expect(socialConfig(config).threads).toEqual({ appId: 't', appSecret: 'u' });
     expect(socialConfig(config).tiktok).toEqual({ clientKey: 'k', clientSecret: 'v' });
     expect(() => loadConfig({ ...valid, META_GRAPH_VERSION: '21' })).toThrow(ConfigError);

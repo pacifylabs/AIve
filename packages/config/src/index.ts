@@ -73,6 +73,15 @@ export const configSchema = z
     /** X API app (OAuth 2.0 client). */
     X_CLIENT_ID: z.string().min(1).optional(),
     X_CLIENT_SECRET: z.string().min(1).optional(),
+    /** LinkedIn app. `LINKEDIN_PAGES` asks for the Company Page permissions, which LinkedIn must have approved first. */
+    LINKEDIN_CLIENT_ID: z.string().min(1).optional(),
+    LINKEDIN_CLIENT_SECRET: z.string().min(1).optional(),
+    LINKEDIN_PAGES: z.stringbool().default(false),
+    /** The month of LinkedIn's versioned API to call, YYYYMM. Pinned so a change cannot break posting unannounced. */
+    LINKEDIN_VERSION: z
+      .string()
+      .regex(/^20\d{2}(0[1-9]|1[0-2])$/)
+      .default('202610'),
     /** Threads app (shown under the Threads use case of a Meta app; it has its own id and secret). */
     THREADS_APP_ID: z.string().min(1).optional(),
     THREADS_APP_SECRET: z.string().min(1).optional(),
@@ -137,6 +146,10 @@ export function socialConfig(
     | 'META_MESSAGING'
     | 'X_CLIENT_ID'
     | 'X_CLIENT_SECRET'
+    | 'LINKEDIN_CLIENT_ID'
+    | 'LINKEDIN_CLIENT_SECRET'
+    | 'LINKEDIN_PAGES'
+    | 'LINKEDIN_VERSION'
     | 'THREADS_APP_ID'
     | 'THREADS_APP_SECRET'
     | 'TIKTOK_CLIENT_KEY'
@@ -151,6 +164,12 @@ export function socialConfig(
       messaging: config.META_MESSAGING,
     },
     x: { clientId: config.X_CLIENT_ID ?? '', clientSecret: config.X_CLIENT_SECRET ?? '' },
+    linkedin: {
+      clientId: config.LINKEDIN_CLIENT_ID ?? '',
+      clientSecret: config.LINKEDIN_CLIENT_SECRET ?? '',
+      pages: config.LINKEDIN_PAGES,
+      version: config.LINKEDIN_VERSION,
+    },
     threads: { appId: config.THREADS_APP_ID ?? '', appSecret: config.THREADS_APP_SECRET ?? '' },
     tiktok: { clientKey: config.TIKTOK_CLIENT_KEY ?? '', clientSecret: config.TIKTOK_CLIENT_SECRET ?? '' },
   };

@@ -106,14 +106,15 @@ interface FetchOptions {
 }
 
 /**
- * Reads a public address as text. Every hop of a redirect is checked again, the answer is capped in size and time, and
- * only the expected kind of content comes back. What it says is data to weigh; it is never an instruction.
+ * Reads a public address. Every hop of a redirect is checked again, the answer is capped in size and time, and only the
+ * expected kind of content comes back. What it says is data to weigh; it is never an instruction. `truncated` says the
+ * cap was reached and the rest was dropped, which is fine for the start of a page and not for a picture.
  */
-async function fetchPublicText(
+async function fetchPublic(
   raw: string,
   options: FetchOptions,
   fetcher: typeof fetch,
-): Promise<{ url: string; text: string; contentType: string }> {
+): Promise<{ url: string; bytes: Buffer; contentType: string; truncated: boolean }> {
   let current = raw;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     const url = await assertPublicUrl(current);
@@ -134,23 +135,56 @@ async function fetchPublicText(
     const reader = response.body?.getReader();
     const chunks: Uint8Array[] = [];
     let total = 0;
+    let truncated = false;
     while (reader) {
       const { done, value } = await reader.read();
       if (done) break;
       total += value.length;
       chunks.push(value);
       if (total >= options.maxBytes) {
+        truncated = true;
         await reader.cancel();
         break;
       }
     }
     return {
       url: url.toString(),
-      text: Buffer.concat(chunks).toString('utf8').slice(0, options.maxBytes),
+      bytes: Buffer.concat(chunks).subarray(0, options.maxBytes),
       contentType,
+      truncated,
     };
   }
   throw new UnsafeUrlError('That page redirected too many times.');
+}
+
+async function fetchPublicText(
+  raw: string,
+  options: FetchOptions,
+  fetcher: typeof fetch,
+): Promise<{ url: string; text: string; contentType: string }> {
+  const { url, bytes, contentType } = await fetchPublic(raw, options, fetcher);
+  return { url, text: bytes.toString('utf8').slice(0, options.maxBytes), contentType };
+}
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+/** Reads a public picture (JPEG, PNG or GIF) for a network that has to be sent the file itself. Refuses one over 10 MB. */
+export async function safeFetchImage(
+  raw: string,
+  fetcher: typeof fetch = publicFetch,
+): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const { bytes, contentType, truncated } = await fetchPublic(
+    raw,
+    {
+      accept: 'image/jpeg,image/png,image/gif',
+      contentType: /^image\/(jpeg|jpg|png|gif)\b/i,
+      maxBytes: MAX_IMAGE_BYTES,
+      notTextMessage: 'That address is not a JPEG, PNG or GIF picture.',
+    },
+    fetcher,
+  );
+  if (truncated) throw new UnsafeUrlError('That picture is larger than 10 MB.');
+  return { bytes: new Uint8Array(bytes), contentType: contentType.split(';')[0]!.trim() };
 }
 
 /** Reads a public web page as text. */

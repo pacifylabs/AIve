@@ -1,6 +1,13 @@
 import { lookup } from 'node:dns/promises';
 import { describe, expect, it, vi } from 'vitest';
-import { assertPublicUrl, isPrivateAddress, safeFetchText, summarisePage, UnsafeUrlError } from './safe-fetch.js';
+import {
+  assertPublicUrl,
+  isPrivateAddress,
+  safeFetchImage,
+  safeFetchText,
+  summarisePage,
+  UnsafeUrlError,
+} from './safe-fetch.js';
 
 vi.mock('node:dns/promises', () => ({ lookup: vi.fn() }));
 
@@ -64,6 +71,20 @@ describe('reading public pages safely', () => {
     expect(
       (await safeFetchText('https://93.184.216.34/', page('text/plain', 'x'.repeat(900_000)))).text.length,
     ).toBeLessThanOrEqual(300_000);
+  });
+
+  it('reads a picture as bytes, refuses other types, and refuses one that is too big instead of cutting it', async () => {
+    const answer = (type: string, body: Uint8Array) =>
+      (async () => new Response(body as BodyInit, { status: 200, headers: { 'content-type': type } })) as typeof fetch;
+    const small = new Uint8Array([137, 80, 78, 71]);
+    const picture = await safeFetchImage('https://93.184.216.34/a.png', answer('image/png', small));
+    expect(picture).toEqual({ bytes: small, contentType: 'image/png' });
+    await expect(safeFetchImage('https://93.184.216.34/a', answer('text/html', small))).rejects.toBeInstanceOf(
+      UnsafeUrlError,
+    );
+    await expect(
+      safeFetchImage('https://93.184.216.34/a.jpg', answer('image/jpeg', new Uint8Array(11 * 1024 * 1024))),
+    ).rejects.toThrow(/larger than 10 MB/);
   });
 
   it('checks the DNS answer used by the socket, preventing a public hostname from rebinding to a private address', async () => {

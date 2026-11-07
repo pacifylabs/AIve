@@ -15,6 +15,7 @@ import {
   TaskEngine,
   Triggers,
   WebsitePrefill,
+  safeFetchImage,
 } from '@ai-staff/core';
 import { createDataSource, DataSource, type Mailbox } from '@ai-staff/db';
 import { AnthropicProvider, type ModelProvider } from '@ai-staff/llm';
@@ -65,7 +66,8 @@ const notConfigured: ModelProvider = {
     {
       provide: SocialProviders,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig) => new SocialProviders(socialConfig(config)),
+      useFactory: (config: AppConfig) =>
+        new SocialProviders({ ...socialConfig(config), fetchMedia: (url) => safeFetchImage(url) }),
     },
     {
       provide: AccountTokens,

@@ -180,6 +180,11 @@ export interface SocialProvider {
   isConfigured(): boolean;
   readonly supportsNativeScheduling: boolean;
   readonly usesPkce: boolean;
+  /**
+   * False when a login cannot be renewed in the background and the person has to connect again (LinkedIn, for most apps).
+   * Absent means it can be.
+   */
+  readonly canRenewLogin?: boolean;
   /** `oauth` (the default) sends the person to the network to sign in; `credentials` asks for a token or app password. */
   readonly authKind?: 'oauth' | 'credentials';
   /** The boxes to show when `authKind` is `credentials`. */
