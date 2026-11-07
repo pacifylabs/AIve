@@ -86,6 +86,9 @@ export class SocialPost extends WorkspaceScopedEntity {
   /** The person who wrote it by hand in the composer. Null when a staff member drafted it. */
   @Column({ type: 'uuid', nullable: true })
   createdBy: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  tagId: string | null;
 }
 
 export type PublishIntentState = 'pending' | 'sending' | 'processing' | 'sent' | 'failed' | 'uncertain' | 'cancelled';
@@ -292,4 +295,47 @@ export class FeedItem extends WorkspaceScopedEntity {
 
   @Column({ type: 'varchar', length: 12, default: 'queued' })
   state: 'queued' | 'backlog';
+}
+
+// ---- Tags and templates ----------------------------------------------------------------------------------------
+
+export const TAG_COLOURS = ['blue', 'teal', 'green', 'amber', 'red', 'pink', 'purple', 'gray'] as const;
+export type TagColour = (typeof TAG_COLOURS)[number];
+
+/** A short name with one colour, put on posts so the calendar can be filtered by it. */
+@Entity('post_tags')
+export class PostTag extends WorkspaceScopedEntity {
+  @Column({ type: 'varchar', length: 40 })
+  name: string;
+
+  @Column({ type: 'varchar', length: 10 })
+  colour: TagColour;
+}
+
+/** A post written once and started from again. */
+@Entity('post_templates')
+export class PostTemplate extends WorkspaceScopedEntity {
+  @Column({ type: 'varchar', length: 80 })
+  name: string;
+
+  @Column({ type: 'text' })
+  body: string;
+
+  @Column({ type: 'varchar', length: 1000, nullable: true })
+  firstComment: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  linkUrl: string | null;
+
+  @Column({ type: 'jsonb', default: [] })
+  media: string[];
+
+  @Column({ type: 'uuid', array: true, default: [] })
+  accountIds: string[];
+
+  @Column({ type: 'uuid', nullable: true })
+  tagId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  createdBy: string | null;
 }
