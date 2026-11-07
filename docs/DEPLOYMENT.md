@@ -11,6 +11,8 @@ Status: 2026-11-06. One hosted environment for manual review. It follows the `fe
 
 Postgres for every implementation is on Neon, never on Render.
 
+Every step that needs a person (app keys, approvals, housekeeping, a first test) is in [SETUP-CHECKLIST.md](SETUP-CHECKLIST.md).
+
 ## How it fits together
 
 - The browser talks only to the web app. The web app calls the API from the server (`API_URL`), so the API needs no CORS for browsers.
