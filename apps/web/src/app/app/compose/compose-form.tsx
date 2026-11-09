@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 import { composePostAction } from '@/app/actions/social';
 import type { Tag } from '@/components/app/tag';
+import { type LibraryItem, MediaPicker } from './media-picker';
 import { FormMessages, SubmitButton, TextAreaField, TextField } from '@/components/form';
 import { initialFormState } from '@/lib/form-state';
 
@@ -22,11 +23,13 @@ export function ComposeForm({
   requestId,
   accounts,
   tags,
+  library,
   start,
 }: {
   requestId: string;
   accounts: { id: string; name: string; network: string }[];
   tags: Tag[];
+  library: LibraryItem[];
   /** What a template fills in. Everything stays editable. */
   start: ComposeStart;
 }) {
@@ -37,6 +40,7 @@ export function ComposeForm({
     .sort((a, b) => Number(a.slice(9)) - Number(b.slice(9)))
     .map((key) => state.values![key]!);
   const [repeatKind, setRepeatKind] = useState('');
+  const [media, setMedia] = useState(state.values?.mediaUrls ?? start.mediaUrls);
   const [parts, setParts] = useState<string[]>(echoed.length ? echoed : start.followUps);
   return (
     <form action={action} className="space-y-5" noValidate>
@@ -95,9 +99,14 @@ export function ComposeForm({
         label="Pictures or a video (optional)"
         name="mediaUrls"
         rows={2}
-        defaultValue={state.values?.mediaUrls ?? start.mediaUrls}
+        value={media}
+        onChange={(event) => setMedia(event.target.value)}
         error={state.fields?.mediaUrls}
         hint="One public https address per line. Instagram needs a picture or video; TikTok needs a video."
+      />
+      <MediaPicker
+        items={library}
+        onPick={(url) => setMedia((current) => (current.trim() ? `${current.trim()}\n${url}` : url))}
       />
       <TextField
         label="Link (optional)"

@@ -36,6 +36,7 @@ import {
   ContentFeed,
   FeedItem,
   AccountStat,
+  MediaAsset,
   PostSchedule,
   PostTag,
   PostTemplate,
@@ -60,6 +61,7 @@ import { AuditEveryChange1794528000000 } from './migrations/0015-audit-every-cha
 import { PostFollowUps1794614400000 } from './migrations/0016-post-follow-ups.js';
 import { AccountStats1794700800000 } from './migrations/0017-account-stats.js';
 import { PostSchedules1794787200000 } from './migrations/0018-post-schedules.js';
+import { MediaAssets1794873600000 } from './migrations/0019-media-assets.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -101,6 +103,7 @@ export const entities = [
   PostTag,
   PostTemplate,
   AccountStat,
+  MediaAsset,
   PostSchedule,
   ReplyIntent,
 ];
@@ -123,6 +126,7 @@ export const migrations = [
   PostFollowUps1794614400000,
   AccountStats1794700800000,
   PostSchedules1794787200000,
+  MediaAssets1794873600000,
 ];
 
 export interface ConnectionOptions {

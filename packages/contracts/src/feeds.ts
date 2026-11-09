@@ -117,3 +117,10 @@ export const editPostRequest = z
       .optional(),
   })
   .refine((body) => Object.keys(body).length > 1, 'Nothing to change.');
+
+/** Records a file the browser uploaded to Cloudinary into the media library. Cloudinary is asked what was stored. */
+export const registerMediaRequest = z.object({
+  publicId: z.string().trim().min(1).max(300),
+  type: z.enum(['image', 'video']),
+  name: z.string().trim().min(1).max(200),
+});

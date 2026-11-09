@@ -212,6 +212,52 @@ export async function movePostAction(
   return {};
 }
 
+// ---- Media library ------------------------------------------------------------------------------------------
+
+interface UploadTicket {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  signature: string;
+}
+
+/** What the browser needs to upload one file straight to Cloudinary. */
+export async function mediaTicketAction(): Promise<{ ticket?: UploadTicket; error?: string }> {
+  const result = await api<UploadTicket>('/social/media/ticket', { method: 'POST', workspace: true });
+  if (!result.ok) {
+    if (result.problem.status === 401) expired('/app/media');
+    return { error: result.problem.title };
+  }
+  return { ticket: result.data };
+}
+
+/** Records a file the browser has uploaded. The API asks Cloudinary what was stored before it believes this. */
+export async function registerMediaAction(
+  publicId: string,
+  type: 'image' | 'video',
+  name: string,
+): Promise<{ error?: string }> {
+  const result = await api('/social/media', { method: 'POST', workspace: true, body: { publicId, type, name } });
+  if (!result.ok) return { error: result.problem.errors?.[0]?.message ?? result.problem.title };
+  revalidatePath('/app/media');
+  revalidatePath('/app/compose');
+  return {};
+}
+
+export async function deleteMediaAction(data: FormData): Promise<void> {
+  const result = await api(`/social/media/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'DELETE',
+    workspace: true,
+  });
+  if (!result.ok) {
+    if (result.problem.status === 401) expired('/app/media');
+    redirect(`/app/media?error=${encodeURIComponent(result.problem.title)}`);
+  }
+  revalidatePath('/app/media');
+  revalidatePath('/app/compose');
+}
+
 // ---- Tags and templates -------------------------------------------------------------------------------------
 
 /** Makes a tag, or changes one when an id is sent. */

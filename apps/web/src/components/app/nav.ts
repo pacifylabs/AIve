@@ -26,6 +26,7 @@ export const NAV: NavGroup[] = [
       { label: 'Calendar', href: '/app/calendar', icon: 'calendar' },
       { label: 'New post', href: '/app/compose', icon: 'compose' },
       { label: 'Recurring', href: '/app/recurring', icon: 'clock' },
+      { label: 'Media library', href: '/app/media', icon: 'templates' },
     ],
   },
   {

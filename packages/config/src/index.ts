@@ -82,6 +82,10 @@ export const configSchema = z
       .string()
       .regex(/^20\d{2}(0[1-9]|1[0-2])$/)
       .default('202610'),
+    /** Cloudinary account for the media library. All three are needed; without them the library says it is not set up. */
+    CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
+    CLOUDINARY_API_KEY: z.string().min(1).optional(),
+    CLOUDINARY_API_SECRET: z.string().min(1).optional(),
     /** Threads app (shown under the Threads use case of a Meta app; it has its own id and secret). */
     THREADS_APP_ID: z.string().min(1).optional(),
     THREADS_APP_SECRET: z.string().min(1).optional(),

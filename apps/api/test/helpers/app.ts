@@ -5,7 +5,42 @@ import { AppModule } from '../../src/app.module.js';
 import { configureApp } from '../../src/configure-app.js';
 import { Mailer, type OutgoingMail } from '../../src/mail/mail.module.js';
 import { FeedError, FeedPoller } from '@ai-staff/core';
+import { createHash } from 'node:crypto';
+import { AppError } from '../../src/common/app-error.js';
+import { CloudinaryClient, type CloudinaryResource, sign } from '../../src/media/cloudinary.client.js';
 import { FixtureSocialProvider, SocialProviders } from '@ai-staff/social';
+
+/** Stands in for Cloudinary: a test "uploads" by putting a file in `files`, and sees what was destroyed. */
+export class FakeCloudinary {
+  readonly configured = true;
+  readonly files = new Map<string, CloudinaryResource>();
+  readonly destroyed: string[] = [];
+  uploadTicket(folder: string) {
+    const timestamp = 1_800_000_000;
+    return {
+      cloudName: 'testcloud',
+      apiKey: 'key',
+      timestamp,
+      folder,
+      signature: sign({ folder, timestamp }, 'test-secret'),
+    };
+  }
+  describe(publicId: string): Promise<CloudinaryResource> {
+    const file = this.files.get(publicId);
+    return file ? Promise.resolve(file) : Promise.reject(AppError.notFound('Cloudinary has no such file.'));
+  }
+  destroy(publicId: string): Promise<void> {
+    this.destroyed.push(publicId);
+    return Promise.resolve();
+  }
+  variant(publicId: string, preset: string) {
+    return `https://res.cloudinary.com/testcloud/image/upload/${preset}/${publicId}`;
+  }
+  /** Used by tests to check a signature against an independent SHA-1. */
+  static sha1(text: string) {
+    return createHash('sha1').update(text).digest('hex');
+  }
+}
 
 /** Collects platform emails instead of sending them, so tests can read codes and links. */
 export class CaptureMailer extends Mailer {
@@ -39,6 +74,7 @@ type Client = Pick<ReturnType<typeof request>, 'get' | 'post' | 'patch' | 'put' 
 export interface TestApp {
   app: INestApplication;
   mail: CaptureMailer;
+  cloudinary: FakeCloudinary;
   /** Stand-ins for the networks: tests script what they return. */
   social: {
     facebook: FixtureSocialProvider;
@@ -59,6 +95,7 @@ const nextIp = () => {
 
 export async function startApp(): Promise<TestApp> {
   const mail = new CaptureMailer();
+  const cloudinary = new FakeCloudinary();
   const social = {
     facebook: new FixtureSocialProvider('facebook'),
     instagram: new FixtureSocialProvider('instagram'),
@@ -71,6 +108,8 @@ export async function startApp(): Promise<TestApp> {
     .overrideProvider(SocialProviders)
     .useValue(new SocialProviders({}, Object.values(social)))
     // No test reads a real website: an address containing "not-a-feed" is refused the way a web page would be.
+    .overrideProvider(CloudinaryClient)
+    .useValue(cloudinary)
     .overrideProvider(FeedPoller)
     .useValue({
       preview: (url: string) =>
@@ -93,7 +132,7 @@ export async function startApp(): Promise<TestApp> {
       delete: (url: string) => agent.delete(url).set('X-Forwarded-For', ip),
     };
   };
-  return { app, mail, social, http, close: () => app.close() };
+  return { app, mail, cloudinary, social, http, close: () => app.close() };
 }
 
 let counter = 0;

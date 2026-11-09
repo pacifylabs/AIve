@@ -7,6 +7,7 @@ import { CryptoModule } from './crypto/crypto.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { EarlyAccessModule } from './early-access/early-access.module.js';
 import { HealthController } from './health/health.controller.js';
+import { MediaModule } from './media/media.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { PlatformModule } from './platform/platform.module.js';
 import { RedisModule } from './redis/redis.module.js';
@@ -49,6 +50,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module.js';
     PlatformModule,
     SalesModule,
     SocialModule,
+    MediaModule,
   ],
   controllers: [HealthController],
 })

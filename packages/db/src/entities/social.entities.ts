@@ -408,3 +408,35 @@ export class PostSchedule extends WorkspaceScopedEntity {
   @Column({ type: 'varchar', length: 8, default: 'active' })
   state: 'active' | 'paused';
 }
+
+/** A picture or video in a workspace's media library, stored on Cloudinary. */
+@Entity('media_assets')
+export class MediaAsset extends WorkspaceScopedEntity {
+  @Column({ type: 'varchar', length: 5 })
+  kind: 'image' | 'video';
+
+  @Column({ type: 'varchar', length: 300 })
+  publicId: string;
+
+  @Column({ type: 'varchar', length: 1000 })
+  url: string;
+
+  @Column({ type: 'varchar', length: 200 })
+  name: string;
+
+  @Column({ type: 'integer', nullable: true })
+  width: number | null;
+
+  @Column({ type: 'integer', nullable: true })
+  height: number | null;
+
+  @Column({
+    type: 'bigint',
+    nullable: true,
+    transformer: { to: (v: number | null) => v, from: (v: string | null) => (v === null ? null : Number(v)) },
+  })
+  bytes: number | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  createdBy: string | null;
+}

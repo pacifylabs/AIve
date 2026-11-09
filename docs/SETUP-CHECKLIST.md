@@ -31,6 +31,7 @@ to-do list that sits on top of it.
 | 10 | X | Pick a paid plan, two keys | [ ] |
 | 11 | Email from its own domain | Verify a domain in Resend | [ ] |
 | 12 | A first full test | About 15 minutes | [ ] |
+| 13 | Media library (Cloudinary) | Account, three settings | [ ] |
 
 All settings are on Render: dashboard, service `ai-staff-staging`, **Environment**. The API address everything calls back
 to is `https://ai-staff-staging.onrender.com` (this is `API_PUBLIC_URL`). The web app is `https://a-ive.vercel.app`.
@@ -208,6 +209,22 @@ product's domain.
 
 - [ ] Choose AI Staff's own domain, add it in Resend, add the DNS records it shows, and wait for it to verify.
 - [ ] Change `MAIL_FROM` on Render to an address on it.
+
+## 13. Media library (Cloudinary)
+
+The **Media library** page (Work, in the sidebar) stores pictures and videos for reuse and cuts pictures to 1:1, 9:16 and
+16:9. Files go from the browser straight to Cloudinary, so a video never passes through our server. Until these are set the
+page says "not set up yet" and nothing else is affected.
+
+- [ ] Create a free account at https://cloudinary.com. From the dashboard copy the **Cloud name**, **API key** and **API secret**.
+- [ ] On Render add `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET`.
+- [ ] Test: **Media library**, upload a picture, then **New post**, open **Pick from the media library**, choose a shape and
+      add it. The Cloudinary web address appears in the pictures box.
+- Free-plan limits (check Cloudinary's current ones): about 10 MB per picture and 100 MB per video.
+- **TikTok needs a domain you verified in the TikTok app** for the video address (section 7). `res.cloudinary.com` is not
+  yours, so Cloudinary videos will not work for TikTok unless you set up a custom domain on a Cloudinary plan that has one.
+  Pictures and videos for the other networks are not affected.
+- A file used by a scheduled post cannot be deleted until that post is changed or cancelled.
 
 ## 12. A first full test (about 15 minutes)
 

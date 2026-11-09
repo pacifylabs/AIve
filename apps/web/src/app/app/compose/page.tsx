@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Tag } from '@/components/app/tag';
 import { apiOrRedirect } from '@/lib/api';
+import type { LibraryItem } from './media-picker';
 import { ComposeForm, type ComposeStart } from './compose-form';
 
 export const metadata = { title: 'New post' };
@@ -45,11 +46,12 @@ export default async function ComposePage({
   searchParams: Promise<{ template?: string; rest?: string }>;
 }) {
   const { template: templateId, rest } = await searchParams;
-  const [accounts, templates, tags, left] = await Promise.all([
+  const [accounts, templates, tags, left, library] = await Promise.all([
     apiOrRedirect<Account[]>('/social/accounts', '/app/compose', { workspace: true }),
     apiOrRedirect<Template[]>('/social/templates', '/app/compose', { workspace: true }),
     apiOrRedirect<Tag[]>('/social/tags', '/app/compose', { workspace: true }),
     rest ? apiOrRedirect<Unfinished[]>('/social/posts', '/app/compose', { workspace: true }) : null,
+    apiOrRedirect<{ items: LibraryItem[] }>('/social/media', '/app/compose', { workspace: true }),
   ]);
   const unfinished = left?.ok ? left.data.find((post) => post.id === rest) : undefined;
   if (!accounts.ok) return <p className="text-danger">{accounts.problem.title}</p>;
@@ -119,6 +121,7 @@ export default async function ComposePage({
               requestId={crypto.randomUUID()}
               accounts={usable}
               tags={tags.ok ? tags.data : []}
+              library={library.ok ? library.data.items : []}
               start={start}
             />
           </div>
