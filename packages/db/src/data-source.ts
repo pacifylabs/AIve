@@ -54,6 +54,7 @@ import { ContentFeeds1794182400000 } from './migrations/0011-content-feeds.js';
 import { NetworksThreadsTikTok1794268800000 } from './migrations/0012-networks-threads-tiktok.js';
 import { PostAuthor1794355200000 } from './migrations/0013-post-author.js';
 import { PostTagsTemplates1794441600000 } from './migrations/0014-post-tags-templates.js';
+import { AuditEveryChange1794528000000 } from './migrations/0015-audit-every-change.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -111,6 +112,7 @@ export const migrations = [
   NetworksThreadsTikTok1794268800000,
   PostAuthor1794355200000,
   PostTagsTemplates1794441600000,
+  AuditEveryChange1794528000000,
 ];
 
 export interface ConnectionOptions {

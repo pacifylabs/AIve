@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { APP_CONFIG, type AppConfig, ConfigModule } from './config/config.module.js';
 import { CryptoModule } from './crypto/crypto.module.js';
@@ -38,6 +39,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module.js';
       }),
     }),
     DatabaseModule,
+    AuditModule,
     RedisModule,
     CryptoModule,
     MailModule,

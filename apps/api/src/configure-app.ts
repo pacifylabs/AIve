@@ -1,6 +1,8 @@
 import type { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
+import { DataSource } from '@ai-staff/db';
+import { recordChanges } from './audit/audit.middleware.js';
 import { ProblemFilter } from './common/problem.filter.js';
 import { APP_CONFIG, type AppConfig } from './config/config.module.js';
 
@@ -15,6 +17,7 @@ export function configureApp(app: INestApplication): void {
   express.useBodyParser('json', { limit: '100kb' });
   // Meta's callbacks arrive as a form.
   express.useBodyParser('urlencoded', { extended: false, limit: '10kb' });
+  express.use(recordChanges(app.get(DataSource)));
   express.enableCors({ origin: config.WEB_ORIGIN, credentials: true });
   express.use((_req: unknown, res: { setHeader(name: string, value: string): void }, next: () => void) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');

@@ -323,7 +323,8 @@ export class AuditEntry extends WorkspaceScopedEntity {
   @Column({ type: 'uuid', nullable: true })
   userId: string | null;
 
-  @Column({ type: 'varchar', length: 60 })
+  /** A hand-written event name, or `METHOD /route/:pattern` for the automatic record of a change. */
+  @Column({ type: 'varchar', length: 120 })
   action: string;
 
   @Column({ type: 'varchar', length: 120 })

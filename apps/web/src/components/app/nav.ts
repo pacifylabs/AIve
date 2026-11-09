@@ -50,6 +50,7 @@ export const NAV: NavGroup[] = [
       { label: 'Company', href: '/app/company', icon: 'company' },
       { label: 'Hire', href: '/app/hire', icon: 'hire' },
       { label: 'Settings', href: '/app/settings', icon: 'settings' },
+      { label: 'Audit log', href: '/app/audit', icon: 'shield' },
     ],
   },
 ];
