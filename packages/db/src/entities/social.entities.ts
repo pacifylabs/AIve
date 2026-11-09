@@ -440,3 +440,36 @@ export class MediaAsset extends WorkspaceScopedEntity {
   @Column({ type: 'uuid', nullable: true })
   createdBy: string | null;
 }
+
+/** "When a post reaches `threshold` reactions, write a draft for the inbox." Off until a person turns it on. */
+@Entity('post_automations')
+export class PostAutomation extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid', nullable: true })
+  createdBy: string | null;
+
+  @Column({ type: 'int' })
+  threshold: number;
+
+  /** Empty means every account. */
+  @Column({ type: 'uuid', array: true, default: [] })
+  accountIds: string[];
+
+  @Column({ type: 'int', default: 3 })
+  dailyCap: number;
+
+  @Column({ type: 'int', default: 20 })
+  totalCap: number;
+
+  @Column({ type: 'boolean', default: false })
+  enabled: boolean;
+}
+
+/** A rule acting on a post. One row per pair, which is what keeps a rule from drafting twice from the same post. */
+@Entity('automation_runs')
+export class AutomationRun extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid' })
+  automationId: string;
+
+  @Column({ type: 'uuid' })
+  postId: string;
+}

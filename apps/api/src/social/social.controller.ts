@@ -21,6 +21,8 @@ import {
   composePostRequest,
   mentionRequest,
   repurposeRequest,
+  automationRequest,
+  updateAutomationRequest,
   editPostRequest,
   scheduleStateRequest,
   setPostTagRequest,
@@ -42,6 +44,7 @@ import { CurrentWorkspace, RequireRole, type WorkspaceContext, WorkspaceGuard } 
 import { isNetwork, SocialAccountsService } from './social-accounts.service.js';
 import { PostLibraryService } from './post-library.service.js';
 import { PostResultsService } from './post-results.service.js';
+import { AutomationsService } from './automations.service.js';
 import { MentionsService } from './mentions.service.js';
 import { SchedulesService } from './schedules.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
@@ -72,6 +75,7 @@ export class SocialController {
     @Inject(SocialFeedsService) private readonly feeds: SocialFeedsService,
     @Inject(PostLibraryService) private readonly library: PostLibraryService,
     @Inject(PostResultsService) private readonly results: PostResultsService,
+    @Inject(AutomationsService) private readonly automations: AutomationsService,
     @Inject(SchedulesService) private readonly schedules: SchedulesService,
     @Inject(MentionsService) private readonly mentions: MentionsService,
     @Inject(RateLimiter) private readonly limiter: RateLimiter,
@@ -195,6 +199,39 @@ export class SocialController {
   ) {
     await this.limiter.consume({ key: `social-repurpose:user:${ctx.userId}`, max: 30, windowSec: 600 });
     return this.results.repurpose(ctx, id, body);
+  }
+
+  @Get('automations')
+  automationList(@CurrentWorkspace() ctx: WorkspaceContext) {
+    return this.automations.list(ctx);
+  }
+
+  /** A rule is the company's own setting, so it is for admins. It starts off. */
+  @Post('automations')
+  @HttpCode(201)
+  @RequireRole('admin')
+  automationAdd(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Body(new ZodPipe(automationRequest)) body: z.output<typeof automationRequest>,
+  ) {
+    return this.automations.create(ctx, body);
+  }
+
+  @Patch('automations/:id')
+  @RequireRole('admin')
+  automationUpdate(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(updateAutomationRequest)) body: z.output<typeof updateAutomationRequest>,
+  ) {
+    return this.automations.update(ctx, id, body);
+  }
+
+  @Delete('automations/:id')
+  @HttpCode(204)
+  @RequireRole('admin')
+  async automationRemove(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id', UuidPipe) id: string) {
+    await this.automations.remove(ctx, id);
   }
 
   @Get('mentions')

@@ -1383,3 +1383,69 @@ describe('top posts and building on them', () => {
     await t.http().post(`/v1/social/posts/${id}/repurpose`).set(a.as).send({}).expect(400);
   });
 });
+
+describe('automations on own posts', () => {
+  const rules = async (as: Record<string, string>) =>
+    (await t.http().get('/v1/social/automations').set(as).expect(200)).body as {
+      id: string;
+      threshold: number;
+      enabled: boolean;
+      dailyCap: number;
+      totalCap: number;
+      accountIds: string[];
+      drafted: number;
+    }[];
+
+  it('starts a rule switched off with sensible caps, and lets an admin change and remove it', async () => {
+    const w = await workspace('auto1');
+    const made = await t.http().post('/v1/social/automations').set(w.as).send({ threshold: 100 }).expect(201);
+    expect(made.body.enabled).toBe(false);
+    expect(await rules(w.as)).toMatchObject([
+      { threshold: 100, enabled: false, dailyCap: 3, totalCap: 20, accountIds: [], drafted: 0 },
+    ]);
+
+    await t
+      .http()
+      .patch(`/v1/social/automations/${made.body.id}`)
+      .set(w.as)
+      .send({ enabled: true, threshold: 250, dailyCap: 1 })
+      .expect(200);
+    expect(await rules(w.as)).toMatchObject([{ threshold: 250, enabled: true, dailyCap: 1 }]);
+
+    await t.http().delete(`/v1/social/automations/${made.body.id}`).set(w.as).expect(204);
+    expect(await rules(w.as)).toEqual([]);
+  });
+
+  it('refuses a number or cap out of range, an empty change, and an account that is not the workspace’s', async () => {
+    const a = await workspace('auto2a');
+    const b = await workspace('auto2b');
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'Mine', kind: 'page' }];
+    const pending = (await signIn(b.as)).landed.searchParams.get('pending')!;
+    const [theirs] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(b.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    const create = (body: Record<string, unknown>) => t.http().post('/v1/social/automations').set(a.as).send(body);
+    await create({ threshold: 0 }).expect(400);
+    await create({ threshold: 10, dailyCap: 99 }).expect(400);
+    await create({ threshold: 10, totalCap: 0 }).expect(400);
+    const stranger = await create({ threshold: 10, accountIds: [theirs!.id] }).expect(400);
+    expect(stranger.body.errors[0].path).toBe('accountIds');
+    const made = await create({ threshold: 10 }).expect(201);
+    await t.http().patch(`/v1/social/automations/${made.body.id}`).set(a.as).send({}).expect(400);
+  });
+
+  it('keeps one workspace’s rules from another', async () => {
+    const a = await workspace('auto3a');
+    const b = await workspace('auto3b');
+    const made = await t.http().post('/v1/social/automations').set(a.as).send({ threshold: 5 }).expect(201);
+    expect(await rules(b.as)).toEqual([]);
+    await t.http().patch(`/v1/social/automations/${made.body.id}`).set(b.as).send({ enabled: true }).expect(404);
+    await t.http().delete(`/v1/social/automations/${made.body.id}`).set(b.as).expect(404);
+    expect(await rules(a.as)).toHaveLength(1);
+  });
+});

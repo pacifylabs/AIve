@@ -1,4 +1,13 @@
-import { ConnectedAccount, DomainEvent, type EntityManager, SocialPost } from '@ai-staff/db';
+import {
+  ActivityEvent,
+  AutomationRun,
+  ConnectedAccount,
+  DomainEvent,
+  type EntityManager,
+  PostAutomation,
+  SocialPost,
+} from '@ai-staff/db';
+import { v7 as uuidv7 } from 'uuid';
 
 /** The networks name the same things differently, so each number is read from whichever name the network used. */
 const first = (metrics: Record<string, number>, keys: string[]) => {
@@ -67,4 +76,66 @@ export async function requestRepurpose(
     }),
   );
   return { requested: true };
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Runs after a post's numbers are stored. Each switched-on rule whose number the post has reached asks for a draft, once
+ * per post and within its daily and total caps. The draft goes to the inbox like any other: a rule never posts.
+ */
+export async function applyAutomations(
+  m: EntityManager,
+  workspaceId: string,
+  postId: string,
+  metrics: Record<string, number>,
+  now: Date,
+): Promise<number> {
+  const post = await m.findOneBy(SocialPost, { workspaceId, id: postId });
+  if (post?.state !== 'published') return 0;
+  const score = engagementOf(metrics);
+  const rules = await m.find(PostAutomation, { where: { workspaceId, enabled: true }, order: { createdAt: 'ASC' } });
+  let drafted = 0;
+  for (const rule of rules) {
+    if (score < rule.threshold) continue;
+    if (rule.accountIds.length && !rule.accountIds.includes(post.accountId)) continue;
+    const used = (await m.query(
+      `SELECT count(*)::int AS total, count(*) FILTER (WHERE created_at > $2)::int AS today
+         FROM automation_runs WHERE automation_id = $1`,
+      [rule.id, new Date(now.getTime() - DAY_MS)],
+    )) as { total: number; today: number }[];
+    if ((used[0]?.total ?? 0) >= rule.totalCap || (used[0]?.today ?? 0) >= rule.dailyCap) continue;
+    // The pair is claimed first, so two readings arriving together cannot both draft.
+    const claimed = (await m.query(
+      `INSERT INTO automation_runs (id, workspace_id, automation_id, post_id) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (automation_id, post_id) DO NOTHING RETURNING id`,
+      [uuidv7(), workspaceId, rule.id, post.id],
+    )) as unknown[];
+    if (!claimed.length) continue;
+    const result = await requestRepurpose(m, {
+      workspaceId,
+      staffId: post.staffId,
+      postId: post.id,
+      accountId: post.accountId,
+      requestId: `auto:${rule.id}:${post.id}`,
+    });
+    if (!result.requested) {
+      // Nothing was asked for, so the claim is given back: a later reading may find the account reconnected.
+      await m.delete(AutomationRun, { automationId: rule.id, postId: post.id });
+      continue;
+    }
+    drafted += 1;
+    await m.save(
+      m.create(ActivityEvent, {
+        workspaceId,
+        staffId: post.staffId,
+        actor: 'system',
+        type: 'automation.drafted',
+        summary: `A post reached ${rule.threshold} reactions, so a new draft was asked for. It is in your inbox once written.`,
+        detail: { automationId: rule.id, postId: post.id, score },
+        costUsd: null,
+      }),
+    );
+  }
+  return drafted;
 }

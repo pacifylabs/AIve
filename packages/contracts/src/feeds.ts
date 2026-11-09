@@ -143,3 +143,25 @@ export const repurposeRequest = z.object({
   requestId: z.uuid(),
   accountIds: z.array(z.uuid()).min(1).max(10).optional(),
 });
+
+const automationFields = {
+  /** Likes, comments and shares together. */
+  threshold: z.number().int().min(1).max(1_000_000),
+  /** Left empty, the rule covers every account. */
+  accountIds: z.array(z.uuid()).max(10),
+  dailyCap: z.number().int().min(1).max(20),
+  totalCap: z.number().int().min(1).max(200),
+};
+
+/** A rule that asks for an inbox draft when a post reaches a number. It starts switched off. */
+export const automationRequest = z.object({
+  threshold: automationFields.threshold,
+  accountIds: automationFields.accountIds.default([]),
+  dailyCap: automationFields.dailyCap.default(3),
+  totalCap: automationFields.totalCap.default(20),
+});
+
+export const updateAutomationRequest = z
+  .object({ ...automationFields, enabled: z.boolean() })
+  .partial()
+  .refine((body) => Object.keys(body).length > 0, 'Nothing to change.');

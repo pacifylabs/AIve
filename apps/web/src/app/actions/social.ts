@@ -498,6 +498,38 @@ export async function repurposePostAction(data: FormData): Promise<void> {
   redirect(`${back}&asked=1`);
 }
 
+// ---- Automations -------------------------------------------------------------------------------------------
+
+const RESULTS = '/app/results';
+
+async function automationCall(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Record<string, unknown>) {
+  const result = await api(path, { method, workspace: true, ...(body ? { body } : {}) });
+  if (!result.ok) {
+    if (result.problem.status === 401) expired(RESULTS);
+    redirect(`${RESULTS}?error=${encodeURIComponent(result.problem.title)}`);
+  }
+  revalidatePath(RESULTS);
+}
+
+/** A new rule starts switched off: the person turns it on once they have read what it will do. */
+export async function addAutomationAction(data: FormData): Promise<void> {
+  await automationCall('/social/automations', 'POST', {
+    threshold: Number(field(data, 'threshold')),
+    dailyCap: Number(field(data, 'dailyCap')),
+    totalCap: Number(field(data, 'totalCap')),
+  });
+}
+
+export async function switchAutomationAction(data: FormData): Promise<void> {
+  await automationCall(`/social/automations/${encodeURIComponent(field(data, 'id'))}`, 'PATCH', {
+    enabled: field(data, 'enabled') === 'true',
+  });
+}
+
+export async function removeAutomationAction(data: FormData): Promise<void> {
+  await automationCall(`/social/automations/${encodeURIComponent(field(data, 'id'))}`, 'DELETE');
+}
+
 // ---- Hiring ------------------------------------------------------------------------------------------------
 
 const HIRE_FIELDS = ['displayName', 'signature', 'goal', 'pillars', 'styleExamples', 'neverPost', 'cadence'] as const;

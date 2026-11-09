@@ -11,6 +11,7 @@ import {
 } from '@ai-staff/db';
 import { v7 as uuidv7 } from 'uuid';
 import type { Effect } from '../roles/types.js';
+import { applyAutomations } from './post-results.js';
 
 type PublishIntentEffect = Extract<Effect, { type: 'createPublishIntent' }>;
 
@@ -143,6 +144,7 @@ export async function recordMetrics(
      ON CONFLICT (workspace_id, post_id, capture) DO UPDATE SET captured_at = $5, metrics = $6, updated_at = now()`,
     [uuidv7(), workspaceId, effect.postId, effect.capture, now, JSON.stringify(effect.metrics)],
   );
+  await applyAutomations(m, workspaceId, effect.postId, effect.metrics, now);
 }
 
 export type ReplyIntentResult = { created: true; intentId: string } | { created: false; reason: string };

@@ -1,11 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
-import { repurposePostAction } from '@/app/actions/social';
+import {
+  addAutomationAction,
+  removeAutomationAction,
+  repurposePostAction,
+  switchAutomationAction,
+} from '@/app/actions/social';
 import { timeAgo } from '@/components/app/dashboard';
 import { apiOrRedirect } from '@/lib/api';
 
 export const metadata = { title: 'Results' };
 
+interface Rule {
+  id: string;
+  threshold: number;
+  enabled: boolean;
+  dailyCap: number;
+  totalCap: number;
+  drafted: number;
+  draftedToday: number;
+}
 interface TopPost {
   postId: string;
   accountName: string;
@@ -37,9 +51,10 @@ export default async function ResultsPage({
 }) {
   const { days: raw, asked, error } = await searchParams;
   const days = WINDOWS.find((window) => String(window) === raw) ?? 30;
-  const top = await apiOrRedirect<TopPost[]>(`/social/top-posts?days=${days}&limit=10`, '/app/results', {
-    workspace: true,
-  });
+  const [top, rules] = await Promise.all([
+    apiOrRedirect<TopPost[]>(`/social/top-posts?days=${days}&limit=10`, '/app/results', { workspace: true }),
+    apiOrRedirect<Rule[]>('/social/automations', '/app/results', { workspace: true }),
+  ]);
   if (!top.ok) return <p className="text-danger">{top.problem.title}</p>;
 
   return (
@@ -67,7 +82,11 @@ export default async function ResultsPage({
 
       {asked ? (
         <p className="rounded-xl border border-line-soft bg-surface-soft px-3 py-2 text-sm" role="status">
-          A draft is on its way to your <Link href="/app/inbox" className="text-accent hover:underline">inbox</Link>.
+          A draft is on its way to your{' '}
+          <Link href="/app/inbox" className="text-accent hover:underline">
+            inbox
+          </Link>
+          .
         </p>
       ) : null}
       {error ? (
@@ -86,7 +105,8 @@ export default async function ResultsPage({
             <li key={post.postId} className="card space-y-3 p-5 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-xs text-muted">
-                  #{index + 1} · {post.accountName} on {LABEL[post.network] ?? post.network} · {timeAgo(post.publishedAt)}
+                  #{index + 1} · {post.accountName} on {LABEL[post.network] ?? post.network} ·{' '}
+                  {timeAgo(post.publishedAt)}
                 </p>
                 <p className="shrink-0 font-medium">{post.engagement.toLocaleString()} reactions</p>
               </div>
@@ -116,6 +136,63 @@ export default async function ResultsPage({
           ))}
         </ol>
       )}
+
+      <div className="card space-y-4 p-6">
+        <div className="space-y-1">
+          <h2 className="font-medium">Automations</h2>
+          <p className="text-sm text-muted">
+            A rule watches your own posts. When one reaches the number you set, your Social Media Staff member writes a
+            fresh take and puts it in your inbox. A rule never posts by itself, and it stops at its caps.
+          </p>
+        </div>
+        {rules.ok && rules.data.length ? (
+          <ul className="divide-y divide-line-soft rounded-xl border border-line-soft text-sm">
+            {rules.data.map((rule) => (
+              <li key={rule.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
+                <div className="min-w-0">
+                  <p className="font-medium">When a post reaches {rule.threshold.toLocaleString()} reactions</p>
+                  <p className="text-xs text-muted">
+                    {rule.enabled ? 'On' : 'Off'} · {rule.drafted} of {rule.totalCap} drafts used · {rule.draftedToday}{' '}
+                    of {rule.dailyCap} today
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <form action={switchAutomationAction}>
+                    <input type="hidden" name="id" value={rule.id} />
+                    <input type="hidden" name="enabled" value={rule.enabled ? 'false' : 'true'} />
+                    <button type="submit" className="font-medium text-accent hover:underline">
+                      {rule.enabled ? 'Turn off' : 'Turn on'}
+                    </button>
+                  </form>
+                  <form action={removeAutomationAction}>
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" className="text-danger hover:underline">
+                      Remove
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <form action={addAutomationAction} className="flex flex-wrap items-end gap-3 text-sm">
+          <label className="space-y-1">
+            <span className="block text-xs text-muted">Reactions needed</span>
+            <input name="threshold" type="number" min={1} defaultValue={100} required className="field w-28" />
+          </label>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted">Drafts a day, at most</span>
+            <input name="dailyCap" type="number" min={1} max={20} defaultValue={3} required className="field w-28" />
+          </label>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted">Drafts in total, at most</span>
+            <input name="totalCap" type="number" min={1} max={200} defaultValue={20} required className="field w-28" />
+          </label>
+          <button type="submit" className="btn">
+            Add rule (starts off)
+          </button>
+        </form>
+      </div>
     </section>
   );
 }
