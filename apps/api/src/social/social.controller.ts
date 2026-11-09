@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
   Inject,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -18,6 +20,7 @@ import {
   addFeedRequest,
   composePostRequest,
   mentionRequest,
+  repurposeRequest,
   editPostRequest,
   scheduleStateRequest,
   setPostTagRequest,
@@ -38,6 +41,7 @@ import { RateLimiter } from '../redis/rate-limiter.service.js';
 import { CurrentWorkspace, RequireRole, type WorkspaceContext, WorkspaceGuard } from '../workspaces/workspace.guard.js';
 import { isNetwork, SocialAccountsService } from './social-accounts.service.js';
 import { PostLibraryService } from './post-library.service.js';
+import { PostResultsService } from './post-results.service.js';
 import { MentionsService } from './mentions.service.js';
 import { SchedulesService } from './schedules.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
@@ -67,6 +71,7 @@ export class SocialController {
     @Inject(SocialPostsService) private readonly posts: SocialPostsService,
     @Inject(SocialFeedsService) private readonly feeds: SocialFeedsService,
     @Inject(PostLibraryService) private readonly library: PostLibraryService,
+    @Inject(PostResultsService) private readonly results: PostResultsService,
     @Inject(SchedulesService) private readonly schedules: SchedulesService,
     @Inject(MentionsService) private readonly mentions: MentionsService,
     @Inject(RateLimiter) private readonly limiter: RateLimiter,
@@ -169,6 +174,27 @@ export class SocialController {
     @Body(new ZodPipe(setPostTagRequest)) body: z.output<typeof setPostTagRequest>,
   ) {
     return this.library.setPostTag(ctx, id, body.tagId);
+  }
+
+  @Get('top-posts')
+  topPosts(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Query('days', new DefaultValuePipe(30), new ParseIntPipe()) days: number,
+    @Query('limit', new DefaultValuePipe(10), new ParseIntPipe()) limit: number,
+  ) {
+    return this.results.top(ctx, { days: Math.min(Math.max(days, 1), 365), limit: Math.min(Math.max(limit, 1), 50) });
+  }
+
+  /** Writes a draft for the inbox from a post that did well. Any member may ask, as any member may approve a draft. */
+  @Post('posts/:id/repurpose')
+  @HttpCode(200)
+  async repurpose(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(repurposeRequest)) body: z.output<typeof repurposeRequest>,
+  ) {
+    await this.limiter.consume({ key: `social-repurpose:user:${ctx.userId}`, max: 30, windowSec: 600 });
+    return this.results.repurpose(ctx, id, body);
   }
 
   @Get('mentions')

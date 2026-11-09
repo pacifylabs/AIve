@@ -9,6 +9,7 @@ import { SocialAccountsService } from './social-accounts.service.js';
 import { MentionsService } from './mentions.service.js';
 import { SchedulesService } from './schedules.service.js';
 import { PostLibraryService } from './post-library.service.js';
+import { PostResultsService } from './post-results.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
 import { SocialPostsService } from './social-posts.service.js';
 import { SocialCallbackController, SocialController } from './social.controller.js';
@@ -28,6 +29,7 @@ import { SocialCallbackController, SocialController } from './social.controller.
     SocialPostsService,
     SocialFeedsService,
     PostLibraryService,
+    PostResultsService,
     SchedulesService,
     MentionsService,
     {

@@ -6,6 +6,7 @@ export * from './guardrails/index.js';
 export * from './time.js';
 export * from './platform/account-health.js';
 export * from './platform/account-stats.js';
+export * from './platform/post-results.js';
 export * from './platform/recurrence.js';
 export * from './platform/recurring.js';
 export * from './platform/account-tokens.js';

@@ -1,6 +1,7 @@
 import type { RoleDefinition } from '@ai-staff/core';
 import { socialSettingsSchema } from './settings.js';
 import { draftFromArticle } from './tasks/draft-from-article.js';
+import { repurposePost } from './tasks/repurpose-post.js';
 import { draftPost } from './tasks/draft-post.js';
 import { captureMetrics, planMetrics } from './tasks/metrics.js';
 import { planWeek } from './tasks/plan-week.js';
@@ -48,6 +49,7 @@ export const socialMediaRole: RoleDefinition = {
     startDrafts,
     draftPost,
     draftFromArticle,
+    repurposePost,
     triageEngagement,
     planMetrics,
     captureMetrics,
@@ -82,6 +84,24 @@ export const socialMediaRole: RoleDefinition = {
               accountId: payload.accountId,
               network: payload.network,
               handle: typeof payload.handle === 'string' ? payload.handle : null,
+            }
+          : null,
+    },
+    {
+      event: 'post.repurpose_requested',
+      task: 'social_media.repurpose_post',
+      input: (payload) =>
+        uuid(payload.postId) &&
+        uuid(payload.accountId) &&
+        typeof payload.network === 'string' &&
+        typeof payload.requestId === 'string'
+          ? {
+              postId: payload.postId,
+              accountId: payload.accountId,
+              network: payload.network,
+              handle: typeof payload.handle === 'string' ? payload.handle : null,
+              mediaUrls: Array.isArray(payload.mediaUrls) ? payload.mediaUrls : [],
+              requestId: payload.requestId,
             }
           : null,
     },

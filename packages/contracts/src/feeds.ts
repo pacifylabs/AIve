@@ -136,3 +136,10 @@ export const mentionRequest = z.object({
       z.string().regex(/^[A-Za-z0-9_.]{2,50}$/, 'Use the account name, letters, numbers, dots and underscores only.'),
     ),
 });
+
+/** Asks for a fresh take on a post that did well. Left without accounts, it goes to the account the post was on. */
+export const repurposeRequest = z.object({
+  /** Stays the same if the button is pressed twice, so one click never writes two drafts. */
+  requestId: z.uuid(),
+  accountIds: z.array(z.uuid()).min(1).max(10).optional(),
+});

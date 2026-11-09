@@ -6,6 +6,7 @@ import {
   CompanyBrain,
   FeedPoller,
   hireStaff,
+  requestRepurpose,
   Keyring,
   PostPublisher,
   ReplySender,
@@ -148,7 +149,8 @@ async function setup() {
         },
       };
     }
-    if (request.user.includes('Write one post for')) return { output: script.draft };
+    if (request.user.includes('Write one post for') || request.user.includes('Write one new post for'))
+      return { output: script.draft };
     if (request.user.includes('Classify it.')) return { output: script.triage };
     if (request.user.includes('showed interest on social media'))
       return { output: { reply: 'You can book a call on our website, Ada.' } };
@@ -665,6 +667,69 @@ describe('Social Media Staff, end to end', () => {
     ]);
     await s.settle();
     expect(s.networks.facebook.comments).toHaveLength(0);
+  });
+
+  describe('a new take on a post that did well', () => {
+    async function withHit() {
+      const s = await setup();
+      const post = await s.publishedPost();
+      await s.inWs((m) =>
+        m.save(
+          m.create(SocialMetric, {
+            workspaceId: s.workspaceId,
+            postId: post.id,
+            capture: '24h',
+            capturedAt: s.now(),
+            metrics: { reactions: 30, comments: 5 },
+          }),
+        ),
+      );
+      const ask = (requestId = uuidv7()) =>
+        s.inWs((m) =>
+          requestRepurpose(m, {
+            workspaceId: s.workspaceId,
+            staffId: s.staff.id,
+            postId: post.id,
+            accountId: s.facebook.id,
+            requestId,
+          }),
+        );
+      return { s, post, ask };
+    }
+
+    it('puts a draft in the inbox, never a post, and publishes it only once approved', async () => {
+      const { s, ask } = await withHit();
+      expect(await ask()).toEqual({ requested: true });
+      await s.settle();
+      expect(s.networks.facebook.posts).toHaveLength(0);
+
+      const [draft] = await s.pending();
+      expect(draft?.kind).toBe('post_draft');
+      expect(draft?.title).toContain('new take');
+
+      await s.approveAll();
+      s.time.now = new Date('2026-11-06T13:00:00Z');
+      await s.settle();
+      expect(s.networks.facebook.posts).toHaveLength(1);
+    });
+
+    it('asking twice with the same request writes one draft', async () => {
+      const { s, ask } = await withHit();
+      const requestId = uuidv7();
+      await ask(requestId);
+      await ask(requestId);
+      await s.settle();
+      expect(await s.pending()).toHaveLength(1);
+    });
+
+    it('turns down a post that has not gone out, and an account that needs reconnecting', async () => {
+      const { s, post, ask } = await withHit();
+      await s.inWs((m) => m.update(SocialPost, { id: post.id }, { state: 'scheduled', publishedAt: null }));
+      expect(await ask()).toMatchObject({ requested: false });
+      await s.inWs((m) => m.update(SocialPost, { id: post.id }, { state: 'published', publishedAt: s.now() }));
+      await s.inWs((m) => m.update(ConnectedAccount, { id: s.facebook.id }, { health: 'broken' }));
+      expect(await ask()).toMatchObject({ requested: false, reason: expect.stringContaining('reconnected') });
+    });
   });
 
   describe('posts about new articles on a feed', () => {

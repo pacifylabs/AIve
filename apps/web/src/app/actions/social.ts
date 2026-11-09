@@ -481,6 +481,23 @@ export async function removeFeedAction(data: FormData): Promise<void> {
   revalidatePath('/app/feeds');
 }
 
+/** Asks for a draft built on a post that did well. It lands in the inbox; nothing is posted. */
+export async function repurposePostAction(data: FormData): Promise<void> {
+  const days = field(data, 'days');
+  const back = `/app/results?days=${encodeURIComponent(days)}`;
+  const result = await api(`/social/posts/${encodeURIComponent(field(data, 'postId'))}/repurpose`, {
+    method: 'POST',
+    workspace: true,
+    body: { requestId: field(data, 'requestId') },
+  });
+  if (!result.ok) {
+    if (result.problem.status === 401) expired(back);
+    redirect(`${back}&error=${encodeURIComponent(result.problem.title)}`);
+  }
+  revalidatePath('/app/inbox');
+  redirect(`${back}&asked=1`);
+}
+
 // ---- Hiring ------------------------------------------------------------------------------------------------
 
 const HIRE_FIELDS = ['displayName', 'signature', 'goal', 'pillars', 'styleExamples', 'neverPost', 'cadence'] as const;

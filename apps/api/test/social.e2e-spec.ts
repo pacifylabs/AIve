@@ -1265,3 +1265,121 @@ describe('saved @mentions', () => {
     expect((await t.http().get('/v1/social/mentions').set(b.as).expect(200)).body).toEqual([]);
   });
 });
+
+describe('top posts and building on them', () => {
+  async function ready(label: string) {
+    const w = await workspace(label);
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'Northfield', kind: 'page' }];
+    const pending = (await signIn(w.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(w.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    await t
+      .http()
+      .post('/v1/staff')
+      .set(w.as)
+      .send({ roleKey: 'social_media', displayName: 'Sam', settings: { accountIds: [account!.id] } })
+      .expect(201);
+    return { ...w, accountId: account!.id };
+  }
+  /** A post that went out `daysAgo` days ago; `metrics` left out means the network has not been asked yet. */
+  const published = (
+    w: { workspaceId: string; accountId: string },
+    body: string,
+    daysAgo: number,
+    metrics?: Record<string, number>,
+  ) =>
+    withTenant(db, { workspaceId: w.workspaceId, userId: null }, async (m) => {
+      const staff = await m.findOneByOrFail(StaffMember, { workspaceId: w.workspaceId });
+      const at = new Date(Date.now() - daysAgo * 86_400_000);
+      const saved = await m.save(
+        m.create(SocialPost, {
+          workspaceId: w.workspaceId,
+          staffId: staff.id,
+          accountId: w.accountId,
+          body,
+          linkUrl: null,
+          firstComment: null,
+          media: [],
+          state: 'published',
+          scheduledFor: at,
+          publishedAt: at,
+          externalPostId: `ext-${body}`,
+          permalink: null,
+        }),
+      );
+      if (metrics) {
+        await m.query(
+          `INSERT INTO social_metrics (id, workspace_id, post_id, capture, captured_at, metrics) VALUES ($1, $2, $3, '24h', now(), $4)`,
+          [uuidv7(), w.workspaceId, saved.id, JSON.stringify(metrics)],
+        );
+      }
+      return saved.id;
+    });
+  const top = async (as: Record<string, string>, query: Record<string, string> = {}) =>
+    (await t.http().get('/v1/social/top-posts').query(query).set(as).expect(200)).body as {
+      postId: string;
+      body: string;
+      engagement: number;
+      reach: number | null;
+    }[];
+
+  it('ranks posts by likes, comments and shares, reads reach where the network gives it, and leaves out unmeasured ones', async () => {
+    const w = await ready('top1');
+    await published(w, 'quiet', 2, { reactions: 2 });
+    await published(w, 'busy', 3, { likes: 10, comments: 4, shares: 1, impression_count: 900 });
+    await published(w, 'x-style', 4, { like_count: 7, reply_count: 1, retweet_count: 1 });
+    await published(w, 'unmeasured', 1);
+    const ranked = await top(w.as);
+    expect(ranked.map((row) => row.body)).toEqual(['busy', 'x-style', 'quiet']);
+    expect(ranked.map((row) => row.engagement)).toEqual([15, 9, 2]);
+    expect(ranked.map((row) => row.reach)).toEqual([900, null, null]);
+  });
+
+  it('only looks back as far as asked, and shows one workspace nothing of another', async () => {
+    const a = await ready('top2a');
+    const b = await ready('top2b');
+    await published(a, 'old hit', 40, { likes: 99 });
+    await published(a, 'recent', 3, { likes: 1 });
+    expect((await top(a.as)).map((row) => row.body)).toEqual(['recent']);
+    expect((await top(a.as, { days: '90' })).map((row) => row.body)).toEqual(['old hit', 'recent']);
+    expect(await top(b.as)).toEqual([]);
+  });
+
+  it('asks the staff member for a draft, once however often the button is pressed, and never posts', async () => {
+    const w = await ready('rep1');
+    const id = await published(w, 'a hit', 2, { likes: 20 });
+    const requestId = uuidv7();
+    const first = await t.http().post(`/v1/social/posts/${id}/repurpose`).set(w.as).send({ requestId }).expect(200);
+    expect(first.body).toEqual({ requested: 1, skipped: [] });
+    await t.http().post(`/v1/social/posts/${id}/repurpose`).set(w.as).send({ requestId }).expect(200);
+    const events = (await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) =>
+      m.query(`SELECT payload FROM domain_events WHERE workspace_id = $1 AND type = 'post.repurpose_requested'`, [
+        w.workspaceId,
+      ]),
+    )) as { payload: { postId: string; accountId: string } }[];
+    expect(events).toHaveLength(1);
+    expect(events[0]!.payload).toMatchObject({ postId: id, accountId: w.accountId });
+    expect(await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) => m.count(SocialPost))).toBe(1);
+  });
+
+  it('refuses a post that is not the workspace’s, an account that is not, and a request with no request id', async () => {
+    const a = await ready('rep2a');
+    const b = await ready('rep2b');
+    const id = await published(a, 'mine', 2, { likes: 5 });
+    await t.http().post(`/v1/social/posts/${id}/repurpose`).set(b.as).send({ requestId: uuidv7() }).expect(404);
+    const stranger = await t
+      .http()
+      .post(`/v1/social/posts/${id}/repurpose`)
+      .set(a.as)
+      .send({ requestId: uuidv7(), accountIds: [b.accountId] })
+      .expect(409);
+    expect(JSON.stringify(stranger.body)).toMatch(/no longer connected/);
+    await t.http().post(`/v1/social/posts/${id}/repurpose`).set(a.as).send({}).expect(400);
+  });
+});
