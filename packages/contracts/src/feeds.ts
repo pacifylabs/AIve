@@ -92,3 +92,28 @@ export const templateRequest = z.object({
 export const setPostTagRequest = z.object({ tagId: z.uuid().nullable() });
 
 export const scheduleStateRequest = z.object({ paused: z.boolean() });
+
+/** A change to a post that has not gone out. Only the fields sent change. `expectedUpdatedAt` guards against a stale copy. */
+export const editPostRequest = z
+  .object({
+    expectedUpdatedAt: z.iso.datetime(),
+    body: z.string().trim().min(1).max(5000).optional(),
+    firstComment: z.string().trim().max(1000).nullable().optional(),
+    linkUrl: z
+      .url({ protocol: /^https?$/ })
+      .max(500)
+      .nullable()
+      .optional(),
+    mediaUrls: z
+      .array(z.url({ protocol: /^https$/ }))
+      .max(10)
+      .optional(),
+    followUps: z.array(z.string().trim().min(1).max(5000)).max(9).optional(),
+    /** Either an exact instant, or the workspace's wall clock (`YYYY-MM-DDTHH:mm`). */
+    scheduledFor: z.iso.datetime().optional(),
+    scheduledLocal: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+      .optional(),
+  })
+  .refine((body) => Object.keys(body).length > 1, 'Nothing to change.');

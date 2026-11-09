@@ -171,6 +171,47 @@ export async function composePostAction(_state: FormState, data: FormData): Prom
   redirect('/app/calendar');
 }
 
+// ---- Changing a post that has not gone out ----------------------------------------------------------------------
+
+const EDIT_FIELDS = ['body', 'scheduledLocal'] as const;
+
+/** Saves new words and/or a new time. `expectedUpdatedAt` is the copy the person was looking at. */
+export async function editPostAction(_state: FormState, data: FormData): Promise<FormState> {
+  const body = field(data, 'body').trim();
+  const result = await api(`/social/posts/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'PATCH',
+    workspace: true,
+    body: {
+      expectedUpdatedAt: field(data, 'expectedUpdatedAt'),
+      ...(body ? { body } : {}),
+      ...(field(data, 'scheduledLocal') ? { scheduledLocal: field(data, 'scheduledLocal') } : {}),
+    },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/calendar', EDIT_FIELDS);
+  revalidatePath('/app/calendar');
+  return { notice: 'Saved.', values: echo(data, (name) => name === 'body') };
+}
+
+/** A drag on the calendar: the same time of day (UTC, as the calendar shows it), on the day it was dropped on. */
+export async function movePostAction(
+  id: string,
+  expectedUpdatedAt: string,
+  currentIso: string,
+  day: string,
+): Promise<{ error?: string }> {
+  const result = await api(`/social/posts/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    workspace: true,
+    body: { expectedUpdatedAt, scheduledFor: `${day}T${currentIso.slice(11)}` },
+  });
+  if (!result.ok) {
+    if (result.problem.status === 401) expired('/app/calendar');
+    return { error: result.problem.errors?.[0]?.message ?? result.problem.title };
+  }
+  revalidatePath('/app/calendar');
+  return {};
+}
+
 // ---- Tags and templates -------------------------------------------------------------------------------------
 
 /** Makes a tag, or changes one when an id is sent. */

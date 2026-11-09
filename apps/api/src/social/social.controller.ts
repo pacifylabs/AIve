@@ -17,6 +17,7 @@ import {
 import {
   addFeedRequest,
   composePostRequest,
+  editPostRequest,
   scheduleStateRequest,
   setPostTagRequest,
   tagRequest,
@@ -147,6 +148,15 @@ export class SocialController {
   ) {
     await this.limiter.consume({ key: `social-compose:user:${ctx.userId}`, max: 60, windowSec: 600 });
     return this.posts.compose(ctx, body);
+  }
+
+  @Patch('posts/:id')
+  editPost(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(editPostRequest)) body: z.output<typeof editPostRequest>,
+  ) {
+    return this.posts.edit(ctx, id, body);
   }
 
   @Patch('posts/:id/tag')

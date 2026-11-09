@@ -27,6 +27,18 @@ import { AppError } from '../common/app-error.js';
 import type { WorkspaceContext } from '../workspaces/workspace.guard.js';
 import { tagExists } from './post-library.service.js';
 
+interface EditInput {
+  /** The `updatedAt` of the post the person was looking at. */
+  expectedUpdatedAt: string;
+  body?: string | undefined;
+  firstComment?: string | null | undefined;
+  linkUrl?: string | null | undefined;
+  mediaUrls?: string[] | undefined;
+  followUps?: string[] | undefined;
+  scheduledFor?: string | undefined;
+  scheduledLocal?: string | undefined;
+}
+
 interface ComposeInput {
   requestId: string;
   accountIds: string[];
@@ -90,6 +102,109 @@ export class SocialPostsService {
             : null,
         };
       });
+    });
+  }
+
+  /** Everything about the words and media of a post that a network would refuse, for one account. */
+  private contentProblems(
+    account: ConnectedAccount,
+    input: { body: string; linkUrl?: string | undefined; mediaUrls: string[]; followUps: string[] },
+  ) {
+    const problems: { path: string; message: string }[] = [];
+    const problem = postProblem({
+      network: account.network,
+      body: input.body,
+      linkUrl: input.linkUrl,
+      mediaUrls: input.mediaUrls,
+    });
+    if (problem) problems.push({ path: 'body', message: `${account.name}: ${problem}` });
+    if (input.followUps.length) {
+      if (!this.providers.get(account.network).addComment) {
+        problems.push({
+          path: 'followUps',
+          message: `${account.name}: ${account.network} cannot post a chain of replies.`,
+        });
+      }
+      input.followUps.forEach((part, index) => {
+        const tooLong = lengthProblem({ network: account.network, body: part });
+        if (tooLong) problems.push({ path: 'followUps', message: `${account.name}, part ${index + 2}: ${tooLong}` });
+      });
+    }
+    return problems;
+  }
+
+  /**
+   * Changes a post that has not gone out: its words, link, pictures, replies, comment or time. Refused once it is being sent,
+   * and refused when the person's copy is older than the saved one (someone else changed it, or it was edited elsewhere),
+   * so one edit never silently overwrites another. The same checks as writing it new run against its account.
+   */
+  edit(ctx: WorkspaceContext, id: string, input: EditInput) {
+    return this.tx(ctx, async (m) => {
+      const post = await m.findOne(SocialPost, {
+        where: { workspaceId: ctx.workspaceId, id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!post) throw AppError.notFound('Post not found.');
+      const intent = await m.findOne(PublishIntent, {
+        where: { workspaceId: ctx.workspaceId, postId: id },
+        order: { createdAt: 'DESC' },
+      });
+      if (post.state !== 'scheduled' || !intent || intent.state !== 'pending') {
+        throw AppError.conflict('That post is already being sent or has gone out, so it can no longer be changed.');
+      }
+      if (new Date(input.expectedUpdatedAt).getTime() !== post.updatedAt.getTime()) {
+        throw AppError.conflict('This post was changed after you opened it. Reload it and try again.');
+      }
+      const account = await m.findOneByOrFail(ConnectedAccount, { workspaceId: ctx.workspaceId, id: post.accountId });
+      const next = {
+        body: input.body ?? post.body,
+        firstComment: input.firstComment === undefined ? post.firstComment : input.firstComment,
+        linkUrl: input.linkUrl === undefined ? post.linkUrl : input.linkUrl,
+        media: input.mediaUrls ?? post.media,
+        followUps: input.followUps ?? post.followUps,
+      };
+      const problems = this.contentProblems(account, {
+        body: next.body,
+        linkUrl: next.linkUrl ?? undefined,
+        mediaUrls: next.media,
+        followUps: next.followUps,
+      });
+      let when = post.scheduledFor;
+      if (input.scheduledFor || input.scheduledLocal) {
+        if (input.scheduledFor) {
+          when = new Date(input.scheduledFor);
+        } else {
+          const workspace = await m.findOneByOrFail(Workspace, { id: ctx.workspaceId });
+          const [date, time] = input.scheduledLocal!.split('T') as [string, string];
+          when = zonedTimeToUtc(date, time, workspace.timezone);
+        }
+        const now = Date.now();
+        if (Number.isNaN(when.getTime()))
+          problems.push({ path: 'scheduledLocal', message: 'That is not a real time.' });
+        else if (when.getTime() < now - 5 * 60_000) {
+          problems.push({ path: 'scheduledLocal', message: 'That time has passed.' });
+        } else if (when.getTime() > now + 365 * 86_400_000) {
+          problems.push({ path: 'scheduledLocal', message: 'Pick a time within the next year.' });
+        }
+      }
+      if (problems.length) throw new AppError(400, 'validation_failed', problems[0]!.message, { errors: problems });
+
+      await m.update(
+        SocialPost,
+        { id },
+        {
+          body: next.body,
+          firstComment: next.firstComment,
+          linkUrl: next.linkUrl,
+          media: next.media,
+          followUps: next.followUps,
+          scheduledFor: when,
+        },
+      );
+      await m.update(PublishIntent, { id: intent.id }, { notBefore: when });
+      await this.audit(m, ctx, 'social.post_edited', id);
+      const saved = await m.findOneByOrFail(SocialPost, { id });
+      return { id, scheduledFor: saved.scheduledFor, updatedAt: saved.updatedAt };
     });
   }
 
@@ -213,26 +328,7 @@ export class SocialPostsService {
           problems.push({ path: 'accountIds', message: `${account.name} needs to be reconnected first.` });
           continue;
         }
-        const problem = postProblem({
-          network: account.network,
-          body: input.body,
-          linkUrl: input.linkUrl,
-          mediaUrls: input.mediaUrls,
-        });
-        if (problem) problems.push({ path: 'body', message: `${account.name}: ${problem}` });
-        if (input.followUps.length) {
-          if (!this.providers.get(account.network).addComment) {
-            problems.push({
-              path: 'followUps',
-              message: `${account.name}: ${account.network} cannot post a chain of replies.`,
-            });
-          }
-          input.followUps.forEach((part, index) => {
-            const tooLong = lengthProblem({ network: account.network, body: part });
-            if (tooLong)
-              problems.push({ path: 'followUps', message: `${account.name}, part ${index + 2}: ${tooLong}` });
-          });
-        }
+        problems.push(...this.contentProblems(account, input));
       }
 
       if (input.tagId && !(await tagExists(m, ctx.workspaceId, input.tagId))) {

@@ -1,7 +1,10 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { type Tag, TagPill } from '@/components/app/tag';
 import { cancelPostAction, resolvePostAction, setPostTagAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
+import { DayStrip, DraggablePost } from './calendar-dnd';
+import { PostEditForm } from './post-edit-form';
 
 export const metadata = { title: 'Calendar' };
 
@@ -14,6 +17,7 @@ interface Post {
   /** Set when a person wrote the post by hand. */
   createdBy: string | null;
   accountId: string;
+  updatedAt: string;
   followUps: string[];
   followUpsSent: number;
   followUpError: string | null;
@@ -36,8 +40,32 @@ function label(post: Post): string {
   return STATE[post.state];
 }
 
+/** A post that has not been sent and can still be changed or dragged. */
+const isEditable = (post: Post) => post.state === 'scheduled' && (!post.publish || post.publish.state === 'pending');
+
+function Row({ post, children }: { post: Post; children: ReactNode }) {
+  return isEditable(post) ? (
+    <DraggablePost id={post.id} updatedAt={post.updatedAt} scheduledFor={post.scheduledFor}>
+      {children}
+    </DraggablePost>
+  ) : (
+    <li className="space-y-2 px-5 py-3 text-sm">{children}</li>
+  );
+}
+
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+/** The next two weeks, as days to drop a post on (UTC, as the calendar shows its times). */
+function nextDays() {
+  return Array.from({ length: 14 }, (_, index) => {
+    const date = new Date(Date.now() + index * 86_400_000);
+    return {
+      date: date.toISOString().slice(0, 10),
+      label: date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }),
+    };
+  });
+}
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ tag?: string }> }) {
   const { tag } = await searchParams;
@@ -89,6 +117,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           ))}
         </nav>
       ) : null}
+      {posts.data.some(isEditable) ? <DayStrip days={nextDays()} /> : null}
       {posts.data.length === 0 ? (
         <div className="empty">
           <h2 className="font-medium">No posts yet</h2>
@@ -100,7 +129,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           <h2 className="text-sm font-medium">{day(items[0]!.scheduledFor)}</h2>
           <ul className="card divide-y divide-line-soft">
             {items.map((post) => (
-              <li key={post.id} className="space-y-2 px-5 py-3 text-sm">
+              <Row key={post.id} post={post}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">
                     {post.account?.name ?? 'Account removed'}
@@ -189,7 +218,17 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                     </>
                   ) : null}
                 </div>
-              </li>
+                {isEditable(post) ? (
+                  <details>
+                    <summary className="cursor-pointer text-xs font-medium text-accent hover:underline">
+                      Edit words or time
+                    </summary>
+                    <div className="pt-3">
+                      <PostEditForm id={post.id} body={post.body} updatedAt={post.updatedAt} />
+                    </div>
+                  </details>
+                ) : null}
+              </Row>
             ))}
           </ul>
         </div>

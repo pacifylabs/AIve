@@ -785,6 +785,95 @@ describe('writing a post by hand', () => {
     expect((await t.http().get('/v1/social/schedules').set(w.as).expect(200)).body).toEqual([]);
   });
 
+  describe('changing a post before it goes out', () => {
+    const later = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+    const queued = async (w: Awaited<ReturnType<typeof ready>>, network: 'facebook' | 'x' = 'facebook') => {
+      await post(w.as, {
+        accountIds: [w.accounts[network]!],
+        scheduledLocal: `${later(3)}T09:00`,
+        body: 'Original words',
+      }).expect(201);
+      return (await t.http().get('/v1/social/posts').set(w.as).expect(200)).body[0] as {
+        id: string;
+        updatedAt: string;
+      };
+    };
+    const edit = (w: { as: Record<string, string> }, id: string, body: Record<string, unknown>) =>
+      t.http().patch(`/v1/social/posts/${id}`).set(w.as).send(body);
+
+    it('changes the words and the time, and moves the publish time with it', async () => {
+      const w = await ready('edit1');
+      const original = await queued(w);
+      const saved = await edit(w, original.id, {
+        expectedUpdatedAt: original.updatedAt,
+        body: 'Better words',
+        scheduledLocal: `${later(5)}T14:30`,
+      }).expect(200);
+      expect(saved.body.scheduledFor).toBe(`${later(5)}T14:30:00.000Z`);
+      const [after] = (await t.http().get('/v1/social/posts').set(w.as).expect(200)).body as {
+        body: string;
+        publish: { notBefore: string };
+      }[];
+      expect(after).toMatchObject({ body: 'Better words' });
+      expect(after!.publish.notBefore).toBe(`${later(5)}T14:30:00.000Z`);
+    });
+
+    it('moves a post to another day by exact time, as a drag on the calendar does', async () => {
+      const w = await ready('edit2');
+      const original = await queued(w);
+      const target = `${later(6)}T09:00:00.000Z`;
+      await edit(w, original.id, { expectedUpdatedAt: original.updatedAt, scheduledFor: target }).expect(200);
+      expect(
+        ((await t.http().get('/v1/social/posts').set(w.as).expect(200)).body[0] as { scheduledFor: string })
+          .scheduledFor,
+      ).toBe(target);
+    });
+
+    it('refuses an edit made from an old copy, so one change never overwrites another', async () => {
+      const w = await ready('edit3');
+      const original = await queued(w);
+      await edit(w, original.id, { expectedUpdatedAt: original.updatedAt, body: 'First edit' }).expect(200);
+      const stale = await edit(w, original.id, { expectedUpdatedAt: original.updatedAt, body: 'Second edit' }).expect(
+        409,
+      );
+      expect(stale.body.title).toMatch(/changed after you opened it/);
+      expect(((await t.http().get('/v1/social/posts').set(w.as).expect(200)).body[0] as { body: string }).body).toBe(
+        'First edit',
+      );
+    });
+
+    it('refuses a post that is being sent or has gone out', async () => {
+      const w = await ready('edit4');
+      const original = await queued(w);
+      await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) =>
+        m.update(PublishIntent, { workspaceId: w.workspaceId }, { state: 'sending' }),
+      );
+      await edit(w, original.id, { expectedUpdatedAt: original.updatedAt, body: 'Too late' }).expect(409);
+    });
+
+    it('runs the same checks as a new post, and refuses an empty change or a time that has passed', async () => {
+      const w = await ready('edit5', ['x']);
+      const original = await queued(w, 'x');
+      const tooLong = await edit(w, original.id, {
+        expectedUpdatedAt: original.updatedAt,
+        body: 'a'.repeat(300),
+      }).expect(400);
+      expect(tooLong.body.errors[0].message).toMatch(/over the 280/);
+      await edit(w, original.id, { expectedUpdatedAt: original.updatedAt, scheduledLocal: '2020-01-01T09:00' }).expect(
+        400,
+      );
+      await edit(w, original.id, { expectedUpdatedAt: original.updatedAt }).expect(400);
+      await edit(w, original.id, { expectedUpdatedAt: 'yesterday', body: 'x' }).expect(400);
+    });
+
+    it('cannot reach a post in another workspace', async () => {
+      const w = await ready('edit6');
+      const other = await ready('edit6b');
+      const original = await queued(w);
+      await edit(other, original.id, { expectedUpdatedAt: original.updatedAt, body: 'Mine now' }).expect(404);
+    });
+  });
+
   it('needs a Social Media Staff member, since posts go out under theirs', async () => {
     const w = await workspace('compose7');
     t.social.facebook.accounts = [{ externalId: 'p', name: 'P', kind: 'page' }];
