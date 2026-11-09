@@ -222,7 +222,12 @@ After at least one network is connected:
 5. **Templates and tags:** save a template, start a post from it, tag it, and filter the Calendar by the tag.
 6. **Accounts, Add a sign-off:** add one and check the next draft ends with it.
 7. **Dashboard:** the account shows Healthy. (A warning or red state names the reason and the date.)
-8. The free Render service sleeps after about 15 minutes idle; the first request after a pause takes about a minute.
+8. **Audit log** (Company, Audit log; owners and admins): every change you just made is listed with who, what, the
+   result and the IP. Nothing you typed is stored.
+9. **Reply chain:** on **New post**, use **Add another post** once or twice, post to X, Threads or Telegram, and check the
+   Calendar shows "Thread: 3 of 3 posted". (Needs a connected account on one of those networks.)
+10. **Followers:** the Accounts page shows follower counts after the first daily capture (about 02:10 UTC the next day).
+11. The free Render service sleeps after about 15 minutes idle; the first request after a pause takes about a minute.
 
 ## What to send me when something fails
 
