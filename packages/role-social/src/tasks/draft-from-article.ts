@@ -7,6 +7,7 @@ import { settingsOf } from '../settings.js';
 import {
   lengthHint,
   linkSpace,
+  chainLine,
   mentionsLine,
   NETWORKS,
   postEffects,
@@ -80,6 +81,7 @@ export const draftFromArticle: TaskDefinition<Input, PostOutput> = {
           : 'Do not use hashtags.',
         'Leave the first comment empty.',
         mentionsLine(settings, task.network),
+        chainLine(settings, task.network),
         styleBlock(settings),
       ]
         .filter(Boolean)
@@ -101,6 +103,7 @@ export const draftFromArticle: TaskDefinition<Input, PostOutput> = {
       scheduledFor,
       idempotencyKey: `article:${task.accountId}:${task.feedItemId}`,
       linkUrl: article.link,
+      tagId: settingsOf(ctx.staff).draftTagId,
       title: `Post to ${account.name} about "${article.title.slice(0, 80)}"`,
     });
   },

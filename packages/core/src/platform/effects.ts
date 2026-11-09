@@ -72,6 +72,13 @@ export function withApprovedPayload(effects: Effect[], approved: Record<string, 
                 .filter(Boolean)
             : effect.media,
         scheduledFor: effect.scheduledFor === APPROVED_PAYLOAD ? text('scheduledFor') : effect.scheduledFor,
+        followUps:
+          effect.followUps === APPROVED_PAYLOAD
+            ? (optionalText('followUps') ?? '')
+                .split(/^\s*---\s*$/m)
+                .map((part) => part.trim())
+                .filter(Boolean)
+            : effect.followUps,
       };
     }
     if (effect.type === 'createReplyIntent') {
@@ -189,14 +196,18 @@ export class EffectExecutor {
             effect.body === APPROVED_PAYLOAD ||
             effect.firstComment === APPROVED_PAYLOAD ||
             effect.scheduledFor === APPROVED_PAYLOAD ||
-            effect.media === APPROVED_PAYLOAD
+            effect.media === APPROVED_PAYLOAD ||
+            effect.followUps === APPROVED_PAYLOAD
           ) {
             throw new Error('A publish uses the approved draft outside an approval.');
           }
-          const result = await createPublishIntent(m, origin.workspaceId, origin.staffId, {
-            ...effect,
-            media: effect.media,
-          });
+          const result = await createPublishIntent(
+            m,
+            origin.workspaceId,
+            origin.staffId,
+            { ...effect, media: effect.media },
+            { tagId: effect.tagId ?? null, followUps: effect.followUps ?? [] },
+          );
           await this.activity(
             m,
             origin,

@@ -26,6 +26,10 @@ export const socialSettingsSchema = z
       })
       .default({ always: [], never: [], max: 3 }),
     emoji: z.enum(['none', 'light', 'free']).default('light'),
+    /** How many follow-up replies a draft may carry on networks that take a chain (0 means none). */
+    chainReplies: z.number().int().min(0).max(3).default(0),
+    /** A tag put on every post this staff member drafts, so they can be told from yours on the calendar. */
+    draftTagId: z.uuid().nullable().default(null),
     /** Accounts a person saved so drafts may tag them. The staff member never tags anyone else. */
     mentions: z
       .array(

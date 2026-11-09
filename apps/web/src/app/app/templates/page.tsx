@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { deleteTagAction, deleteTemplateAction } from '@/app/actions/social';
 import { type Tag, TagPill } from '@/components/app/tag';
 import { apiOrRedirect } from '@/lib/api';
+import { DraftSettingsForm } from './draft-settings-form';
 import { TagForm } from './tag-form';
 import { type Template, TemplateForm } from './template-form';
 
@@ -18,11 +19,19 @@ interface Account {
 }
 
 export default async function TemplatesPage() {
-  const [tags, templates, accounts] = await Promise.all([
+  const [tags, templates, accounts, staff] = await Promise.all([
     apiOrRedirect<TagRow[]>('/social/tags', '/app/templates', { workspace: true }),
     apiOrRedirect<Template[]>('/social/templates', '/app/templates', { workspace: true }),
     apiOrRedirect<Account[]>('/social/accounts', '/app/templates', { workspace: true }),
+    apiOrRedirect<{ roleKey: string; settings: { draftTagId?: string | null; chainReplies?: number } }[]>(
+      '/staff',
+      '/app/templates',
+      {
+        workspace: true,
+      },
+    ),
   ]);
+  const social = staff.ok ? staff.data.find((member) => member.roleKey === 'social_media') : undefined;
   if (!tags.ok) return <p className="text-danger">{tags.problem.title}</p>;
   if (!templates.ok) return <p className="text-danger">{templates.problem.title}</p>;
   const connected = accounts.ok ? accounts.data : [];
@@ -131,6 +140,18 @@ export default async function TemplatesPage() {
           </div>
         </details>
       </div>
+      {social ? (
+        <div className="space-y-4">
+          <h2 className="font-medium">How your staff member drafts</h2>
+          <div className="card p-5">
+            <DraftSettingsForm
+              tags={tags.data}
+              draftTagId={social.settings.draftTagId ?? null}
+              chainReplies={social.settings.chainReplies ?? 0}
+            />
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

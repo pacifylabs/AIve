@@ -235,6 +235,29 @@ export async function removeMentionAction(data: FormData): Promise<void> {
   revalidatePath('/app/accounts');
 }
 
+// ---- How the staff member drafts -------------------------------------------------------------------------------
+
+/** The tag put on every staff draft, and how many follow-up replies a draft may carry. */
+export async function saveDraftSettingsAction(_state: FormState, data: FormData): Promise<FormState> {
+  const staff = await api<{ id: string; roleKey: string }[]>('/staff', { workspace: true });
+  if (!staff.ok) return failed(staff.problem, data, '/app/templates', []);
+  const social = staff.data.find((member) => member.roleKey === 'social_media');
+  if (!social) return { error: 'Hire a Social Media Staff member first.' };
+  const result = await api(`/staff/${encodeURIComponent(social.id)}/settings`, {
+    method: 'PATCH',
+    workspace: true,
+    body: {
+      settings: {
+        draftTagId: field(data, 'draftTagId') || null,
+        chainReplies: Number(field(data, 'chainReplies') || 0),
+      },
+    },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/templates', []);
+  revalidatePath('/app/templates');
+  return { notice: 'Saved. New drafts follow this.' };
+}
+
 // ---- Media library ------------------------------------------------------------------------------------------
 
 interface UploadTicket {

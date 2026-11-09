@@ -16,6 +16,10 @@ export interface PostOutput {
   body: string;
   hashtags: string[];
   firstComment?: string | null;
+  /** Up to three follow-up replies, written as a thread. Kept only as many as the staff member is set to write. */
+  reply1?: string | null;
+  reply2?: string | null;
+  reply3?: string | null;
 }
 
 /** The network and media the plan chose for this post, from the task's own input. */
@@ -99,6 +103,41 @@ export function fitsNetwork(): Guardrail<PostOutput> {
       if (!max) return fail(`${network || 'This network'} is not a network we can post to.`);
       const length = lengthOnNetwork(network, output.body);
       return length <= max ? ok(output) : fail(`It is ${length} characters; ${network} allows ${max}.`);
+    },
+  };
+}
+
+/** The networks whose publisher can post a reply to the post before it. */
+export const CHAIN_NETWORKS: readonly string[] = ['x', 'threads', 'telegram', 'facebook', 'instagram'];
+
+export const repliesOf = (output: PostOutput): string[] =>
+  [output.reply1, output.reply2, output.reply3].map((reply) => reply?.trim() ?? '').filter(Boolean);
+
+/**
+ * Keeps only as many replies as the staff member is set to write, and none where the network cannot post a chain, so a
+ * draft never promises a thread that will not go out. What is kept is then checked like the post itself.
+ */
+export function limitReplies(): Guardrail<PostOutput> {
+  return {
+    name: 'limitReplies',
+    check(output, ctx) {
+      const { network } = target(ctx);
+      const allowed = CHAIN_NETWORKS.includes(network) ? settingsOf(ctx.staff).chainReplies : 0;
+      const kept = repliesOf(output).slice(0, allowed);
+      return ok({ ...output, reply1: kept[0] ?? null, reply2: kept[1] ?? null, reply3: kept[2] ?? null });
+    },
+  };
+}
+
+/** Each reply must fit the network, as the post does. */
+export function repliesFit(): Guardrail<PostOutput> {
+  return {
+    name: 'repliesFit',
+    check(output, ctx) {
+      const { network } = target(ctx);
+      const max = NETWORK_MAX_CHARACTERS[network];
+      const tooLong = repliesOf(output).findIndex((reply) => lengthOnNetwork(network, reply) > max);
+      return tooLong === -1 ? ok(output) : fail(`Reply ${tooLong + 1} is longer than the ${max} ${network} allows.`);
     },
   };
 }

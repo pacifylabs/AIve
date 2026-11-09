@@ -8,7 +8,9 @@ import {
   fitsNetwork,
   hashtagPolicy,
   isSensitive,
+  limitReplies,
   noUnknownMentions,
+  repliesFit,
   type PostOutput,
   requiresMedia,
 } from './guardrails.js';
@@ -150,6 +152,29 @@ describe('social guardrails', () => {
     expect(noUnknownMentions().check(post('Thanks @northfielddesign'), onInstagram).ok).toBe(false);
     // In the first comment too.
     expect(noUnknownMentions().check({ ...post('Hi'), firstComment: 'cc @stranger' }, onX).ok).toBe(false);
+  });
+
+  it('keeps only the replies the staff member is set to write, and none where the network cannot chain', () => {
+    const full = { ...post('Main'), reply1: 'One', reply2: 'Two', reply3: 'Three' };
+    const two = ctxFor({ network: 'x' }, { chainReplies: 2 });
+    expect(limitReplies().check(full, two)).toMatchObject({
+      ok: true,
+      output: { reply1: 'One', reply2: 'Two', reply3: null },
+    });
+    // Set to write none, or a network with no reply: all dropped.
+    expect(limitReplies().check(full, ctxFor({ network: 'x' }, { chainReplies: 0 }))).toMatchObject({
+      output: { reply1: null, reply2: null, reply3: null },
+    });
+    expect(limitReplies().check(full, ctxFor({ network: 'discord' }, { chainReplies: 3 }))).toMatchObject({
+      output: { reply1: null },
+    });
+  });
+
+  it('refuses a reply that is too long for the network', () => {
+    const ctx = ctxFor({ network: 'x' }, { chainReplies: 2 });
+    expect(repliesFit().check({ ...post('Main'), reply1: 'a'.repeat(280) }, ctx).ok).toBe(true);
+    const long = repliesFit().check({ ...post('Main'), reply1: 'ok', reply2: 'a'.repeat(281) }, ctx);
+    expect(long).toMatchObject({ ok: false, reason: expect.stringMatching(/Reply 2 is longer than the 280/) });
   });
 
   it('spots words that always go to a person', () => {

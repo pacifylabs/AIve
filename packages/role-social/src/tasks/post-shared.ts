@@ -16,10 +16,14 @@ import {
   emojiPolicy,
   fitsNetwork,
   hashtagPolicy,
+  limitReplies,
+  repliesFit,
+  repliesOf,
   noUnknownMentions,
   type PostOutput,
   requiresMedia,
 } from '../guardrails.js';
+import { CHAIN_NETWORKS } from '../guardrails.js';
 import { mentionsFor, type SocialSettings, signatureFor } from '../settings.js';
 
 export const NETWORKS = ['facebook', 'instagram', 'threads', 'tiktok', 'linkedin', 'x', 'telegram', 'discord'] as const;
@@ -35,6 +39,12 @@ export function lengthHint(network: Network, reserved = 0): string {
 
 /** The link is put on its own line after the words on these networks, so it takes room the model must leave. */
 export const linkSpace = (network: Network): number => (['x', 'telegram', 'discord'].includes(network) ? 24 : 0);
+
+/** The sentence that asks the model for a thread, or nothing when the staff member writes none or the network cannot chain. */
+export const chainLine = (settings: SocialSettings, network: Network): string =>
+  settings.chainReplies > 0 && CHAIN_NETWORKS.includes(network)
+    ? `Also write ${settings.chainReplies} short follow-up ${settings.chainReplies === 1 ? 'reply' : 'replies'} in reply1${settings.chainReplies > 1 ? ' to reply' + settings.chainReplies : ''}, each continuing the post as a thread and making sense on its own. They follow the same rules as the post.`
+    : '';
 
 /** Tells the model which accounts it may tag on this network, or nothing when none are saved. */
 export const mentionsLine = (settings: SocialSettings, network: Network): string => {
@@ -54,20 +64,25 @@ export const postOutputSchema = z.object({
   body: z.string().min(1).max(5000),
   hashtags: z.array(z.string()).max(10).default([]),
   firstComment: z.string().max(1000).nullish(),
+  reply1: z.string().max(1500).nullish(),
+  reply2: z.string().max(1500).nullish(),
+  reply3: z.string().max(1500).nullish(),
 });
 
 /** The checks every drafted post passes, whatever started it. */
 export const postGuardrails: Guardrail<PostOutput>[] = [
+  limitReplies(),
   hashtagPolicy(),
   composeHashtags(),
   composeSignature(),
   emojiPolicy(),
   fitsNetwork(),
+  repliesFit(),
   requiresMedia(),
   noUnknownMentions(),
-  factsOnly<PostOutput>('body', 'firstComment'),
-  allowedLinks<PostOutput>('body', 'firstComment'),
-  bannedTerms<PostOutput>('body', 'firstComment'),
+  factsOnly<PostOutput>('body', 'firstComment', 'reply1', 'reply2', 'reply3'),
+  allowedLinks<PostOutput>('body', 'firstComment', 'reply1', 'reply2', 'reply3'),
+  bannedTerms<PostOutput>('body', 'firstComment', 'reply1', 'reply2', 'reply3'),
 ];
 
 export interface PostTarget {
@@ -78,6 +93,8 @@ export interface PostTarget {
   idempotencyKey: string;
   /** Attached by the platform when it publishes; the model is told never to write links itself. */
   linkUrl?: string | null;
+  /** Put on the post so a person can tell staff drafts from their own. */
+  tagId?: string | null;
   title: string;
 }
 
@@ -99,6 +116,8 @@ export function postEffects(
         body: post.body,
         linkUrl: target.linkUrl ?? null,
         firstComment: post.firstComment ?? null,
+        followUps: repliesOf(post),
+        tagId: target.tagId ?? null,
         media: target.mediaUrls,
         scheduledFor: target.scheduledFor,
         idempotencyKey: target.idempotencyKey,
@@ -118,6 +137,7 @@ export function postEffects(
         network,
         accountName: target.accountName,
         ...(target.linkUrl ? { link: target.linkUrl } : {}),
+        ...(repliesOf(post).length ? { followUps: repliesOf(post).join('\n---\n') } : {}),
       },
       onApprove: [
         {
@@ -126,6 +146,8 @@ export function postEffects(
           body: APPROVED_PAYLOAD,
           linkUrl: target.linkUrl ?? null,
           firstComment: APPROVED_PAYLOAD,
+          followUps: APPROVED_PAYLOAD,
+          tagId: target.tagId ?? null,
           media: APPROVED_PAYLOAD,
           scheduledFor: APPROVED_PAYLOAD,
           idempotencyKey: target.idempotencyKey,

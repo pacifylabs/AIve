@@ -6,6 +6,7 @@ import { companyBlock, EMOJI_RULE, RULES, SMALL_MODEL, styleBlock } from '../pro
 import { settingsOf } from '../settings.js';
 import {
   lengthHint,
+  chainLine,
   mentionsLine,
   NETWORKS,
   postEffects,
@@ -67,6 +68,7 @@ export const draftPost: TaskDefinition<Input, PostOutput> = {
           : 'Do not use hashtags.',
         'You may add a first comment (for example, where to find more), or leave it empty.',
         mentionsLine(settings, task.network),
+        chainLine(settings, task.network),
         styleBlock(settings),
       ]
         .filter(Boolean)
@@ -85,6 +87,7 @@ export const draftPost: TaskDefinition<Input, PostOutput> = {
       mediaUrls: task.mediaUrls,
       scheduledFor: task.scheduledFor,
       idempotencyKey: `post:${task.accountId}:${task.scheduledFor}`,
+      tagId: settingsOf(ctx.staff).draftTagId,
       title: `Post to ${account.name} on ${task.scheduledFor.slice(0, 10)}`,
     });
   },

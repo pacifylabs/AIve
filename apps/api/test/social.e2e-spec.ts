@@ -599,6 +599,10 @@ describe('sign-offs', () => {
     }[];
     expect(list[0]!.settings).toMatchObject({ cadence: 5, signatures: { [account!.id]: '— Team Northfield' } });
 
+    // How the staff member drafts: a tag for its drafts and up to three replies.
+    await patch({ chainReplies: 2, draftTagId: null }).expect(200);
+    await patch({ chainReplies: 4 }).expect(400);
+    await patch({ draftTagId: 'not-a-tag' }).expect(400);
     // Too long, or not tied to an account id, is refused.
     await patch({ signatures: { [account!.id]: 'x'.repeat(301) } }).expect(400);
     await patch({ signatures: { 'not-an-account': 'hi' } }).expect(400);

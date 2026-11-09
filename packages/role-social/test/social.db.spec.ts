@@ -308,6 +308,60 @@ describe('Social Media Staff, end to end', () => {
     expect(items[0]?.flaggedReason).toMatch(/factsOnly/);
   });
 
+  describe('chains and tags on staff drafts', () => {
+    it('writes the replies it is set to write, tags every draft, and queues both when approved', async () => {
+      const s = await setup();
+      const tagId = uuidv7();
+      await s.inWs(async (m) => {
+        await m.query(
+          `INSERT INTO post_tags (id, workspace_id, name, colour) VALUES ($1, $2, 'Staff draft', 'purple')`,
+          [tagId, s.workspaceId],
+        );
+        await m.update(
+          StaffMember,
+          { id: s.staff.id },
+          { settings: { ...s.staff.settings, chainReplies: 2, draftTagId: tagId } },
+        );
+      });
+      s.script.draft = {
+        body: 'Onboarding takes two weeks.',
+        hashtags: [],
+        reply1: 'Week one is the kickoff call.',
+        reply2: 'Week two is the first review.',
+        reply3: 'A third reply the setting does not allow.',
+      } as never;
+      await s.planNow();
+      await s.settle();
+      await s.approveAll();
+      await s.settle();
+      const drafts = await s.pending();
+      expect(drafts[0]?.payload.followUps).toBe('Week one is the kickoff call.\n---\nWeek two is the first review.');
+
+      // A person edits the second reply, and approves.
+      await s.approvals.approve(s.actor, drafts[0]!.id, {
+        ...drafts[0]!.payload,
+        followUps: 'Week one is the kickoff call.\n---\nWeek two is the review, edited.',
+      });
+      await s.settle();
+      const [queued] = await s.posts();
+      expect(queued).toMatchObject({
+        followUps: ['Week one is the kickoff call.', 'Week two is the review, edited.'],
+        tagId,
+      });
+    });
+
+    it('writes no replies unless the staff member is set to', async () => {
+      const s = await setup();
+      s.script.draft = { body: 'Plain post.', hashtags: [], reply1: 'A reply nobody asked for' } as never;
+      await s.planNow();
+      await s.settle();
+      await s.approveAll();
+      await s.settle();
+      const [draft] = await s.pending();
+      expect(draft?.payload.followUps).toBeUndefined();
+    });
+  });
+
   describe('sign-offs', () => {
     const sign = (s: Awaited<ReturnType<typeof setup>>, signature: string) =>
       s.inWs((m) =>

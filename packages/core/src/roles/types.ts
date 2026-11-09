@@ -132,6 +132,9 @@ export type Effect =
       body: string;
       linkUrl?: string | null;
       firstComment?: string | null;
+      /** Replies sent one after another once the post is up, or `$approved`: the approved item's `followUps`, one per `---` line. */
+      followUps?: string[] | typeof APPROVED_PAYLOAD;
+      tagId?: string | null;
       /** Public picture or video URLs, or `$approved`: the approved item's `mediaUrls`, one per line. */
       media: string[] | typeof APPROVED_PAYLOAD;
       /** ISO time. Work items store effects as JSON, so this is text, not a Date. */
