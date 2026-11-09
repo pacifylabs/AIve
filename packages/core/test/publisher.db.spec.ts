@@ -240,6 +240,45 @@ describe('publish intents and the publisher', () => {
     expect((await s.intents())[0]?.state).toBe('uncertain');
   });
 
+  it('holds a post that is more than a day late for a person instead of publishing it late', async () => {
+    const s = await setup();
+    await s.queue({ idempotencyKey: 'late', scheduledFor: '2026-11-03T10:00:00Z', body: 'A stale offer' });
+    await s.queue({ idempotencyKey: 'recent', scheduledFor: '2026-11-04T09:00:00Z', body: 'Only slightly late' });
+    s.time.set('2026-11-04T11:00:00Z'); // first is 25 hours late, second is 2 hours late
+    expect(await s.publisher.holdStale()).toBe(1);
+    const intents = await s.intents();
+    expect(intents.find((i) => i.idempotencyKey === 'late')).toMatchObject({
+      state: 'failed',
+      error: expect.stringMatching(/more than a day late/),
+    });
+    expect(intents.find((i) => i.idempotencyKey === 'recent')?.state).toBe('pending');
+    // Only the recent one goes out; the stale one waits under "needs you".
+    await s.publishDue();
+    expect(s.network.posts.map((p) => p.body)).toEqual(['Only slightly late']);
+    const posts = await inWorkspace(db, s.workspaceId, (m) =>
+      m.find(SocialPost, { where: { workspaceId: s.workspaceId }, order: { scheduledFor: 'ASC' } }),
+    );
+    expect(posts.map((p) => p.state)).toEqual(['failed', 'published']);
+    expect((await activity(db, s.workspaceId)).map((e) => e.type)).toContain('post.missed');
+    // Running again holds nothing more.
+    expect(await s.publisher.holdStale()).toBe(0);
+  });
+
+  it('holds a post whose account was broken for days once it is reconnected, not before', async () => {
+    const s = await setup();
+    await s.queue({ idempotencyKey: 'x', scheduledFor: '2026-11-01T10:00:00Z' });
+    await inWorkspace(db, s.workspaceId, (m) =>
+      m.update(ConnectedAccount, { id: s.account.id }, { health: 'broken', healthReason: 'Disconnected.' }),
+    );
+    // Still held by the broken account, and still counted as stale: a person decides after reconnecting.
+    expect(await s.publisher.holdStale()).toBe(1);
+    await inWorkspace(db, s.workspaceId, (m) =>
+      m.update(ConnectedAccount, { id: s.account.id }, { health: 'ok', healthReason: null }),
+    );
+    expect(await s.publishDue()).toEqual([]);
+    expect(s.network.posts).toHaveLength(0);
+  });
+
   it('a paused staff member publishes nothing', async () => {
     const s = await setup();
     await s.queue();

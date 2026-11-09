@@ -39,6 +39,8 @@ type IntentRef = Pick<PublishIntent, 'id' | 'accountId' | 'attempts'>;
 const MINUTE = 60_000;
 /** A publish stuck in `sending` this long belongs to a worker that died mid-publish. */
 const STUCK_AFTER_MS = 10 * MINUTE;
+/** A post this far past its time is held for a person instead of going out late. */
+const STALE_AFTER_MS = 24 * 60 * MINUTE;
 /** How long an uncertain publish is checked against the network before a person is asked. */
 const CHECK_FOR_MS = 30 * MINUTE;
 const MAX_ATTEMPTS = 5;
@@ -117,6 +119,47 @@ export class PostPublisher {
         [new Date(this.now().getTime() - STUCK_AFTER_MS)],
       )) as unknown[];
       return (Array.isArray(raw[0]) ? (raw[0] as unknown[]) : raw).length;
+    });
+  }
+
+  /**
+   * A post that has waited more than a day past its time (the worker was down, or the account was broken and has just been
+   * reconnected) is not published late by itself: a stale offer or a missed date can do harm. It is marked failed with a
+   * reason, which puts it under "Needs you" on the calendar, where a person chooses to post it now or leave it.
+   */
+  async holdStale(): Promise<number> {
+    return asSystem(this.db, 'publisher: hold posts that are more than a day past their time', async (m) => {
+      const raw = (await m.query(
+        `UPDATE publish_intents i
+            SET state = 'failed', error = 'This post was more than a day late, so it was held for you to decide.',
+                updated_at = now()
+           FROM connected_accounts a
+          WHERE a.id = i.account_id AND i.state = 'pending' AND i.not_before < $1
+      RETURNING i.id, i.workspace_id, i.post_id, i.staff_id, a.name AS account_name`,
+        [new Date(this.now().getTime() - STALE_AFTER_MS)],
+      )) as unknown[];
+      // An UPDATE ... RETURNING answers with the rows, or with the rows and a count, depending on the driver.
+      const held = (Array.isArray(raw[0]) ? raw[0] : raw) as {
+        workspace_id: string;
+        post_id: string;
+        staff_id: string;
+        account_name: string;
+      }[];
+      for (const row of held) {
+        await m.query(
+          `UPDATE social_posts SET state = 'failed', updated_at = now() WHERE id = $1 AND state = 'scheduled'`,
+          [row.post_id],
+        );
+        await this.activity(
+          m,
+          row.workspace_id,
+          row.staff_id,
+          'post.missed',
+          `A post to ${row.account_name} was more than a day late and is held for you.`,
+          { postId: row.post_id },
+        );
+      }
+      return held.length;
     });
   }
 

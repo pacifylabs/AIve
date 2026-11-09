@@ -104,6 +104,7 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
         );
       }
       const stuckPosts = await this.publisher.reapStuck();
+      const heldPosts = await this.publisher.holdStale();
       const posts = await this.publisher.due();
       if (posts.length) {
         await this.publish.addBulk(
@@ -156,6 +157,7 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
         stuck ||
         sends.length ||
         stuckPosts ||
+        heldPosts ||
         posts.length ||
         looks.length ||
         unclear.length ||
@@ -173,6 +175,7 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
             posts: posts.length,
             unclear: unclear.length,
             stuckPosts,
+            heldPosts,
             replies: replies.length,
             stuckReplies,
           },
