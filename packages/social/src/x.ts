@@ -197,13 +197,14 @@ export class XProvider implements SocialProvider {
   }
 
   /** A "first comment" on X is a reply from the same account, which shows under the post. */
-  async addComment({ accessToken, externalPostId, message }: CommentInput): Promise<void> {
+  async addComment({ accessToken, externalPostId, message }: CommentInput): Promise<{ externalPostId?: string }> {
     this.assertConfigured();
-    await this.call(`${API}/tweets`, {
+    const sent = await this.call<{ data?: { id?: string } }>(`${API}/tweets`, {
       method: 'POST',
       headers: this.bearer(accessToken, true),
       body: JSON.stringify({ text: message, reply: { in_reply_to_tweet_id: externalPostId } }),
     });
+    return { externalPostId: sent.data?.id };
   }
 
   /**

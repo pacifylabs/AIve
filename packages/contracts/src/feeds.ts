@@ -34,6 +34,8 @@ export const composePostRequest = z.object({
     .url({ protocol: /^https?$/ })
     .max(500)
     .optional(),
+  /** Replies sent one after another once the post is up, each to the one before. */
+  followUps: z.array(z.string().trim().min(1).max(5000)).max(9).default([]),
   tagId: z.uuid().optional(),
   scheduledLocal: z
     .string()

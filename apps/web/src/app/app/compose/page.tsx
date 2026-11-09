@@ -11,6 +11,13 @@ interface Account {
   name: string;
   health: 'ok' | 'degraded' | 'broken';
 }
+/** A chain that stopped part-way: what was never posted is offered again as a new chain. */
+interface Unfinished {
+  id: string;
+  accountId: string;
+  followUps: string[];
+  followUpsSent: number;
+}
 interface Template {
   id: string;
   name: string;
@@ -22,29 +29,48 @@ interface Template {
   tagId: string | null;
 }
 
-const BLANK: ComposeStart = { body: '', firstComment: '', linkUrl: '', mediaUrls: '', accountIds: [], tagId: '' };
+const BLANK: ComposeStart = {
+  followUps: [],
+  body: '',
+  firstComment: '',
+  linkUrl: '',
+  mediaUrls: '',
+  accountIds: [],
+  tagId: '',
+};
 
-export default async function ComposePage({ searchParams }: { searchParams: Promise<{ template?: string }> }) {
-  const { template: templateId } = await searchParams;
-  const [accounts, templates, tags] = await Promise.all([
+export default async function ComposePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ template?: string; rest?: string }>;
+}) {
+  const { template: templateId, rest } = await searchParams;
+  const [accounts, templates, tags, left] = await Promise.all([
     apiOrRedirect<Account[]>('/social/accounts', '/app/compose', { workspace: true }),
     apiOrRedirect<Template[]>('/social/templates', '/app/compose', { workspace: true }),
     apiOrRedirect<Tag[]>('/social/tags', '/app/compose', { workspace: true }),
+    rest ? apiOrRedirect<Unfinished[]>('/social/posts', '/app/compose', { workspace: true }) : null,
   ]);
+  const unfinished = left?.ok ? left.data.find((post) => post.id === rest) : undefined;
   if (!accounts.ok) return <p className="text-danger">{accounts.problem.title}</p>;
   const usable = accounts.data.filter((account) => account.health !== 'broken');
   const saved = templates.ok ? templates.data : [];
   const chosen = saved.find((template) => template.id === templateId);
-  const start: ComposeStart = chosen
-    ? {
-        body: chosen.body,
-        firstComment: chosen.firstComment ?? '',
-        linkUrl: chosen.linkUrl ?? '',
-        mediaUrls: chosen.media.join('\n'),
-        accountIds: chosen.accountIds,
-        tagId: chosen.tagId ?? '',
-      }
-    : BLANK;
+  const remaining = unfinished ? unfinished.followUps.slice(unfinished.followUpsSent) : [];
+  const start: ComposeStart =
+    unfinished && remaining.length
+      ? { ...BLANK, body: remaining[0]!, followUps: remaining.slice(1), accountIds: [unfinished.accountId] }
+      : chosen
+        ? {
+            followUps: [],
+            body: chosen.body,
+            firstComment: chosen.firstComment ?? '',
+            linkUrl: chosen.linkUrl ?? '',
+            mediaUrls: chosen.media.join('\n'),
+            accountIds: chosen.accountIds,
+            tagId: chosen.tagId ?? '',
+          }
+        : BLANK;
 
   return (
     <section className="max-w-2xl space-y-6">
@@ -89,7 +115,7 @@ export default async function ComposePage({ searchParams }: { searchParams: Prom
           <div className="card p-6">
             {/* One id per page view, so sending the form twice makes one post. The key restarts the form for a new template. */}
             <ComposeForm
-              key={chosen?.id ?? 'blank'}
+              key={chosen?.id ?? unfinished?.id ?? 'blank'}
               requestId={crypto.randomUUID()}
               accounts={usable}
               tags={tags.ok ? tags.data : []}

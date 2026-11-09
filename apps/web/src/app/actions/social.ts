@@ -120,6 +120,7 @@ export async function resolvePostAction(data: FormData): Promise<void> {
 // ---- Writing a post by hand ----------------------------------------------------------------------------------
 
 const COMPOSE_FIELDS = ['body', 'firstComment', 'mediaUrls', 'linkUrl', 'scheduledLocal'] as const;
+// Follow-up boxes are echoed back as `followUp.0`, `followUp.1`… so the parts a person wrote survive a refused post.
 
 /** Queues a post the person wrote: for every ticked account, now or at the time they chose. */
 export async function composePostAction(_state: FormState, data: FormData): Promise<FormState> {
@@ -132,12 +133,21 @@ export async function composePostAction(_state: FormState, data: FormData): Prom
       body: field(data, 'body'),
       firstComment: field(data, 'firstComment').trim() || undefined,
       mediaUrls: lines(field(data, 'mediaUrls')),
+      followUps: data
+        .getAll('followUp')
+        .filter((value): value is string => typeof value === 'string' && value.trim() !== ''),
       linkUrl: field(data, 'linkUrl').trim() || undefined,
       tagId: field(data, 'tagId') || undefined,
       scheduledLocal: field(data, 'scheduledLocal') || undefined,
     },
   });
-  if (!result.ok) return failed(result.problem, data, '/app/compose', COMPOSE_FIELDS);
+  if (!result.ok) {
+    const state = failed(result.problem, data, '/app/compose', COMPOSE_FIELDS);
+    data.getAll('followUp').forEach((part, index) => {
+      if (typeof part === 'string') state.values = { ...state.values, [`followUp.${index}`]: part };
+    });
+    return state;
+  }
   revalidatePath('/app/calendar');
   redirect('/app/calendar');
 }

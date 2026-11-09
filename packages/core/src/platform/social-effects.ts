@@ -27,7 +27,7 @@ export async function createPublishIntent(
   staffId: string,
   effect: PublishIntentEffect & { media: string[] },
   /** `createdBy` is set when a person wrote the post themselves rather than approving a staff draft. */
-  options: { createdBy?: string | null; tagId?: string | null } = {},
+  options: { createdBy?: string | null; tagId?: string | null; followUps?: string[] } = {},
 ): Promise<PublishIntentResult> {
   if (await m.existsBy(PublishIntent, { workspaceId, idempotencyKey: effect.idempotencyKey })) {
     return { created: false, reason: 'Already queued.' };
@@ -55,6 +55,7 @@ export async function createPublishIntent(
       permalink: null,
       createdBy: options.createdBy ?? null,
       tagId: options.tagId ?? null,
+      followUps: options.followUps ?? [],
     }),
   );
   const intent = await m.save(

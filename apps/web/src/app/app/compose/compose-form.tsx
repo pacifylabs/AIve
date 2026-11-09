@@ -1,12 +1,13 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { composePostAction } from '@/app/actions/social';
 import type { Tag } from '@/components/app/tag';
 import { FormMessages, SubmitButton, TextAreaField, TextField } from '@/components/form';
 import { initialFormState } from '@/lib/form-state';
 
 export interface ComposeStart {
+  followUps: string[];
   body: string;
   firstComment: string;
   linkUrl: string;
@@ -28,6 +29,12 @@ export function ComposeForm({
   start: ComposeStart;
 }) {
   const [state, action] = useActionState(composePostAction, initialFormState);
+  // The follow-up boxes: what a refused post sent back, or what a template or an unfinished chain starts with.
+  const echoed = Object.keys(state.values ?? {})
+    .filter((key) => key.startsWith('followUp.'))
+    .sort((a, b) => Number(a.slice(9)) - Number(b.slice(9)))
+    .map((key) => state.values![key]!);
+  const [parts, setParts] = useState<string[]>(echoed.length ? echoed : start.followUps);
   return (
     <form action={action} className="space-y-5" noValidate>
       <FormMessages state={state} />
@@ -57,6 +64,30 @@ export function ComposeForm({
         hint="Checked against each network's length limit when you post. Sign-offs are not added to posts you write yourself."
         required
       />
+      {parts.map((part, index) => (
+        <div key={index} className="space-y-1">
+          <TextAreaField
+            label={`Reply ${index + 1}, posted under the one before it`}
+            name="followUp"
+            rows={3}
+            value={part}
+            onChange={(event) => setParts(parts.map((p, i) => (i === index ? event.target.value : p)))}
+            error={index === 0 ? state.fields?.followUps : undefined}
+          />
+          <button
+            type="button"
+            className="text-xs text-danger hover:underline"
+            onClick={() => setParts(parts.filter((_, i) => i !== index))}
+          >
+            Remove this reply
+          </button>
+        </div>
+      ))}
+      {parts.length < 9 ? (
+        <button type="button" className="btn" onClick={() => setParts([...parts, ''])}>
+          Add another post
+        </button>
+      ) : null}
       <TextAreaField
         label="Pictures or a video (optional)"
         name="mediaUrls"

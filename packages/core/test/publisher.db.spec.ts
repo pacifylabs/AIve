@@ -30,7 +30,16 @@ async function setup() {
   const ws = await seedWorkspace(db);
   const time = clock('2026-11-03T10:00:00Z');
   const network = new FixtureSocialProvider('facebook');
-  const publisher = new PostPublisher(db, { keyring, providers: new SocialProviders({}, [network]), now: time.now });
+  const waits: number[] = [];
+  const publisher = new PostPublisher(db, {
+    keyring,
+    providers: new SocialProviders({}, [network]),
+    now: time.now,
+    sleep: (ms) => {
+      waits.push(ms);
+      return Promise.resolve();
+    },
+  });
   const { account, staff } = await inWorkspace(db, ws.workspaceId, async (m) => {
     const staff = await m.save(
       m.create(StaffMember, {
@@ -105,7 +114,7 @@ async function setup() {
       if (due.workspaceId === ws.workspaceId) out.push(await publisher.dispatch(due.workspaceId, due.id));
     return out;
   };
-  return { ...ws, time, network, publisher, account, staff, queue, intents, post, publishDue };
+  return { ...ws, time, waits, network, publisher, account, staff, queue, intents, post, publishDue };
 }
 
 describe('publish intents and the publisher', () => {
@@ -238,6 +247,64 @@ describe('publish intents and the publisher', () => {
     );
     expect(await s.publisher.reapStuck()).toBeGreaterThanOrEqual(1);
     expect((await s.intents())[0]?.state).toBe('uncertain');
+  });
+
+  describe('reply chains', () => {
+    const chain = async (parts: string[]) => {
+      const s = await setup();
+      await s.queue({ idempotencyKey: 'chain', body: 'Part one' });
+      await inWorkspace(db, s.workspaceId, (m) =>
+        m.update(SocialPost, { workspaceId: s.workspaceId }, { followUps: parts }),
+      );
+      return s;
+    };
+
+    it('sends each follow-up as a reply to the one before it, in order, after the first post', async () => {
+      const s = await chain(['Part two', 'Part three']);
+      await s.publishDue();
+      expect(s.network.comments.map((c) => c.message)).toEqual(['Part two', 'Part three']);
+      const first = s.network.posts[0]!.externalPostId;
+      expect(s.network.comments[0]!.externalPostId).toBe(first);
+      expect(s.network.comments[1]!.externalPostId).toMatch(/^fx-reply-\d+$/);
+      expect(s.network.comments[1]!.externalPostId).not.toBe(first);
+      expect(await s.post()).toMatchObject({ state: 'published', followUpsSent: 2, followUpError: null });
+    });
+
+    it('tries a part again, with longer waits, and carries on when a later try works', async () => {
+      const s = await chain(['Part two']);
+      s.network.commentFailures = 2;
+      await s.publishDue();
+      expect(s.network.commentAttempts).toBe(2);
+      expect(s.waits).toEqual([2000, 4000]);
+      expect(await s.post()).toMatchObject({ followUpsSent: 1, followUpError: null });
+    });
+
+    it('stops after three failed tries, keeps what went out, and tells the person', async () => {
+      const s = await chain(['Part two', 'Part three', 'Part four']);
+      s.network.commentsBeforeFailure = 1; // part two goes out, part three never does
+      s.network.commentFailures = 99;
+      await s.publishDue();
+      expect(s.network.commentAttempts).toBe(3);
+      expect(s.network.comments.map((c) => c.message)).toEqual(['Part two']);
+      const post = await s.post();
+      expect(post).toMatchObject({ state: 'published', followUpsSent: 1 });
+      expect(post.followUpError).toMatch(
+        /Part 3 of 4 was not posted: The fixture refused that reply\. 2 parts were left unposted/,
+      );
+      expect((await activity(db, s.workspaceId)).map((e) => e.type)).toContain('post.chain_incomplete');
+      expect((await s.intents())[0]?.state).toBe('sent');
+    });
+
+    it('does not try again when the login is refused, or when a reply may already be up', async () => {
+      for (const kind of ['auth', 'drop'] as const) {
+        const s = await chain(['Part two']);
+        s.network.commentFailureKind = kind;
+        s.network.commentFailures = 99;
+        await s.publishDue();
+        expect(s.network.commentAttempts).toBe(1);
+        expect((await s.post()).followUpsSent).toBe(0);
+      }
+    });
   });
 
   it('holds a post that is more than a day late for a person instead of publishing it late', async () => {

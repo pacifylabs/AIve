@@ -3,6 +3,7 @@ import {
   callApi,
   type CheckPublishInput,
   type CheckPublishResult,
+  type CommentInput,
   type ExchangeCodeInput,
   form,
   type FoundPost,
@@ -201,6 +202,28 @@ export class ThreadsProvider implements SocialProvider {
       if (error instanceof ProviderError && error.unknownOutcome) return { state: 'uncertain', message: error.message };
       throw error;
     }
+  }
+
+  /**
+   * A reply on Threads is a post that names the one it answers: the container is made with `reply_to_id`, then published.
+   * Used for a first comment and for each part of a chain. Not yet run against a real account.
+   */
+  async addComment({
+    accessToken,
+    externalId,
+    externalPostId,
+    message,
+  }: CommentInput): Promise<{ externalPostId: string }> {
+    this.assertConfigured();
+    const container = await this.call<{ id: string }>(this.url(`${externalId}/threads`), {
+      method: 'POST',
+      body: form({ access_token: accessToken, media_type: 'TEXT', text: message, reply_to_id: externalPostId }),
+    });
+    const published = await this.call<{ id: string }>(this.url(`${externalId}/threads_publish`), {
+      method: 'POST',
+      body: form({ access_token: accessToken, creation_id: container.id }),
+    });
+    return { externalPostId: published.id };
   }
 
   async findRecentPost(input: {

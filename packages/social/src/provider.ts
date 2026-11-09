@@ -217,7 +217,11 @@ export interface SocialProvider {
     since: Date;
   }): Promise<FoundPost | null>;
   fetchMetrics(input: PostRef): Promise<Record<string, number>>;
-  addComment?(input: CommentInput): Promise<void>;
+  /**
+   * Posts a comment or reply as the account. Returns the new post's id where the network has one, so a chain can reply to
+   * the one before it; without an id the next reply goes to the original post.
+   */
+  addComment?(input: CommentInput): Promise<{ externalPostId?: string } | void>;
   /** Comments left on a published post, for the networks that hand them over without a webhook subscription. */
   fetchComments?(input: PostRef & { limit?: number }): Promise<ProviderComment[]>;
   /** Answer one comment as the account. `externalPostId` is the comment being replied to. */

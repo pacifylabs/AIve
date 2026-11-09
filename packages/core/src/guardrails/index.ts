@@ -203,6 +203,16 @@ export function mediaProblem(network: Network, mediaUrls: readonly string[]): st
 /** Networks whose publisher puts the link on its own line after the words, so it takes room in the post. */
 const LINK_IN_TEXT: readonly Network[] = ['x', 'telegram', 'discord'];
 
+/** Whether the words fit the network, counting the link where the publisher adds it to the text. A reason, or null. */
+export function lengthProblem(input: { network: Network; body: string; linkUrl?: string | null }): string | null {
+  const text = input.linkUrl && LINK_IN_TEXT.includes(input.network) ? `${input.body}\n${input.linkUrl}` : input.body;
+  const limit = NETWORK_MAX_CHARACTERS[input.network];
+  const used = lengthOnNetwork(input.network, text);
+  if (used <= limit) return null;
+  const over = used - limit;
+  return `It is ${over} character${over === 1 ? '' : 's'} over the ${limit} that ${input.network} allows.`;
+}
+
 /** Whether a finished post fits its network and has the media it needs. A reason in plain words, or null. */
 export function postProblem(input: {
   network: Network;
@@ -210,12 +220,5 @@ export function postProblem(input: {
   linkUrl?: string | null;
   mediaUrls: readonly string[];
 }): string | null {
-  const text = input.linkUrl && LINK_IN_TEXT.includes(input.network) ? `${input.body}\n${input.linkUrl}` : input.body;
-  const limit = NETWORK_MAX_CHARACTERS[input.network];
-  const used = lengthOnNetwork(input.network, text);
-  if (used > limit) {
-    const over = used - limit;
-    return `It is ${over} character${over === 1 ? '' : 's'} over the ${limit} that ${input.network} allows.`;
-  }
-  return mediaProblem(input.network, input.mediaUrls);
+  return lengthProblem(input) ?? mediaProblem(input.network, input.mediaUrls);
 }

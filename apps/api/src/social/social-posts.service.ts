@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { createPublishIntent, postProblem, zonedTimeToUtc } from '@ai-staff/core';
+import { createPublishIntent, lengthProblem, postProblem, zonedTimeToUtc } from '@ai-staff/core';
 import {
   AuditEntry,
   ConnectedAccount,
@@ -14,13 +14,17 @@ import {
   withTenant,
 } from '@ai-staff/db';
 import { v7 as uuidv7 } from 'uuid';
+import { SocialProviders } from '@ai-staff/social';
 import { AppError } from '../common/app-error.js';
 import type { WorkspaceContext } from '../workspaces/workspace.guard.js';
 import { tagExists } from './post-library.service.js';
 
 @Injectable()
 export class SocialPostsService {
-  constructor(@Inject(DataSource) private readonly db: DataSource) {}
+  constructor(
+    @Inject(DataSource) private readonly db: DataSource,
+    @Inject(SocialProviders) private readonly providers: SocialProviders,
+  ) {}
 
   private tx<T>(ctx: WorkspaceContext, work: (m: EntityManager) => Promise<T>) {
     return withTenant(this.db, { workspaceId: ctx.workspaceId, userId: ctx.userId }, work);
@@ -166,6 +170,7 @@ export class SocialPostsService {
       body: string;
       firstComment?: string | undefined;
       mediaUrls: string[];
+      followUps: string[];
       linkUrl?: string | undefined;
       tagId?: string | undefined;
       scheduledLocal?: string | undefined;
@@ -195,6 +200,19 @@ export class SocialPostsService {
           mediaUrls: input.mediaUrls,
         });
         if (problem) problems.push({ path: 'body', message: `${account.name}: ${problem}` });
+        if (input.followUps.length) {
+          if (!this.providers.get(account.network).addComment) {
+            problems.push({
+              path: 'followUps',
+              message: `${account.name}: ${account.network} cannot post a chain of replies.`,
+            });
+          }
+          input.followUps.forEach((part, index) => {
+            const tooLong = lengthProblem({ network: account.network, body: part });
+            if (tooLong)
+              problems.push({ path: 'followUps', message: `${account.name}, part ${index + 2}: ${tooLong}` });
+          });
+        }
       }
 
       if (input.tagId && !(await tagExists(m, ctx.workspaceId, input.tagId))) {
@@ -235,7 +253,7 @@ export class SocialPostsService {
             scheduledFor: when.toISOString(),
             idempotencyKey: `compose:${input.requestId}:${account.id}`,
           },
-          { createdBy: ctx.userId, tagId: input.tagId ?? null },
+          { createdBy: ctx.userId, tagId: input.tagId ?? null, followUps: input.followUps },
         );
         results.push({ accountId: account.id, postId: made.created ? made.postId : null, queued: made.created });
       }

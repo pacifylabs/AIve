@@ -89,6 +89,17 @@ export class SocialPost extends WorkspaceScopedEntity {
 
   @Column({ type: 'uuid', nullable: true })
   tagId: string | null;
+
+  /** Replies sent one after another once the post is up, each to the one before. */
+  @Column({ type: 'jsonb', default: [] })
+  followUps: string[];
+
+  @Column({ type: 'integer', default: 0 })
+  followUpsSent: number;
+
+  /** Why the chain stopped, when it did. */
+  @Column({ type: 'varchar', length: 300, nullable: true })
+  followUpError: string | null;
 }
 
 export type PublishIntentState = 'pending' | 'sending' | 'processing' | 'sent' | 'failed' | 'uncertain' | 'cancelled';

@@ -48,6 +48,8 @@ export class FixtureSocialProvider implements SocialProvider {
   incoming: ProviderComment[] = [];
   /** What `listAccounts` returns: tests add more to exercise choosing between several pages. */
   accounts: ProviderAccount[] = [{ externalId: 'fixture-account', name: 'Fixture account', kind: 'page' }];
+  /** How many comments were refused, so tests can see how often a part was tried. */
+  commentAttempts = 0;
   private counter = 0;
 
   constructor(
@@ -186,9 +188,31 @@ export class FixtureSocialProvider implements SocialProvider {
     return Promise.resolve({ reactions: 3, comments: 1 });
   }
 
-  addComment(input: CommentInput): Promise<void> {
+  /** Makes comments fail, so a chain that loses a part can be tested: let this many through, then fail this many. */
+  commentsBeforeFailure = 0;
+  commentFailures = 0;
+  commentFailureKind: 'auth' | 'other' | 'drop' = 'other';
+
+  addComment(input: CommentInput): Promise<{ externalPostId?: string }> {
+    if (this.commentsBeforeFailure > 0) {
+      this.commentsBeforeFailure -= 1;
+    } else if (this.commentFailures > 0) {
+      this.commentFailures -= 1;
+      this.commentAttempts += 1;
+      const kind = this.commentFailureKind;
+      return Promise.reject(
+        new ProviderError(
+          'The fixture refused that reply.',
+          this.network,
+          kind === 'auth' ? 'auth' : 'other',
+          undefined,
+          kind === 'drop',
+        ),
+      );
+    }
     this.comments.push(input);
-    return Promise.resolve();
+    this.counter += 1;
+    return Promise.resolve({ externalPostId: `fx-reply-${this.counter}` });
   }
 
   fetchComments(): Promise<ProviderComment[]> {

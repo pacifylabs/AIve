@@ -263,6 +263,7 @@ export function StaffCards({ staff, tasks }: { staff: StaffMember[]; tasks: Auto
 const BAD = new Set([
   'post.failed',
   'post.missed',
+  'post.chain_incomplete',
   'account.broken',
   'account.expired',
   'task.dead',

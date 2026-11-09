@@ -1,6 +1,7 @@
 import { CredentialProvider } from './credential.js';
 import {
   callApi,
+  type CommentInput,
   type CredentialConnection,
   type CredentialField,
   mediaKindOf,
@@ -165,6 +166,21 @@ export class TelegramProvider extends CredentialProvider {
     }
     const sent = await this.call<{ message_id: number }>(token, 'sendMessage', { chat_id, text });
     return { externalPostId: String(sent.message_id), permalink: permalink(sent.message_id) };
+  }
+
+  /** A reply in the channel, shown as an answer to the message before it. */
+  async addComment({
+    accessToken,
+    externalId,
+    externalPostId,
+    message,
+  }: CommentInput): Promise<{ externalPostId: string }> {
+    const sent = await this.call<{ message_id: number }>(accessToken, 'sendMessage', {
+      chat_id: externalId,
+      text: message,
+      reply_parameters: { message_id: Number(externalPostId), allow_sending_without_reply: true },
+    });
+    return { externalPostId: String(sent.message_id) };
   }
 
   /** Telegram gives a bot no numbers for its own posts. */

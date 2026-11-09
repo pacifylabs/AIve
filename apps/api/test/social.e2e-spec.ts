@@ -701,6 +701,43 @@ describe('writing a post by hand', () => {
     expect(refused.body.errors[0].message).toMatch(/needs to be reconnected/);
   });
 
+  it('queues a chain of replies with the post, and shows how many are to follow', async () => {
+    const w = await ready('chain1', ['facebook', 'x']);
+    await post(w.as, { accountIds: Object.values(w.accounts), followUps: ['Part two', 'Part three'] }).expect(201);
+    const posts = (await t.http().get('/v1/social/posts').set(w.as).expect(200)).body as {
+      followUps: string[];
+      followUpsSent: number;
+    }[];
+    expect(posts).toHaveLength(2);
+    expect(posts.every((p) => p.followUps.join('|') === 'Part two|Part three' && p.followUpsSent === 0)).toBe(true);
+  });
+
+  it('refuses a chain with a part that is too long for an account, naming the part, and queues nothing', async () => {
+    const w = await ready('chain2', ['x']);
+    const refused = await post(w.as, { accountIds: [w.accounts.x], followUps: ['Fine', 'a'.repeat(300)] }).expect(400);
+    expect(refused.body.errors).toEqual([
+      { path: 'followUps', message: expect.stringMatching(/x page, part 3: It is 20 characters over the 280/) },
+    ]);
+    expect(await calendar(w.as)).toEqual([]);
+    await post(w.as, { accountIds: [w.accounts.x], followUps: Array(10).fill('too many') }).expect(400);
+    await post(w.as, { accountIds: [w.accounts.x], followUps: ['   '] }).expect(400);
+  });
+
+  it('refuses a chain on an account whose network cannot reply', async () => {
+    const w = await ready('chain3', ['instagram']);
+    Object.defineProperty(t.social.instagram, 'addComment', { value: undefined, configurable: true });
+    try {
+      const refused = await post(w.as, {
+        accountIds: [w.accounts.instagram],
+        mediaUrls: ['https://cdn.example.com/a.jpg'],
+        followUps: ['Part two'],
+      }).expect(400);
+      expect(refused.body.errors[0].message).toMatch(/cannot post a chain of replies/);
+    } finally {
+      delete (t.social.instagram as unknown as Record<string, unknown>).addComment;
+    }
+  });
+
   it('needs a Social Media Staff member, since posts go out under theirs', async () => {
     const w = await workspace('compose7');
     t.social.facebook.accounts = [{ externalId: 'p', name: 'P', kind: 'page' }];

@@ -13,6 +13,10 @@ interface Post {
   permalink: string | null;
   /** Set when a person wrote the post by hand. */
   createdBy: string | null;
+  accountId: string;
+  followUps: string[];
+  followUpsSent: number;
+  followUpError: string | null;
   tag: Tag | null;
   account: { name: string; network: string; health: string } | null;
   publish: { state: string; error: string | null } | null;
@@ -112,6 +116,19 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                   </span>
                 </div>
                 <p className="line-clamp-3 whitespace-pre-wrap text-muted">{post.body}</p>
+                {post.followUps.length && post.state === 'published' ? (
+                  <p className="text-xs text-muted">
+                    Thread: {post.followUpsSent + 1} of {post.followUps.length + 1} posted
+                  </p>
+                ) : null}
+                {post.followUpError ? (
+                  <p className="text-xs text-danger">
+                    {post.followUpError}{' '}
+                    <Link href={`/app/compose?rest=${post.id}`} className="font-medium underline">
+                      Post the rest as a new thread
+                    </Link>
+                  </p>
+                ) : null}
                 {post.publish?.error && post.state !== 'published' ? (
                   <p className="text-xs text-danger">{post.publish.error}</p>
                 ) : null}

@@ -31,6 +31,8 @@ export interface PublisherOptions {
   keyring: Keyring;
   providers: SocialProviders;
   now?: () => Date;
+  /** Waits between tries of a chain's follow-up; replaced in tests so they do not wait. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 /** The parts of an intent the settle steps need. */
@@ -39,6 +41,8 @@ type IntentRef = Pick<PublishIntent, 'id' | 'accountId' | 'attempts'>;
 const MINUTE = 60_000;
 /** A publish stuck in `sending` this long belongs to a worker that died mid-publish. */
 const STUCK_AFTER_MS = 10 * MINUTE;
+/** Each part of a chain is tried this many times before the rest is handed to a person. */
+const FOLLOW_UP_ATTEMPTS = 3;
 /** A post this far past its time is held for a person instead of going out late. */
 const STALE_AFTER_MS = 24 * 60 * MINUTE;
 /** How long an uncertain publish is checked against the network before a person is asked. */
@@ -67,6 +71,7 @@ export const rateLimitBackoffMs = (attempt: number) =>
  */
 export class PostPublisher {
   private readonly now: () => Date;
+  private readonly sleep: (ms: number) => Promise<void>;
   private readonly tokens: AccountTokens;
 
   constructor(
@@ -74,6 +79,7 @@ export class PostPublisher {
     private readonly options: PublisherOptions,
   ) {
     this.now = options.now ?? (() => new Date());
+    this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.tokens = new AccountTokens(db, options.keyring, options.providers, this.now);
   }
 
@@ -269,7 +275,73 @@ export class PostPublisher {
           note = `The post is up, but its first comment failed: ${(error as Error).message}`.slice(0, 300);
         });
     }
-    await this.markPublished(workspaceId, intent, post, staff, result.externalPostId, result.permalink ?? null, note);
+    const chain = await this.sendFollowUps(account, post, provider, accessToken, result.externalPostId);
+    if (chain.error) note = chain.error;
+    await this.markPublished(
+      workspaceId,
+      intent,
+      post,
+      staff,
+      result.externalPostId,
+      result.permalink ?? null,
+      note,
+      chain,
+    );
+  }
+
+  /**
+   * Sends a chain's follow-ups in order, each as a reply to the one before it (to the first post, where the network gives
+   * no id for a reply). A part is tried three times, with a longer wait each time. It is not tried again when the network
+   * refuses the login, or when the request was sent and never answered, since that reply may already be up. The first
+   * part that cannot be sent ends the chain: what went out stays, the rest is left, and a person is told.
+   */
+  private async sendFollowUps(
+    account: ConnectedAccount,
+    post: SocialPost,
+    provider: SocialProvider,
+    accessToken: string,
+    firstId: string,
+  ): Promise<{ sent: number; error: string | null }> {
+    const parts = post.followUps ?? [];
+    if (!parts.length) return { sent: 0, error: null };
+    if (!provider.addComment)
+      return { sent: 0, error: `${account.network} cannot post a chain, so only the first post went out.` };
+    let replyTo = firstId;
+    let sent = 0;
+    for (const message of parts) {
+      let failure = '';
+      for (let attempt = 1; attempt <= FOLLOW_UP_ATTEMPTS; attempt += 1) {
+        try {
+          const reply = await provider.addComment({
+            accessToken,
+            externalId: account.externalId,
+            externalPostId: replyTo,
+            message,
+          });
+          if (reply?.externalPostId) replyTo = reply.externalPostId;
+          failure = '';
+          break;
+        } catch (error) {
+          failure = (error as Error).message;
+          const cannotRetry = error instanceof ProviderError && (error.kind === 'auth' || error.unknownOutcome);
+          if (cannotRetry || attempt === FOLLOW_UP_ATTEMPTS) break;
+          await this.sleep(attempt * 2_000);
+        }
+      }
+      if (failure) {
+        const left = parts.length - sent;
+        return {
+          sent,
+          error:
+            `Part ${sent + 2} of ${parts.length + 1} was not posted: ${failure.replace(/\.$/, '')}. ${left} ${left === 1 ? 'part was' : 'parts were'} left unposted.`.slice(
+              0,
+              300,
+            ),
+        };
+      }
+      sent += 1;
+    }
+    return { sent, error: null };
   }
 
   /** The network took the post and is still working on it. The ticket is kept, and it is looked at again later. */
@@ -613,6 +685,7 @@ export class PostPublisher {
     externalPostId: string,
     permalink: string | null,
     note: string | null,
+    chain: { sent: number; error: string | null } = { sent: 0, error: null },
   ) {
     await withTenant(this.db, { workspaceId, userId: null }, async (m) => {
       const at = this.now();
@@ -621,7 +694,18 @@ export class PostPublisher {
         { id: intent.id },
         { state: 'sent', externalPostId, error: note?.slice(0, 400) ?? null },
       );
-      await m.update(SocialPost, { id: post.id }, { state: 'published', publishedAt: at, externalPostId, permalink });
+      await m.update(
+        SocialPost,
+        { id: post.id },
+        {
+          state: 'published',
+          publishedAt: at,
+          externalPostId,
+          permalink,
+          followUpsSent: chain.sent,
+          followUpError: chain.error,
+        },
+      );
       await m.update(ConnectedAccount, { id: intent.accountId }, { lastCheckedAt: at });
       await this.activity(
         m,
@@ -631,6 +715,12 @@ export class PostPublisher {
         `Published a post${permalink ? `: ${permalink}` : '.'}`,
         { postId: post.id, permalink },
       );
+      if (chain.error) {
+        await this.activity(m, workspaceId, staff.id, 'post.chain_incomplete', chain.error, {
+          postId: post.id,
+          sent: chain.sent,
+        });
+      }
       // Metrics capture and engagement polling start from this event.
       await m.save(
         m.create(DomainEvent, {
