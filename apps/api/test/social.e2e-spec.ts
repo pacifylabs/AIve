@@ -1187,3 +1187,77 @@ describe('follower stats', () => {
     expect(((await t.http().get('/v1/social/stats').set(a.as).expect(200)).body as unknown[]).length).toBe(1);
   });
 });
+
+describe('saved @mentions', () => {
+  async function ready(label: string, connect = true) {
+    const w = await workspace(label);
+    if (connect) {
+      t.social.telegram.accounts = [{ externalId: 'chan', name: 'Channel', kind: 'organization' }];
+      await t
+        .http()
+        .post('/v1/social/accounts/connect/telegram/credentials')
+        .set(w.as)
+        .send({ credentials: { token: 'ok' } })
+        .expect(200);
+    }
+    await t
+      .http()
+      .post('/v1/staff')
+      .set(w.as)
+      .send({ roleKey: 'social_media', displayName: 'Sam', settings: {} })
+      .expect(201);
+    return w;
+  }
+  const add = (as: Record<string, string>, body: Record<string, unknown>) =>
+    t.http().post('/v1/social/mentions').set(as).send(body);
+
+  it('saves an account the network confirms, and marks it verified', async () => {
+    const w = await ready('men1');
+    const saved = (await add(w.as, { network: 'telegram', handle: '@northfield_news' }).expect(201)).body;
+    expect(saved).toEqual({
+      network: 'telegram',
+      handle: 'northfield_news',
+      name: 'northfield_news (fixture)',
+      verified: true,
+    });
+    expect((await t.http().get('/v1/social/mentions').set(w.as).expect(200)).body).toEqual([saved]);
+    // The guardrail reads it from the staff settings.
+    const staff = (await t.http().get('/v1/staff').set(w.as).expect(200)).body as {
+      settings: { mentions: unknown[] };
+    }[];
+    expect(staff[0]!.settings.mentions).toHaveLength(1);
+  });
+
+  it('refuses an account the network says does not exist, and one already saved', async () => {
+    const w = await ready('men2');
+    const ghost = await add(w.as, { network: 'telegram', handle: 'ghost' }).expect(400);
+    expect(ghost.body.errors[0].path).toBe('handle');
+    await add(w.as, { network: 'telegram', handle: 'real_one' }).expect(201);
+    await add(w.as, { network: 'telegram', handle: 'REAL_ONE' }).expect(409);
+    expect((await t.http().get('/v1/social/mentions').set(w.as).expect(200)).body).toHaveLength(1);
+  });
+
+  it('saves it unverified, as the person’s word, when the workspace has no account on that network to check with', async () => {
+    const w = await ready('men3', false);
+    const saved = (await add(w.as, { network: 'telegram', handle: 'someone' }).expect(201)).body;
+    expect(saved).toMatchObject({ verified: false, name: '' });
+  });
+
+  it('refuses a handle that is not a handle, needs a Social Media Staff member, and removes by network and handle', async () => {
+    const w = await ready('men4');
+    await add(w.as, { network: 'telegram', handle: 'two words' }).expect(400);
+    await add(w.as, { network: 'myspace', handle: 'tom' }).expect(400);
+    await add(w.as, { network: 'telegram', handle: 'keepme' }).expect(201);
+    await t.http().delete('/v1/social/mentions/telegram/keepme').set(w.as).expect(204);
+    await t.http().delete('/v1/social/mentions/telegram/keepme').set(w.as).expect(404);
+    const bare = await workspace('men4b');
+    await add(bare.as, { network: 'telegram', handle: 'nobody' }).expect(409);
+  });
+
+  it('keeps one workspace’s saved accounts from another', async () => {
+    const a = await ready('men5a');
+    const b = await ready('men5b');
+    await add(a.as, { network: 'telegram', handle: 'only_a' }).expect(201);
+    expect((await t.http().get('/v1/social/mentions').set(b.as).expect(200)).body).toEqual([]);
+  });
+});

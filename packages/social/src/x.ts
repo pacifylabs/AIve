@@ -252,6 +252,21 @@ export class XProvider implements SocialProvider {
     await this.addComment({ accessToken, externalId, externalPostId, message });
   }
 
+  async lookupAccount({
+    accessToken,
+    handle,
+  }: {
+    accessToken: string;
+    handle: string;
+  }): Promise<{ handle: string; name: string } | null> {
+    this.assertConfigured();
+    const found = await this.call<{ data?: { username?: string; name?: string } }>(
+      `${API}/users/by/username/${encodeURIComponent(handle)}?user.fields=name`,
+      { headers: this.bearer(accessToken) },
+    );
+    return found.data?.username ? { handle: found.data.username, name: found.data.name ?? found.data.username } : null;
+  }
+
   async fetchFollowers({ accessToken }: { accessToken: string }): Promise<number> {
     this.assertConfigured();
     const response = await this.call<{ data?: { public_metrics?: { followers_count?: number } } }>(

@@ -4,7 +4,15 @@ import { z } from 'zod';
 import type { PostOutput } from '../guardrails.js';
 import { companyBlock, EMOJI_RULE, RULES, SMALL_MODEL, styleBlock } from '../prompts.js';
 import { settingsOf } from '../settings.js';
-import { lengthHint, NETWORKS, postEffects, postGuardrails, postOutputSchema, signatureSpace } from './post-shared.js';
+import {
+  lengthHint,
+  mentionsLine,
+  NETWORKS,
+  postEffects,
+  postGuardrails,
+  postOutputSchema,
+  signatureSpace,
+} from './post-shared.js';
 
 const input = z.object({
   planItemId: z.string().optional(),
@@ -58,6 +66,7 @@ export const draftPost: TaskDefinition<Input, PostOutput> = {
           ? `Suggest at most ${settings.hashtags.max} hashtags, without the # sign.`
           : 'Do not use hashtags.',
         'You may add a first comment (for example, where to find more), or leave it empty.',
+        mentionsLine(settings, task.network),
         styleBlock(settings),
       ]
         .filter(Boolean)

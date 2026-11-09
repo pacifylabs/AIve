@@ -7,6 +7,7 @@ import { settingsOf } from '../settings.js';
 import {
   lengthHint,
   linkSpace,
+  mentionsLine,
   NETWORKS,
   postEffects,
   postGuardrails,
@@ -78,6 +79,7 @@ export const draftFromArticle: TaskDefinition<Input, PostOutput> = {
           ? `Suggest at most ${settings.hashtags.max} hashtags, without the # sign.`
           : 'Do not use hashtags.',
         'Leave the first comment empty.',
+        mentionsLine(settings, task.network),
         styleBlock(settings),
       ]
         .filter(Boolean)

@@ -218,6 +218,8 @@ export interface SocialProvider {
   }): Promise<FoundPost | null>;
   fetchMetrics(input: PostRef): Promise<Record<string, number>>;
   /** How many people follow the account today. Absent where the network does not say, or the app may not ask. */
+  /** Checks that an account exists on the network, by its handle. Null when there is none. Absent where it cannot be asked. */
+  lookupAccount?(input: { accessToken: string; handle: string }): Promise<{ handle: string; name: string } | null>;
   fetchFollowers?(input: { accessToken: string; externalId: string }): Promise<number>;
   /**
    * Posts a comment or reply as the account. Returns the new post's id where the network has one, so a chain can reply to

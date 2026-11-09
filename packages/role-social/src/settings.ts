@@ -26,6 +26,19 @@ export const socialSettingsSchema = z
       })
       .default({ always: [], never: [], max: 3 }),
     emoji: z.enum(['none', 'light', 'free']).default('light'),
+    /** Accounts a person saved so drafts may tag them. The staff member never tags anyone else. */
+    mentions: z
+      .array(
+        z.object({
+          network: z.enum(['facebook', 'instagram', 'threads', 'tiktok', 'linkedin', 'x', 'telegram', 'discord']),
+          handle: z.string().regex(/^[A-Za-z0-9_.]{2,50}$/),
+          name: z.string().max(100).default(''),
+          /** True when the network confirmed the account exists; false when a person vouched for it. */
+          verified: z.boolean().default(false),
+        }),
+      )
+      .max(50)
+      .default([]),
     /** A sign-off added to the end of every post for one account, by account id. Written by the owner, so it is trusted. */
     signatures: z.record(z.uuid(), z.string().trim().max(300)).default({}),
     /** What people should do after seeing a post. */
@@ -44,6 +57,11 @@ export const socialSettingsSchema = z
   .strict();
 
 export type SocialSettings = z.infer<typeof socialSettingsSchema>;
+
+/** The saved @mentions for one network, as handles without the @. */
+export function mentionsFor(settings: SocialSettings, network: unknown): string[] {
+  return settings.mentions.filter((mention) => mention.network === network).map((mention) => mention.handle);
+}
 
 /** The sign-off for one account, or null when it has none. */
 export function signatureFor(settings: SocialSettings, accountId: unknown): string | null {

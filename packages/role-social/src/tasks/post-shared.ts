@@ -20,7 +20,7 @@ import {
   type PostOutput,
   requiresMedia,
 } from '../guardrails.js';
-import { type SocialSettings, signatureFor } from '../settings.js';
+import { mentionsFor, type SocialSettings, signatureFor } from '../settings.js';
 
 export const NETWORKS = ['facebook', 'instagram', 'threads', 'tiktok', 'linkedin', 'x', 'telegram', 'discord'] as const;
 
@@ -35,6 +35,14 @@ export function lengthHint(network: Network, reserved = 0): string {
 
 /** The link is put on its own line after the words on these networks, so it takes room the model must leave. */
 export const linkSpace = (network: Network): number => (['x', 'telegram', 'discord'].includes(network) ? 24 : 0);
+
+/** Tells the model which accounts it may tag on this network, or nothing when none are saved. */
+export const mentionsLine = (settings: SocialSettings, network: Network): string => {
+  const handles = mentionsFor(settings, network);
+  return handles.length
+    ? `You may @-mention only these accounts, exactly as written, and only where it fits: ${handles.map((h) => `@${h}`).join(', ')}.`
+    : '';
+};
 
 /** Characters a sign-off takes, with the blank line before it. */
 export const signatureSpace = (settings: SocialSettings, accountId: string): number => {

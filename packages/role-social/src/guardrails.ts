@@ -7,7 +7,7 @@ import {
   type Network,
   type TaskContext,
 } from '@ai-staff/core';
-import { settingsOf, signatureFor } from './settings.js';
+import { mentionsFor, settingsOf, signatureFor } from './settings.js';
 
 const ok = <O>(output: O): GuardrailResult<O> => ({ ok: true, output });
 const fail = <O>(reason: string): GuardrailResult<O> => ({ ok: false, reason });
@@ -115,16 +115,24 @@ export function requiresMedia(): Guardrail<PostOutput> {
   };
 }
 
-/** No @-mentions of accounts that were not given: a made-up handle would tag a real stranger. */
+/**
+ * No @-mentions except the account itself and the accounts a person saved for that network: a made-up handle would tag a
+ * real stranger. A handle saved for another network does not count, since the same name can be someone else there.
+ */
 export function noUnknownMentions(): Guardrail<PostOutput> {
   return {
     name: 'noUnknownMentions',
     check(output, ctx) {
-      const { handle } = target(ctx);
-      const allowed = handle?.replace(/^@/, '').toLowerCase();
+      const { handle, network } = target(ctx);
+      const allowed = new Set(
+        [handle?.replace(/^@/, ''), ...mentionsFor(settingsOf(ctx.staff), network)]
+          .filter((value): value is string => Boolean(value))
+          .map((value) => value.toLowerCase()),
+      );
       for (const text of [output.body, output.firstComment ?? '']) {
         for (const mention of text.match(/(?<![\w@])@[A-Za-z0-9_.]{2,}/g) ?? []) {
-          if (mention.slice(1).toLowerCase() !== allowed) return fail(`It mentioned ${mention}, which was not given.`);
+          if (!allowed.has(mention.slice(1).toLowerCase()))
+            return fail(`It mentioned ${mention}, which was not given.`);
         }
       }
       return ok(output);

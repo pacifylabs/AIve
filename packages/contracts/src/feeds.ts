@@ -124,3 +124,15 @@ export const registerMediaRequest = z.object({
   type: z.enum(['image', 'video']),
   name: z.string().trim().min(1).max(200),
 });
+
+/** An account the staff member may tag in posts. The `@` is optional; the network confirms it where it can. */
+export const mentionRequest = z.object({
+  network: z.enum(['facebook', 'instagram', 'threads', 'tiktok', 'linkedin', 'x', 'telegram', 'discord']),
+  handle: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/^@/, ''))
+    .pipe(
+      z.string().regex(/^[A-Za-z0-9_.]{2,50}$/, 'Use the account name, letters, numbers, dots and underscores only.'),
+    ),
+});

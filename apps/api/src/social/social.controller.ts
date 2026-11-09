@@ -17,6 +17,7 @@ import {
 import {
   addFeedRequest,
   composePostRequest,
+  mentionRequest,
   editPostRequest,
   scheduleStateRequest,
   setPostTagRequest,
@@ -37,6 +38,7 @@ import { RateLimiter } from '../redis/rate-limiter.service.js';
 import { CurrentWorkspace, RequireRole, type WorkspaceContext, WorkspaceGuard } from '../workspaces/workspace.guard.js';
 import { isNetwork, SocialAccountsService } from './social-accounts.service.js';
 import { PostLibraryService } from './post-library.service.js';
+import { MentionsService } from './mentions.service.js';
 import { SchedulesService } from './schedules.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
 import { SocialPostsService } from './social-posts.service.js';
@@ -66,6 +68,7 @@ export class SocialController {
     @Inject(SocialFeedsService) private readonly feeds: SocialFeedsService,
     @Inject(PostLibraryService) private readonly library: PostLibraryService,
     @Inject(SchedulesService) private readonly schedules: SchedulesService,
+    @Inject(MentionsService) private readonly mentions: MentionsService,
     @Inject(RateLimiter) private readonly limiter: RateLimiter,
   ) {}
 
@@ -166,6 +169,32 @@ export class SocialController {
     @Body(new ZodPipe(setPostTagRequest)) body: z.output<typeof setPostTagRequest>,
   ) {
     return this.library.setPostTag(ctx, id, body.tagId);
+  }
+
+  @Get('mentions')
+  mentionList(@CurrentWorkspace() ctx: WorkspaceContext) {
+    return this.mentions.list(ctx);
+  }
+
+  @Post('mentions')
+  @HttpCode(201)
+  async mentionAdd(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Body(new ZodPipe(mentionRequest)) body: z.output<typeof mentionRequest>,
+  ) {
+    // Each check calls another company's server, so tries are limited per person.
+    await this.limiter.consume({ key: `mentions:user:${ctx.userId}`, max: 30, windowSec: 600 });
+    return this.mentions.add(ctx, body);
+  }
+
+  @Delete('mentions/:network/:handle')
+  @HttpCode(204)
+  async mentionRemove(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('network') network: string,
+    @Param('handle') handle: string,
+  ) {
+    await this.mentions.remove(ctx, network, handle.slice(0, 60));
   }
 
   @Get('schedules')

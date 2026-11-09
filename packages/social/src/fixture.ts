@@ -184,6 +184,13 @@ export class FixtureSocialProvider implements SocialProvider {
     );
   }
 
+  /** Knows every handle except `ghost`, so a test can see both answers. */
+  lookupAccount(input: { accessToken: string; handle: string }): Promise<{ handle: string; name: string } | null> {
+    return Promise.resolve(
+      input.handle === 'ghost' ? null : { handle: input.handle, name: `${input.handle} (fixture)` },
+    );
+  }
+
   /** What the fixture reports as its follower count; tests change it from day to day. */
   followers = 100;
 

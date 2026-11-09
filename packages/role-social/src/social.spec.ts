@@ -138,6 +138,20 @@ describe('social guardrails', () => {
     expect(noUnknownMentions().check(post('Email sales@northfield.test'), ctx).ok).toBe(true);
   });
 
+  it('lets the staff member tag an account a person saved for that network, and no other', () => {
+    const saved = {
+      mentions: [{ network: 'x' as const, handle: 'northfielddesign', name: 'Northfield', verified: true }],
+    };
+    const onX = ctxFor({ network: 'x', handle: '@us' }, saved);
+    expect(noUnknownMentions().check(post('Thanks @NorthfieldDesign and @us'), onX).ok).toBe(true);
+    expect(noUnknownMentions().check(post('Thanks @someoneelse'), onX).ok).toBe(false);
+    // The same name saved for X is not allowed on Instagram, where it could be a different person.
+    const onInstagram = ctxFor({ network: 'instagram', handle: '@us' }, saved);
+    expect(noUnknownMentions().check(post('Thanks @northfielddesign'), onInstagram).ok).toBe(false);
+    // In the first comment too.
+    expect(noUnknownMentions().check({ ...post('Hi'), firstComment: 'cc @stranger' }, onX).ok).toBe(false);
+  });
+
   it('spots words that always go to a person', () => {
     for (const text of ['I want a refund', 'my lawyer will call', 'delete my data', 'this is a scam'])
       expect(isSensitive(text)).toBe(true);

@@ -212,6 +212,29 @@ export async function movePostAction(
   return {};
 }
 
+// ---- Saved @mentions ----------------------------------------------------------------------------------------
+
+/** Saves an account the staff member may tag. The network confirms it where it can. */
+export async function addMentionAction(_state: FormState, data: FormData): Promise<FormState> {
+  const result = await api('/social/mentions', {
+    method: 'POST',
+    workspace: true,
+    body: { network: field(data, 'network'), handle: field(data, 'handle') },
+  });
+  if (!result.ok) return failed(result.problem, data, '/app/accounts', ['handle']);
+  revalidatePath('/app/accounts');
+  return { notice: 'Saved. Your staff member may now tag this account.' };
+}
+
+export async function removeMentionAction(data: FormData): Promise<void> {
+  const result = await api(
+    `/social/mentions/${encodeURIComponent(field(data, 'network'))}/${encodeURIComponent(field(data, 'handle'))}`,
+    { method: 'DELETE', workspace: true },
+  );
+  if (!result.ok && result.problem.status === 401) expired('/app/accounts');
+  revalidatePath('/app/accounts');
+}
+
 // ---- Media library ------------------------------------------------------------------------------------------
 
 interface UploadTicket {

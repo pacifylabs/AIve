@@ -1,6 +1,7 @@
-import { connectNetworkAction, disconnectAccountAction } from '@/app/actions/social';
+import { connectNetworkAction, disconnectAccountAction, removeMentionAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
 import { ConnectLoginForm, type LoginField } from './login-form';
+import { MentionForm } from './mention-form';
 import { PickAccountsForm } from './pick-form';
 import { Sparkline } from '@/components/app/sparkline';
 import { SignatureForm } from './signature-form';
@@ -22,6 +23,12 @@ interface Network {
   /** `credentials` networks have no sign-in page: the person pastes a token, app password or webhook address. */
   auth: 'oauth' | 'credentials';
   fields: LoginField[];
+}
+interface Mention {
+  network: string;
+  handle: string;
+  name: string;
+  verified: boolean;
 }
 interface StaffRow {
   roleKey: string;
@@ -45,7 +52,7 @@ export default async function AccountsPage({
   searchParams: Promise<{ pending?: string; error?: string }>;
 }) {
   const { pending, error } = await searchParams;
-  const [accounts, networks, choice, staff, stats] = await Promise.all([
+  const [accounts, networks, choice, staff, stats, mentions] = await Promise.all([
     apiOrRedirect<Account[]>('/social/accounts', '/app/accounts', { workspace: true }),
     apiOrRedirect<Network[]>('/social/networks', '/app/accounts', { workspace: true }),
     pending
@@ -53,6 +60,7 @@ export default async function AccountsPage({
       : null,
     apiOrRedirect<StaffRow[]>('/staff', '/app/accounts', { workspace: true }),
     apiOrRedirect<Stat[]>('/social/stats?days=30', '/app/accounts', { workspace: true }),
+    apiOrRedirect<Mention[]>('/social/mentions', '/app/accounts', { workspace: true }),
   ]);
   const statOf = new Map((stats.ok ? stats.data : []).map((stat) => [stat.accountId, stat]));
   const signatures = (staff.ok ? staff.data.find((member) => member.roleKey === 'social_media') : null)?.settings
@@ -187,6 +195,45 @@ export default async function AccountsPage({
               ))
             : null}
         </ul>
+      </div>
+      <div className="space-y-3">
+        <h2 className="font-medium">Accounts your staff may tag</h2>
+        <p className="text-sm text-muted">
+          Your staff member never tags anyone it was not given. Save the accounts it may tag, per network. A post that
+          tags any other account is stopped.
+        </p>
+        {mentions.ok && mentions.data.length ? (
+          <ul className="card divide-y divide-line-soft">
+            {mentions.data.map((mention) => (
+              <li
+                key={`${mention.network}:${mention.handle}`}
+                className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"
+              >
+                <span>
+                  <span className="font-medium">@{mention.handle}</span>
+                  <span className="text-muted"> · {mention.network}</span>
+                  {mention.name ? <span className="text-muted"> · {mention.name}</span> : null}
+                  <span className={`ml-2 ${mention.verified ? 'pill pill-ok' : 'pill'}`}>
+                    {mention.verified ? 'Confirmed by the network' : 'Your word'}
+                  </span>
+                </span>
+                <form action={removeMentionAction}>
+                  <input type="hidden" name="network" value={mention.network} />
+                  <input type="hidden" name="handle" value={mention.handle} />
+                  <button type="submit" className="text-danger hover:underline">
+                    Remove
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <details className="card p-5">
+          <summary className="cursor-pointer font-medium">Save an account</summary>
+          <div className="pt-4">
+            <MentionForm networks={networks.ok ? networks.data : []} />
+          </div>
+        </details>
       </div>
     </section>
   );

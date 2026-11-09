@@ -168,6 +168,25 @@ export class TelegramProvider extends CredentialProvider {
     return { externalPostId: String(sent.message_id), permalink: permalink(sent.message_id) };
   }
 
+  /** A public channel, group or bot by its @name. A name Telegram does not know is "no such account", not a failure. */
+  async lookupAccount({
+    accessToken,
+    handle,
+  }: {
+    accessToken: string;
+    handle: string;
+  }): Promise<{ handle: string; name: string } | null> {
+    try {
+      const chat = await this.call<{ username?: string; title?: string; first_name?: string }>(accessToken, 'getChat', {
+        chat_id: `@${handle}`,
+      });
+      return { handle: chat.username ?? handle, name: chat.title ?? chat.first_name ?? handle };
+    } catch (error) {
+      if (error instanceof ProviderError && error.status === 400) return null;
+      throw error;
+    }
+  }
+
   /** The people in the channel, as Telegram counts them (the bot itself is one of them). */
   async fetchFollowers({ accessToken, externalId }: { accessToken: string; externalId: string }): Promise<number> {
     return this.call<number>(accessToken, 'getChatMemberCount', { chat_id: externalId });

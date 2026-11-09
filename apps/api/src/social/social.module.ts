@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { socialConfig } from '@ai-staff/config';
-import { FeedPoller, RecurringPosts, safeFetchImage } from '@ai-staff/core';
+import { AccountTokens, FeedPoller, Keyring, RecurringPosts, safeFetchImage } from '@ai-staff/core';
 import { DataSource } from '@ai-staff/db';
 import { SocialProviders } from '@ai-staff/social';
 import { AuthModule } from '../auth/auth.module.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.module.js';
 import { SocialAccountsService } from './social-accounts.service.js';
+import { MentionsService } from './mentions.service.js';
 import { SchedulesService } from './schedules.service.js';
 import { PostLibraryService } from './post-library.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
@@ -28,6 +29,13 @@ import { SocialCallbackController, SocialController } from './social.controller.
     SocialFeedsService,
     PostLibraryService,
     SchedulesService,
+    MentionsService,
+    {
+      provide: AccountTokens,
+      inject: [DataSource, Keyring, SocialProviders],
+      useFactory: (db: DataSource, keyring: Keyring, providers: SocialProviders) =>
+        new AccountTokens(db, keyring, providers),
+    },
     { provide: RecurringPosts, inject: [DataSource], useFactory: (db: DataSource) => new RecurringPosts(db) },
   ],
 })

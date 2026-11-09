@@ -334,6 +334,47 @@ describe('Social Media Staff, end to end', () => {
       expect(s.networks.facebook.posts[0]?.body).toMatch(/— Team Northfield$/);
     });
 
+    it('tags an account a person saved for the network, and refuses a made-up one', async () => {
+      const s = await setup();
+      await s.inWs((m) =>
+        m.update(
+          StaffMember,
+          { id: s.staff.id },
+          {
+            settings: {
+              ...s.staff.settings,
+              mentions: [{ network: 'facebook', handle: 'northfielddesign', name: 'Northfield', verified: true }],
+            },
+          },
+        ),
+      );
+      s.script.draft = { body: 'Built with @northfielddesign this week.', hashtags: [] };
+      await s.planNow();
+      await s.settle();
+      await s.approveAll();
+      await s.settle();
+      const drafts = await s.pending();
+      expect(drafts.map((item) => item.kind)).toEqual(['post_draft', 'post_draft']);
+
+      s.script.draft = { body: 'Built with @invented_person this week.', hashtags: [] };
+      const second = await setup();
+      await second.inWs((m) =>
+        m.update(
+          StaffMember,
+          { id: second.staff.id },
+          { settings: { ...second.staff.settings, mentions: [{ network: 'facebook', handle: 'northfielddesign' }] } },
+        ),
+      );
+      second.script.draft = { body: 'Built with @invented_person this week.', hashtags: [] };
+      await second.planNow();
+      await second.settle();
+      await second.approveAll();
+      await second.settle();
+      const refused = await second.pending();
+      expect(refused.every((item) => item.kind === 'escalation')).toBe(true);
+      expect(refused[0]?.flaggedReason).toMatch(/@invented_person/);
+    });
+
     it('a sign-off with a link to someone else’s site stops the post, with the reason', async () => {
       const s = await setup();
       await sign(s, 'More at https://other-company.example');
