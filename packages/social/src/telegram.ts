@@ -168,6 +168,11 @@ export class TelegramProvider extends CredentialProvider {
     return { externalPostId: String(sent.message_id), permalink: permalink(sent.message_id) };
   }
 
+  /** The people in the channel, as Telegram counts them (the bot itself is one of them). */
+  async fetchFollowers({ accessToken, externalId }: { accessToken: string; externalId: string }): Promise<number> {
+    return this.call<number>(accessToken, 'getChatMemberCount', { chat_id: externalId });
+  }
+
   /** A reply in the channel, shown as an answer to the message before it. */
   async addComment({
     accessToken,

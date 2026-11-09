@@ -217,6 +217,8 @@ export interface SocialProvider {
     since: Date;
   }): Promise<FoundPost | null>;
   fetchMetrics(input: PostRef): Promise<Record<string, number>>;
+  /** How many people follow the account today. Absent where the network does not say, or the app may not ask. */
+  fetchFollowers?(input: { accessToken: string; externalId: string }): Promise<number>;
   /**
    * Posts a comment or reply as the account. Returns the new post's id where the network has one, so a chain can reply to
    * the one before it; without an id the next reply goes to the original post.

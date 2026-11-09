@@ -2,6 +2,7 @@ import { connectNetworkAction, disconnectAccountAction } from '@/app/actions/soc
 import { apiOrRedirect } from '@/lib/api';
 import { ConnectLoginForm, type LoginField } from './login-form';
 import { PickAccountsForm } from './pick-form';
+import { Sparkline } from '@/components/app/sparkline';
 import { SignatureForm } from './signature-form';
 
 export const metadata = { title: 'Accounts' };
@@ -26,6 +27,13 @@ interface StaffRow {
   roleKey: string;
   settings: { signatures?: Record<string, string> };
 }
+interface Stat {
+  accountId: string;
+  series: { day: string; followers: number }[];
+  followers: number;
+  change: number;
+  changePct: number | null;
+}
 interface Pending {
   network: string;
   accounts: { externalId: string; name: string; username?: string | null }[];
@@ -37,14 +45,16 @@ export default async function AccountsPage({
   searchParams: Promise<{ pending?: string; error?: string }>;
 }) {
   const { pending, error } = await searchParams;
-  const [accounts, networks, choice, staff] = await Promise.all([
+  const [accounts, networks, choice, staff, stats] = await Promise.all([
     apiOrRedirect<Account[]>('/social/accounts', '/app/accounts', { workspace: true }),
     apiOrRedirect<Network[]>('/social/networks', '/app/accounts', { workspace: true }),
     pending
       ? apiOrRedirect<Pending>(`/social/pending/${encodeURIComponent(pending)}`, '/app/accounts', { workspace: true })
       : null,
     apiOrRedirect<StaffRow[]>('/staff', '/app/accounts', { workspace: true }),
+    apiOrRedirect<Stat[]>('/social/stats?days=30', '/app/accounts', { workspace: true }),
   ]);
+  const statOf = new Map((stats.ok ? stats.data : []).map((stat) => [stat.accountId, stat]));
   const signatures = (staff.ok ? staff.data.find((member) => member.roleKey === 'social_media') : null)?.settings
     .signatures;
   if (!accounts.ok) return <p className="text-danger">{accounts.problem.title}</p>;
@@ -85,6 +95,23 @@ export default async function AccountsPage({
                 <span>
                   <span className="font-medium">{account.name}</span>
                   <span className="text-muted"> · {account.network}</span>
+                  {statOf.get(account.id) ? (
+                    <span className="mt-1 flex items-center gap-3 text-xs text-muted">
+                      <span>
+                        {statOf.get(account.id)!.followers.toLocaleString('en-GB')} followers ·{' '}
+                        {statOf.get(account.id)!.change >= 0 ? '+' : ''}
+                        {statOf.get(account.id)!.change.toLocaleString('en-GB')}
+                        {statOf.get(account.id)!.changePct !== null
+                          ? ` (${statOf.get(account.id)!.changePct}%)`
+                          : ''}{' '}
+                        in 30 days
+                      </span>
+                      <Sparkline
+                        values={statOf.get(account.id)!.series.map((point) => point.followers)}
+                        label="Followers over the last 30 days"
+                      />
+                    </span>
+                  ) : null}
                   {account.health !== 'ok' ? (
                     <span className={account.health === 'degraded' ? 'block text-amber' : 'block text-danger'}>
                       {account.health === 'degraded' ? 'Needs attention soon' : 'Needs to be reconnected'}

@@ -61,6 +61,21 @@ describe('Telegram', () => {
     expect((error as Error).message).toMatch(/not an administrator of that channel/);
   });
 
+  it('counts the people in the channel, and replies under the message before it', async () => {
+    const { fetcher, calls } = scripted({ ok: true, result: 1204 }, { ok: true, result: { message_id: 77 } });
+    const provider = new TelegramProvider(fetcher);
+    expect(await provider.fetchFollowers({ accessToken: '1:a', externalId: '-100' })).toBe(1204);
+    const reply = await provider.addComment({
+      accessToken: '1:a',
+      externalId: '-100',
+      externalPostId: '76',
+      message: 'Part two',
+    });
+    expect(reply).toEqual({ externalPostId: '77' });
+    expect(calls[0]!.url).toBe('https://api.telegram.org/bot1:a/getChatMemberCount');
+    expect(sent(calls[1]!)).toMatchObject({ chat_id: '-100', text: 'Part two', reply_parameters: { message_id: 76 } });
+  });
+
   it('sends the text as plain text, so nothing in it is taken for formatting', async () => {
     const { fetcher, calls } = scripted({ ok: true, result: { message_id: 9 } });
     const result = await new TelegramProvider(fetcher).publishPost({

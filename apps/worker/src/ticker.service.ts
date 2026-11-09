@@ -66,6 +66,12 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
       { pattern: '20 */6 * * *', tz: 'UTC' },
       { name: 'check_accounts', data: { kind: 'check_accounts' } },
     );
+    // Daily, once the UTC day has turned over.
+    await this.platform.upsertJobScheduler(
+      'capture-stats',
+      { pattern: '10 2 * * *', tz: 'UTC' },
+      { name: 'capture_stats', data: { kind: 'capture_stats' } },
+    );
     this.timer = setInterval(() => void this.tick(), this.config.WORKER_TICK_MS);
   }
 

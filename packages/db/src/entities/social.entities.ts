@@ -350,3 +350,17 @@ export class PostTemplate extends WorkspaceScopedEntity {
   @Column({ type: 'uuid', nullable: true })
   createdBy: string | null;
 }
+
+/** The follower count an account had on one day, as the network reported it. */
+@Entity('account_stats')
+export class AccountStat extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid' })
+  accountId: string;
+
+  /** `YYYY-MM-DD`, UTC. */
+  @Column({ type: 'date' })
+  day: string;
+
+  @Column({ type: 'integer' })
+  followers: number;
+}

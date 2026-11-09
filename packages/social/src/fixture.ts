@@ -184,6 +184,13 @@ export class FixtureSocialProvider implements SocialProvider {
     );
   }
 
+  /** What the fixture reports as its follower count; tests change it from day to day. */
+  followers = 100;
+
+  fetchFollowers(_input?: { accessToken: string; externalId: string }): Promise<number> {
+    return Promise.resolve(this.followers);
+  }
+
   fetchMetrics(_input: PostRef): Promise<Record<string, number>> {
     return Promise.resolve({ reactions: 3, comments: 1 });
   }

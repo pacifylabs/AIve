@@ -364,4 +364,39 @@ export class SocialAccountsService {
     }
     return found.length;
   }
+
+  /**
+   * The follower numbers captured for each account over the last `days` days, oldest first, with where it stands now and how
+   * much it changed since the first number in the window. Days with no capture are simply absent.
+   */
+  stats(ctx: WorkspaceContext, days: number) {
+    return this.tx(ctx, async (m) => {
+      const rows = (await m.query(
+        `SELECT account_id, to_char(day, 'YYYY-MM-DD') AS day, followers FROM account_stats
+          WHERE workspace_id = $1 AND day >= (now() AT TIME ZONE 'UTC')::date - $2::int
+          ORDER BY day`,
+        [ctx.workspaceId, days],
+      )) as { account_id: string; day: string; followers: number }[];
+      const byAccount = new Map<string, { day: string; followers: number }[]>();
+      for (const row of rows) {
+        byAccount.set(row.account_id, [
+          ...(byAccount.get(row.account_id) ?? []),
+          { day: row.day, followers: row.followers },
+        ]);
+      }
+      return [...byAccount].map(([accountId, series]) => {
+        const first = series[0]!;
+        const latest = series[series.length - 1]!;
+        const change = latest.followers - first.followers;
+        return {
+          accountId,
+          series,
+          followers: latest.followers,
+          change,
+          changePct: first.followers > 0 ? Math.round((change / first.followers) * 1000) / 10 : null,
+          since: first.day,
+        };
+      });
+    });
+  }
 }

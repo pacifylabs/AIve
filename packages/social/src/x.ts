@@ -252,6 +252,17 @@ export class XProvider implements SocialProvider {
     await this.addComment({ accessToken, externalId, externalPostId, message });
   }
 
+  async fetchFollowers({ accessToken }: { accessToken: string }): Promise<number> {
+    this.assertConfigured();
+    const response = await this.call<{ data?: { public_metrics?: { followers_count?: number } } }>(
+      `${API}/users/me?user.fields=public_metrics`,
+      { headers: this.bearer(accessToken) },
+    );
+    const value = response.data?.public_metrics?.followers_count;
+    if (typeof value !== 'number') throw new ProviderError('The network did not give a follower count.', this.network);
+    return value;
+  }
+
   async fetchMetrics({ accessToken, externalPostId }: PostRef): Promise<Record<string, number>> {
     this.assertConfigured();
     const response = await this.call<{ data?: { public_metrics?: Record<string, number> } }>(

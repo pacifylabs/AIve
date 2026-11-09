@@ -396,6 +396,17 @@ export class MetaProvider implements SocialProvider {
     return null;
   }
 
+  /** A Page and an Instagram business account both report `followers_count` on themselves. */
+  async fetchFollowers({ accessToken, externalId }: { accessToken: string; externalId: string }): Promise<number> {
+    this.assertConfigured();
+    const account = await this.call<{ followers_count?: number }>(
+      this.url(`${externalId}?${form({ fields: 'followers_count', access_token: accessToken })}`),
+    );
+    if (typeof account.followers_count !== 'number')
+      throw new ProviderError('The network did not give a follower count.', this.network);
+    return account.followers_count;
+  }
+
   /** Facebook and Instagram both take a comment on the post, as the same account. */
   async addComment({ accessToken, externalPostId, message }: CommentInput): Promise<void> {
     this.assertConfigured();

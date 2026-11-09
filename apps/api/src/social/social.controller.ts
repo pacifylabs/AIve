@@ -96,6 +96,12 @@ export class SocialController {
     return this.accounts.connectWithCredentials(ctx, network(name), body.credentials);
   }
 
+  /** Follower numbers per account over the last `days` days (1 to 365, default 30). */
+  @Get('stats')
+  stats(@CurrentWorkspace() ctx: WorkspaceContext, @Query('days') days?: string) {
+    return this.accounts.stats(ctx, Math.min(Math.max(Number(days) || 30, 1), 365));
+  }
+
   @Get('pending/:id')
   pending(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id') id: string) {
     return this.accounts.pending(ctx, id.slice(0, 100));

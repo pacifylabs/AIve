@@ -131,6 +131,21 @@ describe('Threads', () => {
     expect(calls.every((call) => !call.url.includes('threads_publish'))).toBe(true);
   });
 
+  it('reads the follower count, and posts a reply by naming the post it answers', async () => {
+    const counts = scripted({ body: { data: [{ name: 'followers_count', total_value: { value: 812 } }] } });
+    expect(await new ThreadsProvider(config, { fetcher: counts.fetcher }).fetchFollowers(login)).toBe(812);
+    expect(counts.calls[0]!.url).toContain('/77/threads_insights');
+    const reply = scripted({ body: { id: 'container-9' } }, { body: { id: 'reply-9' } });
+    const sent = await new ThreadsProvider(config, { fetcher: reply.fetcher }).addComment({
+      ...login,
+      externalPostId: 'post-1',
+      message: 'Part two',
+    });
+    expect(sent).toEqual({ externalPostId: 'reply-9' });
+    expect(body(reply.calls[0]!).get('reply_to_id')).toBe('post-1');
+    expect(body(reply.calls[1]!).get('creation_id')).toBe('container-9');
+  });
+
   it('keeps going when one number is not available for a post', async () => {
     const { fetcher } = scripted(
       { data: [{ name: 'views', values: [{ value: 40 }] }] },

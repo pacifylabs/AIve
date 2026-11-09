@@ -226,6 +226,17 @@ export class ThreadsProvider implements SocialProvider {
     return { externalPostId: published.id };
   }
 
+  /** Meta's profile insights, as a single total (`followers_count` takes no date range). */
+  async fetchFollowers({ accessToken, externalId }: { accessToken: string; externalId: string }): Promise<number> {
+    this.assertConfigured();
+    const response = await this.call<{ data?: { total_value?: { value?: number } }[] }>(
+      this.url(`${externalId}/threads_insights?${form({ metric: 'followers_count', access_token: accessToken })}`),
+    );
+    const value = response.data?.[0]?.total_value?.value;
+    if (typeof value !== 'number') throw new ProviderError('The network did not give a follower count.', this.network);
+    return value;
+  }
+
   async findRecentPost(input: {
     accessToken: string;
     externalId: string;

@@ -996,3 +996,58 @@ describe('Facebook and Instagram removing our access', () => {
     expect((await state(w.workspaceId, page.id)).health).toBe('ok');
   });
 });
+
+describe('follower stats', () => {
+  async function withAccount(label: string) {
+    const w = await workspace(label);
+    t.social.facebook.accounts = [{ externalId: 'p', name: 'Northfield', kind: 'page' }];
+    const pending = (await signIn(w.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(w.as)
+        .send({ externalIds: ['p'] })
+        .expect(200)
+    ).body as { id: string }[];
+    return { ...w, account: account! };
+  }
+  const record = (workspaceId: string, accountId: string, daysAgo: number, followers: number) =>
+    withTenant(db, { workspaceId, userId: null }, (m) =>
+      m.query(
+        `INSERT INTO account_stats (id, workspace_id, account_id, day, followers)
+         VALUES ($1, $2, $3, (now() AT TIME ZONE 'UTC')::date - $4::int, $5)`,
+        [uuidv7(), workspaceId, accountId, daysAgo, followers],
+      ),
+    );
+
+  it('gives each account its numbers oldest first, where it stands now, and the change over the window', async () => {
+    const w = await withAccount('stat1');
+    await record(w.workspaceId, w.account.id, 20, 200);
+    await record(w.workspaceId, w.account.id, 10, 210);
+    await record(w.workspaceId, w.account.id, 0, 230);
+    await record(w.workspaceId, w.account.id, 60, 100);
+    const month = (await t.http().get('/v1/social/stats').set(w.as).expect(200)).body as {
+      accountId: string;
+      series: { followers: number }[];
+      followers: number;
+      change: number;
+      changePct: number;
+    }[];
+    expect(month).toHaveLength(1);
+    expect(month[0]).toMatchObject({ accountId: w.account.id, followers: 230, change: 30, changePct: 15 });
+    expect(month[0]!.series.map((p) => p.followers)).toEqual([200, 210, 230]);
+    const quarter = (await t.http().get('/v1/social/stats').query({ days: '90' }).set(w.as).expect(200)).body as {
+      change: number;
+    }[];
+    expect(quarter[0]!.change).toBe(130);
+  });
+
+  it('shows nothing for an account with no captures, and keeps one workspace’s numbers from another', async () => {
+    const a = await withAccount('stat2a');
+    const b = await withAccount('stat2b');
+    await record(a.workspaceId, a.account.id, 1, 50);
+    expect((await t.http().get('/v1/social/stats').set(b.as).expect(200)).body).toEqual([]);
+    expect(((await t.http().get('/v1/social/stats').set(a.as).expect(200)).body as unknown[]).length).toBe(1);
+  });
+});

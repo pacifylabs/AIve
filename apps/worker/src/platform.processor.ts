@@ -1,6 +1,13 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
-import { AccountHealth, ApprovalService, FeedPoller, SocialGateway, WebsitePrefill } from '@ai-staff/core';
+import {
+  AccountHealth,
+  AccountStats,
+  ApprovalService,
+  FeedPoller,
+  SocialGateway,
+  WebsitePrefill,
+} from '@ai-staff/core';
 import { ActivityEvent, asSystem, DataSource, Mailbox } from '@ai-staff/db';
 import { checkSendingDns, domainOf } from '@ai-staff/mail';
 import type { Job } from 'bullmq';
@@ -18,6 +25,7 @@ export class PlatformProcessor extends WorkerHost {
     @Inject(SocialGateway) private readonly social: SocialGateway,
     @Inject(FeedPoller) private readonly feeds: FeedPoller,
     @Inject(AccountHealth) private readonly health: AccountHealth,
+    @Inject(AccountStats) private readonly stats: AccountStats,
   ) {
     super();
   }
@@ -43,6 +51,11 @@ export class PlatformProcessor extends WorkerHost {
       }
       case 'poll_feeds':
         return this.pollFeeds();
+      case 'capture_stats': {
+        const result = await this.stats.capture();
+        this.logger.log(result, 'follower counts captured');
+        return result;
+      }
       case 'check_accounts': {
         const result = await this.health.sweep();
         if (result.renewed || result.warned || result.broken) this.logger.log(result, 'account logins checked');

@@ -323,3 +323,45 @@ describe('MetaProvider accounts', () => {
     expect(insta?.metadata).toMatchObject({ metaUserId: 'user-77' });
   });
 });
+
+describe('follower counts and replies on Meta and X', () => {
+  const answer = (...bodies: object[]) => {
+    const calls: string[] = [];
+    const fetcher = (async (url: string | URL) => {
+      calls.push(String(url));
+      return new Response(JSON.stringify(bodies.shift()), { status: 200 });
+    }) as typeof fetch;
+    return { fetcher, calls };
+  };
+
+  it('reads followers_count from a Page, an Instagram account and an X profile', async () => {
+    const meta = answer({ followers_count: 4321 });
+    const config = { appId: 'a', appSecret: 's', graphVersion: 'v21.0', messaging: false };
+    expect(
+      await new MetaProvider('facebook', config, { fetcher: meta.fetcher }).fetchFollowers({
+        accessToken: 't',
+        externalId: 'p1',
+      }),
+    ).toBe(4321);
+    expect(meta.calls[0]).toContain('/p1?fields=followers_count');
+    const x = answer({ data: { public_metrics: { followers_count: 77 } } });
+    expect(
+      await new XProvider({ clientId: 'id', clientSecret: 'secret' }, x.fetcher).fetchFollowers({ accessToken: 't' }),
+    ).toBe(77);
+    const none = answer({});
+    await expect(
+      new XProvider({ clientId: 'id', clientSecret: 'secret' }, none.fetcher).fetchFollowers({ accessToken: 't' }),
+    ).rejects.toThrow(/follower count/);
+  });
+
+  it('returns the id of an X reply, so the next part can answer it', async () => {
+    const { fetcher } = answer({ data: { id: 'tweet-2' } });
+    const reply = await new XProvider({ clientId: 'id', clientSecret: 'secret' }, fetcher).addComment({
+      accessToken: 't',
+      externalId: 'me',
+      externalPostId: 'tweet-1',
+      message: 'Part two',
+    });
+    expect(reply).toEqual({ externalPostId: 'tweet-2' });
+  });
+});
