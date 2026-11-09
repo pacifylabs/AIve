@@ -172,6 +172,11 @@ export class MetaProvider implements SocialProvider {
       `${GRAPH}/${this.config.graphVersion}/me/accounts?${form({ access_token: tokens.accessToken, fields, limit: '100' })}`,
     );
     const pages = response.data ?? [];
+    // Meta's removal callbacks name the person by this id, not by any page, so it is kept on every account they bring.
+    const person = await this.call<{ id?: string }>(
+      `${GRAPH}/${this.config.graphVersion}/me?${form({ access_token: tokens.accessToken, fields: 'id' })}`,
+    );
+    const metaUserId = person.id;
 
     if (this.network === 'facebook') {
       return pages.map((page) => ({
@@ -184,7 +189,7 @@ export class MetaProvider implements SocialProvider {
         // A page token taken from a long-lived login does not expire. Treating it as if it had the login's 60 days would
         // send it to be "refreshed" with a call that only works for user tokens, and mark a good connection expired.
         expiresInSeconds: page.access_token ? null : undefined,
-        metadata: { category: page.category, followers: page.followers_count },
+        metadata: { category: page.category, followers: page.followers_count, metaUserId },
       }));
     }
     // An Instagram business account is only reachable through the Page it is linked to, so the Page's token is stored.
@@ -199,7 +204,11 @@ export class MetaProvider implements SocialProvider {
         accessToken: page.access_token ?? tokens.accessToken,
         expiresInSeconds: page.access_token ? null : undefined,
         parentExternalId: page.id,
-        metadata: { pageName: page.name, followers: page.instagram_business_account!.followers_count },
+        metadata: {
+          pageName: page.name,
+          followers: page.instagram_business_account!.followers_count,
+          metaUserId,
+        },
       }));
   }
 

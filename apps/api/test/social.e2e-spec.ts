@@ -14,6 +14,7 @@ import { signedInUser, startApp, type TestApp } from './helpers/app.js';
 
 // The key Threads signs its callbacks with, set before the app reads its settings.
 process.env.THREADS_APP_SECRET = 'threads-test-secret';
+process.env.META_APP_SECRET = 'meta-test-secret';
 
 let t: TestApp;
 let db: DataSource;
@@ -887,5 +888,74 @@ describe('colour tags and post templates', () => {
     // Templates are private to their workspace.
     await t.http().post('/v1/social/templates').set(w.as).send(base).expect(201);
     expect((await t.http().get('/v1/social/templates').set(other.as).expect(200)).body).toEqual([]);
+  });
+});
+
+describe('Facebook and Instagram removing our access', () => {
+  const sign = (userId: string, secret = 'meta-test-secret') => {
+    const payload = Buffer.from(JSON.stringify({ algorithm: 'HMAC-SHA256', user_id: userId })).toString('base64url');
+    return `${createHmac('sha256', secret).update(payload).digest('base64url')}.${payload}`;
+  };
+  const add = (workspaceId: string, network: 'facebook' | 'instagram', metaUserId: string) =>
+    withTenant(db, { workspaceId, userId: null }, (m) =>
+      m.save(
+        m.create(ConnectedAccount, {
+          workspaceId,
+          network,
+          externalId: `${network}-${uuidv7()}`,
+          name: `${network} page`,
+          username: null,
+          parentExternalId: null,
+          secretEnc: 'placeholder',
+          tokenExpiresAt: null,
+          scopes: [],
+          health: 'ok',
+          healthReason: null,
+          lastCheckedAt: null,
+          metadata: { metaUserId },
+        }),
+      ),
+    );
+  const state = (workspaceId: string, id: string) =>
+    withTenant(db, { workspaceId, userId: null }, (m) => m.findOneByOrFail(ConnectedAccount, { id }));
+  const call = (path: string, signed: string) =>
+    t.http().post(`/v1/social/meta/${path}`).type('form').send({ signed_request: signed });
+
+  it('disconnects every Page and Instagram account that person brought, and only theirs', async () => {
+    const w = await workspace('meta1');
+    const person = `fb-${uuidv7()}`;
+    const page = await add(w.workspaceId, 'facebook', person);
+    const insta = await add(w.workspaceId, 'instagram', person);
+    const other = await add(w.workspaceId, 'facebook', `fb-${uuidv7()}`);
+    await call('deauthorize', sign(person)).expect(200);
+    for (const account of [page, insta]) {
+      const after = await state(w.workspaceId, account.id);
+      expect(after.health).toBe('broken');
+      expect(after.healthReason).toMatch(/removed this app's access/);
+    }
+    expect((await state(w.workspaceId, other.id)).health).toBe('ok');
+  });
+
+  it('answers a deletion request with a page and a code, and removes the connection', async () => {
+    const w = await workspace('meta2');
+    const person = `fb-${uuidv7()}`;
+    const page = await add(w.workspaceId, 'facebook', person);
+    const response = await call('data-deletion', sign(person)).expect(200);
+    expect(response.body.url).toContain(`/data-deletion?code=${response.body.confirmation_code}`);
+    expect((await state(w.workspaceId, page.id)).healthReason).toMatch(/asked the network to delete/);
+  });
+
+  it('ignores a message signed with another app’s secret, and a route for an app we do not have', async () => {
+    const w = await workspace('meta3');
+    const person = `fb-${uuidv7()}`;
+    const page = await add(w.workspaceId, 'facebook', person);
+    await call('deauthorize', sign(person, 'threads-test-secret')).expect(400);
+    await t
+      .http()
+      .post('/v1/social/myspace/deauthorize')
+      .type('form')
+      .send({ signed_request: sign(person) })
+      .expect(404);
+    expect((await state(w.workspaceId, page.id)).health).toBe('ok');
   });
 });

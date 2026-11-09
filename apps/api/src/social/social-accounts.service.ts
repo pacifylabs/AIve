@@ -286,12 +286,13 @@ export class SocialAccountsService {
     });
   }
 
-  /** Threads tells us, with a signed message, that a person removed the app or asked for their data to be deleted. */
-  async threadsRevoked(kind: 'deauthorize' | 'data-deletion', signed: string) {
-    const person = readSignedRequest(signed, this.config.THREADS_APP_SECRET ?? '');
-    if (!person) throw new AppError(400, 'validation_failed', 'That request was not signed by Threads.');
+  /** Meta (Threads, or Facebook and Instagram) tells us, with a signed message, that a person removed the app or asked for their data to be deleted. */
+  async metaRevoked(app: 'threads' | 'meta', kind: 'deauthorize' | 'data-deletion', signed: string) {
+    const secret = (app === 'threads' ? this.config.THREADS_APP_SECRET : this.config.META_APP_SECRET) ?? '';
+    const person = readSignedRequest(signed, secret);
+    if (!person) throw new AppError(400, 'validation_failed', 'That request was not signed by Meta.');
     const removed = await this.revokeFromNetwork(
-      'threads',
+      app,
       person.userId,
       kind === 'deauthorize' ? 'deauthorized' : 'deletion_requested',
     );
@@ -336,9 +337,17 @@ export class SocialAccountsService {
    * found by the network's own id for it, in every workspace that connected it, and treated like a disconnect: what was
    * waiting is stopped and the tokens are wiped. The workspace's own post history is theirs and stays.
    */
-  async revokeFromNetwork(network: SocialNetwork, externalId: string, why: 'deauthorized' | 'deletion_requested') {
+  async revokeFromNetwork(app: 'threads' | 'meta', personId: string, why: 'deauthorized' | 'deletion_requested') {
+    // A Threads account is the person themselves. A Facebook or Instagram account is a Page reached through the person,
+    // so those are found by the Meta user id kept on them when they were connected.
     const found = await asSystem(this.db, 'a network reported that a person removed our access', (m) =>
-      m.find(ConnectedAccount, { where: { network, externalId } }),
+      app === 'threads'
+        ? m.find(ConnectedAccount, { where: { network: 'threads', externalId: personId } })
+        : m
+            .createQueryBuilder(ConnectedAccount, 'a')
+            .where("a.network IN ('facebook', 'instagram')")
+            .andWhere("a.metadata ->> 'metaUserId' = :personId", { personId })
+            .getMany(),
     );
     for (const account of found) {
       await withTenant(this.db, { workspaceId: account.workspaceId, userId: null }, (m) =>

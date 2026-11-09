@@ -288,3 +288,38 @@ describe('FixtureSocialProvider', () => {
     expect(found?.externalPostId).toBe(fixture.posts[0]!.externalPostId);
   });
 });
+
+describe('MetaProvider accounts', () => {
+  it('keeps the Meta user id on every Page and Instagram account, for the removal callbacks', async () => {
+    const answers = [
+      {
+        data: [
+          {
+            id: 'p1',
+            name: 'Northfield',
+            access_token: 'pt',
+            instagram_business_account: { id: 'ig1', username: 'northfield' },
+          },
+        ],
+      },
+      { id: 'user-77' },
+      {
+        data: [
+          {
+            id: 'p1',
+            name: 'Northfield',
+            access_token: 'pt',
+            instagram_business_account: { id: 'ig1', username: 'northfield' },
+          },
+        ],
+      },
+      { id: 'user-77' },
+    ];
+    const fetcher = (async () => new Response(JSON.stringify(answers.shift()), { status: 200 })) as typeof fetch;
+    const config = { appId: 'a', appSecret: 's', graphVersion: 'v21.0', messaging: false };
+    const [page] = await new MetaProvider('facebook', config, { fetcher }).listAccounts({ accessToken: 't' });
+    const [insta] = await new MetaProvider('instagram', config, { fetcher }).listAccounts({ accessToken: 't' });
+    expect(page?.metadata).toMatchObject({ metaUserId: 'user-77' });
+    expect(insta?.metadata).toMatchObject({ metaUserId: 'user-77' });
+  });
+});

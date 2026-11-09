@@ -188,8 +188,11 @@ Needs a Meta app with Facebook Login, and Meta's App Review before anyone but yo
 - [ ] Until the app passes review, only people with a role on the app can connect.
 - Instagram posts need a picture or video, and the account must be a business account linked to a Facebook Page.
 
-I still owe the Meta deauthorize and data-deletion callbacks for this app (the same pair built for Threads). They need
-the Facebook user id stored at connect time. Meta requires them before the app can be published.
+- [ ] In the app's settings, set the **Deauthorize callback URL** to
+      `https://ai-staff-staging.onrender.com/v1/social/meta/deauthorize` and the **Data deletion requests URL** to
+      `https://ai-staff-staging.onrender.com/v1/social/meta/data-deletion`. Both check Meta's signature with
+      `META_APP_SECRET`. Accounts connected before 2026-11-09 do not carry the Meta user id these need; connect them
+      again (none are connected on the hosted site yet).
 
 ## 10. X
 
@@ -229,7 +232,6 @@ After at least one network is connected:
 
 ## Things I still have to build (not for you)
 
-- Facebook and Instagram deauthorize and data-deletion callbacks (section 9).
 - TikTok audit screen: show the account's privacy choices and disclosures before posting (section 7).
 - LinkedIn video and multiple pictures; X pictures; Threads reply chains (S6).
 - Backlog with the full list: [IDEAS-BACKLOG.md](IDEAS-BACKLOG.md).

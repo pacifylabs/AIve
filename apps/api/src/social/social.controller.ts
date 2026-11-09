@@ -43,6 +43,11 @@ const network = (value: string) => {
   return value;
 };
 
+const metaApp = (value: string) => {
+  if (value !== 'threads' && value !== 'meta') throw AppError.notFound('Not found.');
+  return value;
+};
+
 const date = (value?: string) => {
   const parsed = value ? new Date(value) : undefined;
   return parsed && !Number.isNaN(parsed.getTime()) ? parsed : undefined;
@@ -288,20 +293,25 @@ export class SocialCallbackController {
     response.redirect(302, where);
   }
 
-  /** Threads calls these when a person removes the app, or asks for their data to be deleted. Signed, not signed in. */
-  @Post('threads/deauthorize')
+  /** Meta calls these when a person removes the app, or asks for their data to be deleted. Signed, not signed in. */
+  @Post(':app/deauthorize')
   @HttpCode(200)
-  async threadsDeauthorize(@Body('signed_request') signed: unknown, @Req() request: Request) {
+  async deauthorize(@Param('app') app: string, @Body('signed_request') signed: unknown, @Req() request: Request) {
     await this.limiter.consume({ key: `social-revoke:ip:${request.ip ?? 'unknown'}`, max: 60, windowSec: 60 });
-    await this.accounts.threadsRevoked('deauthorize', typeof signed === 'string' ? signed.slice(0, 2000) : '');
+    await this.accounts.metaRevoked(
+      metaApp(app),
+      'deauthorize',
+      typeof signed === 'string' ? signed.slice(0, 2000) : '',
+    );
     return {};
   }
 
-  @Post('threads/data-deletion')
+  @Post(':app/data-deletion')
   @HttpCode(200)
-  async threadsDataDeletion(@Body('signed_request') signed: unknown, @Req() request: Request) {
+  async dataDeletion(@Param('app') app: string, @Body('signed_request') signed: unknown, @Req() request: Request) {
     await this.limiter.consume({ key: `social-revoke:ip:${request.ip ?? 'unknown'}`, max: 60, windowSec: 60 });
-    const done = await this.accounts.threadsRevoked(
+    const done = await this.accounts.metaRevoked(
+      metaApp(app),
       'data-deletion',
       typeof signed === 'string' ? signed.slice(0, 2000) : '',
     );
