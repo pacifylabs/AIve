@@ -5,6 +5,7 @@ import {
   AccountStats,
   ApprovalService,
   FeedPoller,
+  RecurringPosts,
   SocialGateway,
   WebsitePrefill,
 } from '@ai-staff/core';
@@ -26,6 +27,7 @@ export class PlatformProcessor extends WorkerHost {
     @Inject(FeedPoller) private readonly feeds: FeedPoller,
     @Inject(AccountHealth) private readonly health: AccountHealth,
     @Inject(AccountStats) private readonly stats: AccountStats,
+    @Inject(RecurringPosts) private readonly recurring: RecurringPosts,
   ) {
     super();
   }
@@ -51,6 +53,11 @@ export class PlatformProcessor extends WorkerHost {
       }
       case 'poll_feeds':
         return this.pollFeeds();
+      case 'generate_recurring': {
+        const made = await this.recurring.generate();
+        if (made) this.logger.log({ made }, 'recurring posts made');
+        return { made };
+      }
       case 'capture_stats': {
         const result = await this.stats.capture();
         this.logger.log(result, 'follower counts captured');

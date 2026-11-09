@@ -6,6 +6,8 @@ import type { Tag } from '@/components/app/tag';
 import { FormMessages, SubmitButton, TextAreaField, TextField } from '@/components/form';
 import { initialFormState } from '@/lib/form-state';
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export interface ComposeStart {
   followUps: string[];
   body: string;
@@ -34,6 +36,7 @@ export function ComposeForm({
     .filter((key) => key.startsWith('followUp.'))
     .sort((a, b) => Number(a.slice(9)) - Number(b.slice(9)))
     .map((key) => state.values![key]!);
+  const [repeatKind, setRepeatKind] = useState('');
   const [parts, setParts] = useState<string[]>(echoed.length ? echoed : start.followUps);
   return (
     <form action={action} className="space-y-5" noValidate>
@@ -122,6 +125,74 @@ export function ComposeForm({
           ))}
         </select>
       </label>
+      <fieldset className="space-y-3 rounded-xl border border-line-soft p-4">
+        <legend className="px-1 text-sm font-medium">Repeat</legend>
+        <select
+          name="repeatKind"
+          className="field"
+          value={repeatKind}
+          onChange={(event) => setRepeatKind(event.target.value)}
+          aria-label="How often to repeat this post"
+        >
+          <option value="">Does not repeat</option>
+          <option value="weekly">Every week, on chosen days</option>
+          <option value="monthly_day">Every month, on a day of the month</option>
+          <option value="monthly_weekday">Every month, on the first, second… weekday</option>
+        </select>
+        {repeatKind === 'weekly' ? (
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-wrap gap-3">
+              {WEEKDAYS.map((name, index) => (
+                <label key={name} className="flex items-center gap-1">
+                  <input type="checkbox" name="weekday" value={index} defaultChecked={index === 1} /> {name}
+                </label>
+              ))}
+            </div>
+            <label className="flex items-center gap-2">
+              Every
+              <input name="everyWeeks" type="number" min={1} max={8} defaultValue={1} className="field w-20" />
+              week(s)
+            </label>
+          </div>
+        ) : null}
+        {repeatKind === 'monthly_day' ? (
+          <label className="flex items-center gap-2 text-sm">
+            On day
+            <input name="dayOfMonth" type="number" min={1} max={31} defaultValue={1} className="field w-20" />
+            of the month (the last day, in a shorter month)
+          </label>
+        ) : null}
+        {repeatKind === 'monthly_weekday' ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            On the
+            <select name="nth" className="field w-auto" defaultValue="1">
+              <option value="1">first</option>
+              <option value="2">second</option>
+              <option value="3">third</option>
+              <option value="4">fourth</option>
+              <option value="5">last</option>
+            </select>
+            <select name="monthWeekday" className="field w-auto" defaultValue="1">
+              {WEEKDAYS.map((name, index) => (
+                <option key={name} value={index}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            of the month
+          </div>
+        ) : null}
+        {repeatKind ? (
+          <TextField
+            label="Stop repeating on (optional)"
+            name="repeatEndsOn"
+            type="date"
+            defaultValue={state.values?.repeatEndsOn ?? ''}
+            error={state.fields?.repeatEndsOn}
+            hint='The first post is the "Send at" date and time below. Posts are made four weeks ahead and appear on the Calendar.'
+          />
+        ) : null}
+      </fieldset>
       <TextField
         label="Send at (optional)"
         name="scheduledLocal"

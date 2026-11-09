@@ -72,6 +72,12 @@ export class Ticker implements OnApplicationBootstrap, OnApplicationShutdown {
       { pattern: '10 2 * * *', tz: 'UTC' },
       { name: 'capture_stats', data: { kind: 'capture_stats' } },
     );
+    // Every six hours: keeps the next four weeks of recurring posts made, and picks up a rule added while the API slept.
+    await this.platform.upsertJobScheduler(
+      'generate-recurring',
+      { pattern: '40 */6 * * *', tz: 'UTC' },
+      { name: 'generate_recurring', data: { kind: 'generate_recurring' } },
+    );
     this.timer = setInterval(() => void this.tick(), this.config.WORKER_TICK_MS);
   }
 

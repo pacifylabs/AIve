@@ -364,3 +364,47 @@ export class AccountStat extends WorkspaceScopedEntity {
   @Column({ type: 'integer' })
   followers: number;
 }
+
+/** A post that repeats. The rule is the shape `Recurrence` in core describes; the worker makes the posts it calls for. */
+@Entity('post_schedules')
+export class PostSchedule extends WorkspaceScopedEntity {
+  @Column({ type: 'uuid', nullable: true })
+  createdBy: string | null;
+
+  @Column({ type: 'uuid', array: true, default: [] })
+  accountIds: string[];
+
+  @Column({ type: 'text' })
+  body: string;
+
+  @Column({ type: 'varchar', length: 1000, nullable: true })
+  firstComment: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  linkUrl: string | null;
+
+  @Column({ type: 'jsonb', default: [] })
+  media: string[];
+
+  @Column({ type: 'jsonb', default: [] })
+  followUps: string[];
+
+  @Column({ type: 'uuid', nullable: true })
+  tagId: string | null;
+
+  @Column({ type: 'jsonb' })
+  rule: Record<string, unknown>;
+
+  /** Time of day in the workspace's time zone, `HH:MM`. */
+  @Column({ type: 'varchar', length: 5 })
+  atTime: string;
+
+  @Column({ type: 'date' })
+  startsOn: string;
+
+  @Column({ type: 'date', nullable: true })
+  endsOn: string | null;
+
+  @Column({ type: 'varchar', length: 8, default: 'active' })
+  state: 'active' | 'paused';
+}

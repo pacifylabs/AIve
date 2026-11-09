@@ -738,6 +738,53 @@ describe('writing a post by hand', () => {
     }
   });
 
+  it('makes a post repeat: saves the rule and makes the next four weeks of posts, which the rule list shows', async () => {
+    const w = await ready('repeat1');
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    const response = await post(w.as, {
+      accountIds: [w.accounts.facebook],
+      scheduledLocal: `${tomorrow}T09:00`,
+      repeat: { kind: 'weekly', weekdays: [0, 1, 2, 3, 4, 5, 6], everyWeeks: 1 },
+    }).expect(201);
+    expect(response.body).toMatchObject({ scheduleId: expect.any(String), made: 28 });
+    const posts = await calendar(w.as);
+    expect(posts).toHaveLength(28);
+    expect(posts[0]!.scheduledFor).toBe(`${tomorrow}T09:00:00.000Z`);
+
+    const rules = (await t.http().get('/v1/social/schedules').set(w.as).expect(200)).body as {
+      id: string;
+      state: string;
+      next: string[];
+    }[];
+    expect(rules).toHaveLength(1);
+    expect(rules[0]!.next).toHaveLength(3);
+    await t.http().patch(`/v1/social/schedules/${rules[0]!.id}`).set(w.as).send({ paused: true }).expect(200);
+    await t.http().delete(`/v1/social/schedules/${rules[0]!.id}`).set(w.as).expect(204);
+    // The posts already made stay on the calendar.
+    expect(await calendar(w.as)).toHaveLength(28);
+    await t.http().delete(`/v1/social/schedules/${rules[0]!.id}`).set(w.as).expect(404);
+  });
+
+  it('needs the first date, a real rule, and the same checks as any post, before it saves a repeat', async () => {
+    const w = await ready('repeat2', ['x']);
+    const base = { accountIds: [w.accounts.x], repeat: { kind: 'monthly_day', dayOfMonth: 15 } };
+    const missing = await post(w.as, base).expect(400);
+    expect(missing.body.errors[0].path).toBe('scheduledLocal');
+    await post(w.as, { ...base, scheduledLocal: '2030-01-01T09:00', repeat: { kind: 'weekly', weekdays: [] } }).expect(
+      400,
+    );
+    await post(w.as, {
+      ...base,
+      scheduledLocal: '2030-01-01T09:00',
+      repeat: { kind: 'monthly_day', dayOfMonth: 40 },
+    }).expect(400);
+    const tooLong = await post(w.as, { ...base, scheduledLocal: '2030-01-01T09:00', body: 'a'.repeat(300) }).expect(
+      400,
+    );
+    expect(tooLong.body.errors[0].message).toMatch(/over the 280/);
+    expect((await t.http().get('/v1/social/schedules').set(w.as).expect(200)).body).toEqual([]);
+  });
+
   it('needs a Social Media Staff member, since posts go out under theirs', async () => {
     const w = await workspace('compose7');
     t.social.facebook.accounts = [{ externalId: 'p', name: 'P', kind: 'page' }];

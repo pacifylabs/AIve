@@ -3,6 +3,7 @@ import { type AppConfig, loadConfig, parseKeyring, socialConfig } from '@ai-staf
 import {
   AccountHealth,
   AccountStats,
+  RecurringPosts,
   AccountTokens,
   ApprovalService,
   FeedPoller,
@@ -75,6 +76,11 @@ const notConfigured: ModelProvider = {
       inject: [DataSource, KEYRING, SocialProviders],
       useFactory: (db: DataSource, keyring: Keyring, providers: SocialProviders) =>
         new AccountTokens(db, keyring, providers),
+    },
+    {
+      provide: RecurringPosts,
+      inject: [DataSource],
+      useFactory: (db: DataSource) => new RecurringPosts(db),
     },
     {
       provide: AccountStats,

@@ -19,6 +19,21 @@ export const updateFeedRequest = z
   })
   .refine((body) => Object.keys(body).length > 0, 'Nothing to change.');
 
+/** How a post repeats. Weekdays are 0 (Sunday) to 6 (Saturday). */
+export const repeatRule = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('weekly'),
+    weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    everyWeeks: z.number().int().min(1).max(8).default(1),
+  }),
+  z.object({ kind: z.literal('monthly_day'), dayOfMonth: z.number().int().min(1).max(31) }),
+  z.object({
+    kind: z.literal('monthly_weekday'),
+    nth: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+    weekday: z.number().int().min(0).max(6),
+  }),
+]);
+
 /** A post a person writes by hand. `scheduledLocal` is the workspace's wall clock; left out, the post goes out now. */
 export const composePostRequest = z.object({
   /** Stays the same if the form is sent twice, so one click never makes two posts. */
@@ -37,6 +52,12 @@ export const composePostRequest = z.object({
   /** Replies sent one after another once the post is up, each to the one before. */
   followUps: z.array(z.string().trim().min(1).max(5000)).max(9).default([]),
   tagId: z.uuid().optional(),
+  /** Makes the post repeat from the date and time in `scheduledLocal`, until `repeatEndsOn` if given. */
+  repeat: repeatRule.optional(),
+  repeatEndsOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   scheduledLocal: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Use a date and time.')
@@ -69,3 +90,5 @@ export const templateRequest = z.object({
 });
 
 export const setPostTagRequest = z.object({ tagId: z.uuid().nullable() });
+
+export const scheduleStateRequest = z.object({ paused: z.boolean() });

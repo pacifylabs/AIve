@@ -38,4 +38,5 @@ export type PlatformJob =
   | { kind: 'sync_comments' }
   | { kind: 'poll_feeds' }
   | { kind: 'check_accounts' }
-  | { kind: 'capture_stats' };
+  | { kind: 'capture_stats' }
+  | { kind: 'generate_recurring' };

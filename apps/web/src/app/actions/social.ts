@@ -119,12 +119,29 @@ export async function resolvePostAction(data: FormData): Promise<void> {
 
 // ---- Writing a post by hand ----------------------------------------------------------------------------------
 
-const COMPOSE_FIELDS = ['body', 'firstComment', 'mediaUrls', 'linkUrl', 'scheduledLocal'] as const;
+const COMPOSE_FIELDS = ['body', 'firstComment', 'mediaUrls', 'linkUrl', 'scheduledLocal', 'repeatEndsOn'] as const;
 // Follow-up boxes are echoed back as `followUp.0`, `followUp.1`… so the parts a person wrote survive a refused post.
 
 /** Queues a post the person wrote: for every ticked account, now or at the time they chose. */
+/** The repeat the form describes, or nothing when "Does not repeat" is chosen. */
+function repeatFrom(data: FormData) {
+  const kind = field(data, 'repeatKind');
+  if (kind === 'weekly') {
+    return {
+      kind,
+      weekdays: data.getAll('weekday').map(Number),
+      everyWeeks: Number(field(data, 'everyWeeks') || 1),
+    };
+  }
+  if (kind === 'monthly_day') return { kind, dayOfMonth: Number(field(data, 'dayOfMonth') || 1) };
+  if (kind === 'monthly_weekday') {
+    return { kind, nth: Number(field(data, 'nth') || 1), weekday: Number(field(data, 'monthWeekday') || 1) };
+  }
+  return undefined;
+}
+
 export async function composePostAction(_state: FormState, data: FormData): Promise<FormState> {
-  const result = await api<{ postId: string | null; queued: boolean }[]>('/social/posts', {
+  const result = await api<unknown>('/social/posts', {
     method: 'POST',
     workspace: true,
     body: {
@@ -138,6 +155,8 @@ export async function composePostAction(_state: FormState, data: FormData): Prom
         .filter((value): value is string => typeof value === 'string' && value.trim() !== ''),
       linkUrl: field(data, 'linkUrl').trim() || undefined,
       tagId: field(data, 'tagId') || undefined,
+      repeat: repeatFrom(data),
+      repeatEndsOn: field(data, 'repeatEndsOn') || undefined,
       scheduledLocal: field(data, 'scheduledLocal') || undefined,
     },
   });
@@ -227,6 +246,27 @@ export async function setPostTagAction(data: FormData): Promise<void> {
   if (!result.ok && result.problem.status === 401) expired('/app/calendar');
   revalidatePath('/app/calendar');
   revalidatePath('/app/templates');
+}
+
+/** Pauses or resumes a recurring post. */
+export async function pauseScheduleAction(data: FormData): Promise<void> {
+  const result = await api(`/social/schedules/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'PATCH',
+    workspace: true,
+    body: { paused: field(data, 'paused') === 'true' },
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/recurring');
+  revalidatePath('/app/recurring');
+}
+
+/** Removes a recurring rule. Posts it already made stay on the calendar. */
+export async function removeScheduleAction(data: FormData): Promise<void> {
+  const result = await api(`/social/schedules/${encodeURIComponent(field(data, 'id'))}`, {
+    method: 'DELETE',
+    workspace: true,
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/recurring');
+  revalidatePath('/app/recurring');
 }
 
 // ---- Sign-offs ---------------------------------------------------------------------------------------------

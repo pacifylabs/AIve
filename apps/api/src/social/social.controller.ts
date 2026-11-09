@@ -17,6 +17,7 @@ import {
 import {
   addFeedRequest,
   composePostRequest,
+  scheduleStateRequest,
   setPostTagRequest,
   tagRequest,
   templateRequest,
@@ -35,6 +36,7 @@ import { RateLimiter } from '../redis/rate-limiter.service.js';
 import { CurrentWorkspace, RequireRole, type WorkspaceContext, WorkspaceGuard } from '../workspaces/workspace.guard.js';
 import { isNetwork, SocialAccountsService } from './social-accounts.service.js';
 import { PostLibraryService } from './post-library.service.js';
+import { SchedulesService } from './schedules.service.js';
 import { SocialFeedsService } from './social-feeds.service.js';
 import { SocialPostsService } from './social-posts.service.js';
 
@@ -62,6 +64,7 @@ export class SocialController {
     @Inject(SocialPostsService) private readonly posts: SocialPostsService,
     @Inject(SocialFeedsService) private readonly feeds: SocialFeedsService,
     @Inject(PostLibraryService) private readonly library: PostLibraryService,
+    @Inject(SchedulesService) private readonly schedules: SchedulesService,
     @Inject(RateLimiter) private readonly limiter: RateLimiter,
   ) {}
 
@@ -153,6 +156,26 @@ export class SocialController {
     @Body(new ZodPipe(setPostTagRequest)) body: z.output<typeof setPostTagRequest>,
   ) {
     return this.library.setPostTag(ctx, id, body.tagId);
+  }
+
+  @Get('schedules')
+  schedulesList(@CurrentWorkspace() ctx: WorkspaceContext) {
+    return this.schedules.list(ctx);
+  }
+
+  @Patch('schedules/:id')
+  scheduleState(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Body(new ZodPipe(scheduleStateRequest)) body: z.output<typeof scheduleStateRequest>,
+  ) {
+    return this.schedules.setPaused(ctx, id, body.paused);
+  }
+
+  @Delete('schedules/:id')
+  @HttpCode(204)
+  async scheduleRemove(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id', UuidPipe) id: string) {
+    await this.schedules.remove(ctx, id);
   }
 
   @Get('tags')

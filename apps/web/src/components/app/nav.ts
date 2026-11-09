@@ -25,6 +25,7 @@ export const NAV: NavGroup[] = [
       { label: 'Autopilot', href: '/app/autopilot', icon: 'autopilot' },
       { label: 'Calendar', href: '/app/calendar', icon: 'calendar' },
       { label: 'New post', href: '/app/compose', icon: 'compose' },
+      { label: 'Recurring', href: '/app/recurring', icon: 'clock' },
     ],
   },
   {

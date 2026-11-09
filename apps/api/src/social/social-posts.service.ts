@@ -1,5 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { createPublishIntent, lengthProblem, postProblem, zonedTimeToUtc } from '@ai-staff/core';
+import {
+  createPublishIntent,
+  lengthProblem,
+  postProblem,
+  type Recurrence,
+  RecurringPosts,
+  zonedTimeToUtc,
+} from '@ai-staff/core';
 import {
   AuditEntry,
   ConnectedAccount,
@@ -7,6 +14,7 @@ import {
   type EntityManager,
   In,
   PublishIntent,
+  PostSchedule,
   PostTag,
   SocialPost,
   StaffMember,
@@ -19,11 +27,26 @@ import { AppError } from '../common/app-error.js';
 import type { WorkspaceContext } from '../workspaces/workspace.guard.js';
 import { tagExists } from './post-library.service.js';
 
+interface ComposeInput {
+  requestId: string;
+  accountIds: string[];
+  body: string;
+  firstComment?: string | undefined;
+  mediaUrls: string[];
+  followUps: string[];
+  linkUrl?: string | undefined;
+  tagId?: string | undefined;
+  repeat?: Recurrence | undefined;
+  repeatEndsOn?: string | undefined;
+  scheduledLocal?: string | undefined;
+}
+
 @Injectable()
 export class SocialPostsService {
   constructor(
     @Inject(DataSource) private readonly db: DataSource,
     @Inject(SocialProviders) private readonly providers: SocialProviders,
+    @Inject(RecurringPosts) private readonly recurring: RecurringPosts,
   ) {}
 
   private tx<T>(ctx: WorkspaceContext, work: (m: EntityManager) => Promise<T>) {
@@ -162,20 +185,17 @@ export class SocialPostsService {
    * or now, under the workspace's Social Media Staff member, which is what the publisher needs to send it. Length and the
    * media a network needs are checked first, for every account, so nothing is half queued.
    */
-  compose(
-    ctx: WorkspaceContext,
-    input: {
-      requestId: string;
-      accountIds: string[];
-      body: string;
-      firstComment?: string | undefined;
-      mediaUrls: string[];
-      followUps: string[];
-      linkUrl?: string | undefined;
-      tagId?: string | undefined;
-      scheduledLocal?: string | undefined;
-    },
-  ) {
+  async compose(ctx: WorkspaceContext, input: ComposeInput) {
+    const outcome = await this.composeInTx(ctx, input);
+    if ('scheduleId' in outcome) {
+      // The rule is saved and visible now, so the first four weeks of posts can be made from it.
+      const made = await this.recurring.generate({ workspaceId: ctx.workspaceId, scheduleId: outcome.scheduleId });
+      return { scheduleId: outcome.scheduleId, made };
+    }
+    return outcome;
+  }
+
+  private composeInTx(ctx: WorkspaceContext, input: ComposeInput) {
     return this.tx(ctx, async (m) => {
       const staff = await m.findOne(StaffMember, {
         where: { workspaceId: ctx.workspaceId, roleKey: 'social_media', state: 'active' },
@@ -221,13 +241,18 @@ export class SocialPostsService {
 
       const now = new Date();
       let when = now;
+      if (input.repeat && !input.scheduledLocal) {
+        problems.push({ path: 'scheduledLocal', message: 'Pick the date and time of the first post.' });
+      }
       if (input.scheduledLocal) {
         const workspace = await m.findOneByOrFail(Workspace, { id: ctx.workspaceId });
         const [date, time] = input.scheduledLocal.split('T') as [string, string];
         when = zonedTimeToUtc(date, time, workspace.timezone);
         if (Number.isNaN(when.getTime()))
           problems.push({ path: 'scheduledLocal', message: 'That is not a real time.' });
-        else if (when.getTime() < now.getTime() - 5 * 60_000) {
+        else if (input.repeat) {
+          // A repeating post may start today at a time that has passed; its first copy is then the next occurrence.
+        } else if (when.getTime() < now.getTime() - 5 * 60_000) {
           problems.push({ path: 'scheduledLocal', message: 'That time has passed. Leave it empty to post now.' });
         } else if (when.getTime() > now.getTime() + 365 * 86_400_000) {
           problems.push({ path: 'scheduledLocal', message: 'Pick a time within the next year.' });
@@ -235,6 +260,38 @@ export class SocialPostsService {
       }
       if (problems.length) {
         throw new AppError(400, 'validation_failed', problems[0]!.message, { errors: problems });
+      }
+
+      if (input.repeat) {
+        const [date, time] = input.scheduledLocal!.split('T') as [string, string];
+        const rule = await m.save(
+          m.create(PostSchedule, {
+            workspaceId: ctx.workspaceId,
+            createdBy: ctx.userId,
+            accountIds: accounts.map((account) => account.id),
+            body: input.body,
+            firstComment: input.firstComment ?? null,
+            linkUrl: input.linkUrl ?? null,
+            media: input.mediaUrls,
+            followUps: input.followUps,
+            tagId: input.tagId ?? null,
+            rule: input.repeat as unknown as Record<string, unknown>,
+            atTime: time,
+            startsOn: date,
+            endsOn: input.repeatEndsOn ?? null,
+            state: 'active',
+          }),
+        );
+        await m.save(
+          m.create(AuditEntry, {
+            workspaceId: ctx.workspaceId,
+            userId: ctx.userId,
+            action: 'social.schedule_created',
+            target: rule.id,
+            detail: { accounts: accounts.length, kind: input.repeat.kind },
+          }),
+        );
+        return { scheduleId: rule.id };
       }
 
       const results: { accountId: string; postId: string | null; queued: boolean }[] = [];
