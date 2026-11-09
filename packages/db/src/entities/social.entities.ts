@@ -363,6 +363,10 @@ export class AccountStat extends WorkspaceScopedEntity {
 
   @Column({ type: 'integer' })
   followers: number;
+
+  /** Times the account's posts were shown on the day before, where the network says. */
+  @Column({ type: 'integer', nullable: true })
+  reach: number | null;
 }
 
 /** A post that repeats. The rule is the shape `Recurrence` in core describes; the worker makes the posts it calls for. */

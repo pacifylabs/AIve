@@ -1152,12 +1152,18 @@ describe('follower stats', () => {
     ).body as { id: string }[];
     return { ...w, account: account! };
   }
-  const record = (workspaceId: string, accountId: string, daysAgo: number, followers: number) =>
+  const record = (
+    workspaceId: string,
+    accountId: string,
+    daysAgo: number,
+    followers: number,
+    reach: number | null = null,
+  ) =>
     withTenant(db, { workspaceId, userId: null }, (m) =>
       m.query(
-        `INSERT INTO account_stats (id, workspace_id, account_id, day, followers)
-         VALUES ($1, $2, $3, (now() AT TIME ZONE 'UTC')::date - $4::int, $5)`,
-        [uuidv7(), workspaceId, accountId, daysAgo, followers],
+        `INSERT INTO account_stats (id, workspace_id, account_id, day, followers, reach)
+         VALUES ($1, $2, $3, (now() AT TIME ZONE 'UTC')::date - $4::int, $5, $6)`,
+        [uuidv7(), workspaceId, accountId, daysAgo, followers, reach],
       ),
     );
 
@@ -1181,6 +1187,21 @@ describe('follower stats', () => {
       change: number;
     }[];
     expect(quarter[0]!.change).toBe(130);
+  });
+
+  it('adds up the reach the network gave over the window, and says nothing when it never gave any', async () => {
+    const w = await withAccount('stat3');
+    await record(w.workspaceId, w.account.id, 10, 200, 1000);
+    await record(w.workspaceId, w.account.id, 5, 210, null);
+    await record(w.workspaceId, w.account.id, 0, 230, 250);
+    const [month] = (await t.http().get('/v1/social/stats').set(w.as).expect(200)).body as { reach: number | null }[];
+    expect(month!.reach).toBe(1250);
+    const quiet = await withAccount('stat4');
+    await record(quiet.workspaceId, quiet.account.id, 3, 40);
+    const [none] = (await t.http().get('/v1/social/stats').set(quiet.as).expect(200)).body as {
+      reach: number | null;
+    }[];
+    expect(none!.reach).toBeNull();
   });
 
   it('shows nothing for an account with no captures, and keeps one workspace’s numbers from another', async () => {

@@ -446,6 +446,38 @@ describe('follower counts and replies on Meta and X', () => {
     ).rejects.toThrow(/follower count/);
   });
 
+  it('reads a day of reach from Instagram and of impressions from a Page, and keeps nothing the network does not give', async () => {
+    const config = { appId: 'a', appSecret: 's', graphVersion: 'v21.0', messaging: false };
+    const day = '2026-11-08';
+    const insta = answer({ data: [{ name: 'reach', values: [{ value: 910 }] }] });
+    expect(
+      await new MetaProvider('instagram', config, { fetcher: insta.fetcher }).fetchReach({
+        accessToken: 't',
+        externalId: 'ig1',
+        day,
+      }),
+    ).toBe(910);
+    expect(insta.calls[0]).toContain('/ig1/insights');
+    expect(insta.calls[0]).toContain('metric=reach');
+    const page = answer({ data: [{ name: 'page_impressions', values: [{ value: 55 }] }] });
+    expect(
+      await new MetaProvider('facebook', config, { fetcher: page.fetcher }).fetchReach({
+        accessToken: 't',
+        externalId: 'p1',
+        day,
+      }),
+    ).toBe(55);
+    expect(page.calls[0]).toContain('metric=page_impressions');
+    const none = answer({ data: [] });
+    expect(
+      await new MetaProvider('facebook', config, { fetcher: none.fetcher }).fetchReach({
+        accessToken: 't',
+        externalId: 'p1',
+        day,
+      }),
+    ).toBeNull();
+  });
+
   it('returns the id of an X reply, so the next part can answer it', async () => {
     const { fetcher } = answer({ data: { id: 'tweet-2' } });
     const reply = await new XProvider({ clientId: 'id', clientSecret: 'secret' }, fetcher).addComment({

@@ -38,6 +38,8 @@ interface Stat {
   accountId: string;
   series: { day: string; followers: number }[];
   followers: number;
+  /** Times its posts were shown over the window, or null where the network never said. */
+  reach: number | null;
   change: number;
   changePct: number | null;
 }
@@ -113,6 +115,9 @@ export default async function AccountsPage({
                           ? ` (${statOf.get(account.id)!.changePct}%)`
                           : ''}{' '}
                         in 30 days
+                        {statOf.get(account.id)!.reach !== null
+                          ? ` · seen ${statOf.get(account.id)!.reach!.toLocaleString('en-GB')} times`
+                          : ''}
                       </span>
                       <Sparkline
                         values={statOf.get(account.id)!.series.map((point) => point.followers)}

@@ -146,6 +146,21 @@ describe('Threads', () => {
     expect(body(reply.calls[1]!).get('creation_id')).toBe('container-9');
   });
 
+  it('reads a day of views for the account, and says nothing when the network gave none', async () => {
+    const views = scripted({ body: { data: [{ name: 'views', total_value: { value: 4200 } }] } });
+    expect(
+      await new ThreadsProvider(config, { fetcher: views.fetcher }).fetchReach({ ...login, day: '2026-11-08' }),
+    ).toBe(4200);
+    const url = new URL(views.calls[0]!.url);
+    expect(url.pathname).toContain('/77/threads_insights');
+    expect(url.searchParams.get('metric')).toBe('views');
+    expect(url.searchParams.get('since')).toBe(String(Date.parse('2026-11-08T00:00:00Z') / 1000));
+    const empty = scripted({ body: { data: [] } });
+    expect(
+      await new ThreadsProvider(config, { fetcher: empty.fetcher }).fetchReach({ ...login, day: '2026-11-08' }),
+    ).toBeNull();
+  });
+
   it('keeps going when one number is not available for a post', async () => {
     const { fetcher } = scripted(
       { data: [{ name: 'views', values: [{ value: 40 }] }] },

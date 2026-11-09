@@ -372,26 +372,29 @@ export class SocialAccountsService {
   stats(ctx: WorkspaceContext, days: number) {
     return this.tx(ctx, async (m) => {
       const rows = (await m.query(
-        `SELECT account_id, to_char(day, 'YYYY-MM-DD') AS day, followers FROM account_stats
+        `SELECT account_id, to_char(day, 'YYYY-MM-DD') AS day, followers, reach FROM account_stats
           WHERE workspace_id = $1 AND day >= (now() AT TIME ZONE 'UTC')::date - $2::int
           ORDER BY day`,
         [ctx.workspaceId, days],
-      )) as { account_id: string; day: string; followers: number }[];
-      const byAccount = new Map<string, { day: string; followers: number }[]>();
+      )) as { account_id: string; day: string; followers: number; reach: number | null }[];
+      const byAccount = new Map<string, { day: string; followers: number; reach: number | null }[]>();
       for (const row of rows) {
         byAccount.set(row.account_id, [
           ...(byAccount.get(row.account_id) ?? []),
-          { day: row.day, followers: row.followers },
+          { day: row.day, followers: row.followers, reach: row.reach },
         ]);
       }
       return [...byAccount].map(([accountId, series]) => {
         const first = series[0]!;
         const latest = series[series.length - 1]!;
         const change = latest.followers - first.followers;
+        const counted = series.filter((point) => point.reach !== null);
         return {
           accountId,
           series,
           followers: latest.followers,
+          // Null when the network never gave a figure, so the page can say nothing instead of "0 seen".
+          reach: counted.length ? counted.reduce((sum, point) => sum + point.reach!, 0) : null,
           change,
           changePct: first.followers > 0 ? Math.round((change / first.followers) * 1000) / 10 : null,
           since: first.day,

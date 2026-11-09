@@ -198,6 +198,13 @@ export class FixtureSocialProvider implements SocialProvider {
     return Promise.resolve(this.followers);
   }
 
+  /** What yesterday's reach comes back as; null stands for a network with a follower count but no reach figure. */
+  reach: number | null = 500;
+
+  fetchReach(_input: { accessToken: string; externalId: string; day: string }): Promise<number | null> {
+    return Promise.resolve(this.reach);
+  }
+
   fetchMetrics(_input: PostRef): Promise<Record<string, number>> {
     return Promise.resolve({ reactions: 3, comments: 1 });
   }

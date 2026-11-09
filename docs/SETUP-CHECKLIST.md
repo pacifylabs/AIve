@@ -1,6 +1,6 @@
 # Setup checklist: what is left for you to do
 
-Status: 2026-11-07. A living list of every step that needs a person (you), not code. Work through it in any order; each
+Status: 2026-11-09. A living list of every step that needs a person (you), not code. Work through it in any order; each
 section stands alone. When a step is done, tick it here so the next session knows.
 
 Where things live: [DEPLOYMENT.md](DEPLOYMENT.md) describes the hosted environment and every setting. This file is the
@@ -188,6 +188,10 @@ Needs a Meta app with Facebook Login, and Meta's App Review before anyone but yo
 - [ ] On Render add `META_APP_ID` and `META_APP_SECRET`.
 - [ ] Until the app passes review, only people with a role on the app can connect.
 - Instagram posts need a picture or video, and the account must be a business account linked to a Facebook Page.
+- [ ] **Reach (optional):** to show "seen N times" for Instagram and Facebook, add `instagram_manage_insights` and
+      `read_insights` to the app and to Meta's App Review, then reconnect the accounts. The code is already written and
+      asks for yesterday's figure each night; without the permission Meta refuses and the Accounts page simply shows no
+      reach for them (followers still work). Threads reach needs nothing more: `threads_manage_insights` is already asked.
 
 - [ ] In the app's settings, set the **Deauthorize callback URL** to
       `https://ai-staff-staging.onrender.com/v1/social/meta/deauthorize` and the **Data deletion requests URL** to
@@ -246,7 +250,15 @@ After at least one network is connected:
 9. **Reply chain:** on **New post**, use **Add another post** once or twice, post to X, Threads or Telegram, and check the
    Calendar shows "Thread: 3 of 3 posted". (Needs a connected account on one of those networks.)
 10. **Followers:** the Accounts page shows follower counts after the first daily capture (about 02:10 UTC the next day).
-11. The free Render service sleeps after about 15 minutes idle; the first request after a pause takes about a minute.
+11. **Results:** open **Results** (Social group) once a post is a day old. It lists your posts by likes, comments and
+    shares. Press **Repurpose with AI** on one: a draft appears in **Inbox** (needs the Anthropic key). Approve it to post
+    it; pressing the button again from the same page opens no second draft.
+12. **Automations:** on **Results**, add a rule with a low number (say 1), then **Turn on**. When the next post's numbers
+    are read (24 hours after it goes out) a draft appears in the Inbox; the rule's line shows drafts used. It never posts
+    by itself. Turn it off or remove it when done.
+13. **Reach:** the Accounts page shows "seen N times" for Threads after the first nightly capture (Instagram and
+    Facebook once section 9's insights permission is granted).
+14. The free Render service sleeps after about 15 minutes idle; the first request after a pause takes about a minute.
 
 ## What to send me when something fails
 
@@ -257,5 +269,5 @@ After at least one network is connected:
 ## Things I still have to build (not for you)
 
 - TikTok audit screen: show the account's privacy choices and disclosures before posting (section 7).
-- LinkedIn video and multiple pictures; X pictures; Threads reply chains (S6).
+- Automations other than "post reaches N" (S12), reach by post on the Results page, picking library pictures in staff drafts.
 - Backlog with the full list: [IDEAS-BACKLOG.md](IDEAS-BACKLOG.md).

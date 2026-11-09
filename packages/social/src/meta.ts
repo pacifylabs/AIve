@@ -407,6 +407,28 @@ export class MetaProvider implements SocialProvider {
     return account.followers_count;
   }
 
+  /**
+   * People reached by an Instagram account, or impressions of a Facebook Page, on one day. Both need an insights
+   * permission the sign-in does not ask for yet, so until the app is granted it, the network refuses and no figure is kept.
+   */
+  async fetchReach({ accessToken, externalId, day }: { accessToken: string; externalId: string; day: string }) {
+    this.assertConfigured();
+    const since = Math.floor(Date.parse(`${day}T00:00:00Z`) / 1000);
+    const response = await this.call<{ data?: { values?: { value?: number }[] }[] }>(
+      this.url(
+        `${externalId}/insights?${form({
+          metric: this.network === 'instagram' ? 'reach' : 'page_impressions',
+          period: 'day',
+          since: String(since),
+          until: String(since + 86_400),
+          access_token: accessToken,
+        })}`,
+      ),
+    );
+    const value = response.data?.[0]?.values?.[0]?.value;
+    return typeof value === 'number' ? value : null;
+  }
+
   /** Facebook and Instagram both take a comment on the post, as the same account. */
   async addComment({ accessToken, externalPostId, message }: CommentInput): Promise<void> {
     this.assertConfigured();

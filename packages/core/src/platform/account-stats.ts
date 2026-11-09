@@ -4,7 +4,8 @@ import { v7 as uuidv7 } from 'uuid';
 import type { AccountTokens } from './account-tokens.js';
 
 /**
- * Once a day, asks each healthy account's network how many people follow it and keeps the answer, one row per account per
+ * Once a day, asks each healthy account's network how many people follow it, and how many times its posts were shown
+ * the day before, and keeps the answers, one row per account per
  * day (UTC). A second capture on the same day replaces the first. A network that does not say, or an account that
  * fails, is skipped without stopping the others, and no number is invented for it: a missing day is a gap on the chart.
  */
@@ -25,6 +26,7 @@ export class AccountStats {
       return rows.map((row) => ({ id: row.id, workspaceId: row.workspace_id }));
     });
     const day = this.now().toISOString().slice(0, 10);
+    const before = new Date(this.now().getTime() - 86_400_000).toISOString().slice(0, 10);
     const counts = { captured: 0, failed: 0, skipped: 0 };
     for (const { id, workspaceId } of accounts) {
       const account = await withTenant(this.db, { workspaceId, userId: null }, (m) =>
@@ -41,12 +43,24 @@ export class AccountStats {
           accessToken: secrets.accessToken,
           externalId: account.externalId,
         });
+        // Reach is a bonus: a network that refuses it (the app lacks the permission) still keeps its follower count.
+        const reach = await provider
+          .fetchReach?.({ accessToken: secrets.accessToken, externalId: account.externalId, day: before })
+          .catch(() => null);
         await withTenant(this.db, { workspaceId, userId: null }, (m) =>
           m.query(
-            `INSERT INTO account_stats (id, workspace_id, account_id, day, followers)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (account_id, day) DO UPDATE SET followers = EXCLUDED.followers, updated_at = now()`,
-            [uuidv7(), workspaceId, id, day, Math.max(0, Math.round(followers))],
+            `INSERT INTO account_stats (id, workspace_id, account_id, day, followers, reach)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (account_id, day) DO UPDATE
+               SET followers = EXCLUDED.followers, reach = EXCLUDED.reach, updated_at = now()`,
+            [
+              uuidv7(),
+              workspaceId,
+              id,
+              day,
+              Math.max(0, Math.round(followers)),
+              typeof reach === 'number' ? Math.max(0, Math.round(reach)) : null,
+            ],
           ),
         );
         counts.captured += 1;

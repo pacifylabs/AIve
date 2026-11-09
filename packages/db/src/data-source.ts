@@ -65,6 +65,7 @@ import { AccountStats1794700800000 } from './migrations/0017-account-stats.js';
 import { PostSchedules1794787200000 } from './migrations/0018-post-schedules.js';
 import { MediaAssets1794873600000 } from './migrations/0019-media-assets.js';
 import { PostAutomations1794960000000 } from './migrations/0020-post-automations.js';
+import { AccountReach1795046400000 } from './migrations/0021-account-reach.js';
 import { SnakeNamingStrategy } from './naming.js';
 
 export const entities = [
@@ -133,6 +134,7 @@ export const migrations = [
   PostSchedules1794787200000,
   MediaAssets1794873600000,
   PostAutomations1794960000000,
+  AccountReach1795046400000,
 ];
 
 export interface ConnectionOptions {

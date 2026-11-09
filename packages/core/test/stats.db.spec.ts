@@ -54,9 +54,9 @@ async function setup() {
       ws.workspaceId,
       (m) =>
         m.query(
-          `SELECT to_char(day, 'YYYY-MM-DD') AS day, followers FROM account_stats WHERE account_id = $1 ORDER BY day`,
+          `SELECT to_char(day, 'YYYY-MM-DD') AS day, followers, reach FROM account_stats WHERE account_id = $1 ORDER BY day`,
           [accountId],
-        ) as Promise<{ day: string; followers: number }[]>,
+        ) as Promise<{ day: string; followers: number; reach: number | null }[]>,
     );
   return { ...ws, time, network, stats, add, rows };
 }
@@ -69,13 +69,13 @@ describe('account follower capture', () => {
     await s.stats.capture();
     s.network.followers = 125;
     await s.stats.capture();
-    expect(await s.rows(id)).toEqual([{ day: '2026-11-09', followers: 125 }]);
+    expect(await s.rows(id)).toEqual([{ day: '2026-11-09', followers: 125, reach: 500 }]);
     s.time.advance(86_400_000);
     s.network.followers = 131;
     await s.stats.capture();
     expect(await s.rows(id)).toEqual([
-      { day: '2026-11-09', followers: 125 },
-      { day: '2026-11-10', followers: 131 },
+      { day: '2026-11-09', followers: 125, reach: 500 },
+      { day: '2026-11-10', followers: 131, reach: 500 },
     ]);
   });
 
@@ -88,8 +88,29 @@ describe('account follower capture', () => {
     s.network.fetchFollowers = (input) =>
       input?.externalId === failing ? Promise.reject(new Error('network down')) : Promise.resolve(50);
     await s.stats.capture();
-    expect(await s.rows(ok)).toEqual([{ day: '2026-11-09', followers: 50 }]);
+    expect(await s.rows(ok)).toEqual([{ day: '2026-11-09', followers: 50, reach: 500 }]);
     // Nothing is invented for the account that failed, the broken one, or the network with no count.
     for (const id of [failing, broken, noCount]) expect(await s.rows(id)).toEqual([]);
+  });
+
+  it('asks for the day before, keeps the follower count when reach is refused, and stores no reach rather than a zero', async () => {
+    const s = await setup();
+    const id = await s.add();
+    const days: string[] = [];
+    s.network.fetchReach = (input) => {
+      days.push(input.day);
+      return Promise.reject(new Error('the app has no insights permission'));
+    };
+    await s.stats.capture();
+    // The sweep covers every healthy account in the database, so check what it asked for, not how many times.
+    expect(days.length).toBeGreaterThan(0);
+    expect(new Set(days)).toEqual(new Set(['2026-11-08']));
+    expect(await s.rows(id)).toEqual([{ day: '2026-11-09', followers: 100, reach: null }]);
+
+    s.time.advance(86_400_000);
+    s.network.reach = null;
+    s.network.fetchReach = FixtureSocialProvider.prototype.fetchReach.bind(s.network);
+    await s.stats.capture();
+    expect((await s.rows(id))[1]).toEqual({ day: '2026-11-10', followers: 100, reach: null });
   });
 });

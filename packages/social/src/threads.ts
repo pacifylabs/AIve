@@ -237,6 +237,19 @@ export class ThreadsProvider implements SocialProvider {
     return value;
   }
 
+  /** Views of the account's posts on one day. Needs `threads_manage_insights`, which sign-in already asks for. */
+  async fetchReach({ accessToken, externalId, day }: { accessToken: string; externalId: string; day: string }) {
+    this.assertConfigured();
+    const since = Math.floor(Date.parse(`${day}T00:00:00Z`) / 1000);
+    const response = await this.call<{ data?: { total_value?: { value?: number } }[] }>(
+      this.url(
+        `${externalId}/threads_insights?${form({ metric: 'views', since: String(since), until: String(since + 86_400), access_token: accessToken })}`,
+      ),
+    );
+    const value = response.data?.[0]?.total_value?.value;
+    return typeof value === 'number' ? value : null;
+  }
+
   async findRecentPost(input: {
     accessToken: string;
     externalId: string;
