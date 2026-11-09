@@ -1,7 +1,13 @@
 import { DiscordProvider } from './discord.js';
-import { LinkedInProvider, type LinkedInConfig, type MediaFetcher } from './linkedin.js';
+import { LinkedInProvider, type LinkedInConfig } from './linkedin.js';
 import { MetaProvider, type MetaConfig } from './meta.js';
-import { ProviderError, SOCIAL_NETWORKS, type SocialNetwork, type SocialProvider } from './provider.js';
+import {
+  type MediaFetcher,
+  ProviderError,
+  SOCIAL_NETWORKS,
+  type SocialNetwork,
+  type SocialProvider,
+} from './provider.js';
 import { TelegramProvider } from './telegram.js';
 import { ThreadsProvider, type ThreadsConfig } from './threads.js';
 import { TikTokProvider, type TikTokConfig } from './tiktok.js';
@@ -41,7 +47,10 @@ export class SocialProviders {
     const meta = config.meta ?? { appId: '', appSecret: '', graphVersion: 'v21.0', messaging: false };
     this.providers.set('facebook', new MetaProvider('facebook', meta));
     this.providers.set('instagram', new MetaProvider('instagram', meta));
-    this.providers.set('x', new XProvider(config.x ?? { clientId: '', clientSecret: '' }));
+    this.providers.set(
+      'x',
+      new XProvider(config.x ?? { clientId: '', clientSecret: '' }, undefined, { fetchMedia: config.fetchMedia }),
+    );
     this.providers.set(
       'linkedin',
       new LinkedInProvider(config.linkedin ?? { clientId: '', clientSecret: '', pages: false, version: '202610' }, {

@@ -100,7 +100,7 @@ What to know:
 - Posts go to your **profile**, not a Company Page (section 8).
 - The login lasts about 60 days and LinkedIn does not let us renew it in the background. The Accounts page and the
   dashboard warn a week ahead; connect again then.
-- Words, one picture, or words with a link. Not yet: video, several pictures, comments and replies.
+- Words, up to twenty pictures, or one MP4 video, and a link. Not yet: comments and replies.
 - `LINKEDIN_VERSION` (default `202610`) is the month of LinkedIn's versioned API. LinkedIn retires old months, so move it
   forward on Render when LinkedIn warns about it.
 
@@ -200,7 +200,9 @@ Needs a Meta app with Facebook Login, and Meta's App Review before anyone but yo
 - [ ] https://developer.x.com, choose a plan that allows posting at our volume (this is a paid decision).
 - [ ] Create an app with OAuth 2.0, redirect `https://ai-staff-staging.onrender.com/v1/social/callback/x`.
 - [ ] On Render add `X_CLIENT_ID` and `X_CLIENT_SECRET`.
-- Pictures on X are not sent yet (known gap).
+- [ ] The app asks for the `media.write` permission as well as posting. Check the app's permissions allow it, and connect the
+      account again if it was connected before 2026-11-09.
+- Up to four pictures or one video per post (written from X's v2 media docs, not yet tried on a real account).
 
 ## 11. Email from its own domain
 

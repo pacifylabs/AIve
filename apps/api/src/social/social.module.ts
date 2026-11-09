@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { socialConfig } from '@ai-staff/config';
-import { AccountTokens, FeedPoller, Keyring, RecurringPosts, safeFetchImage } from '@ai-staff/core';
+import { AccountTokens, FeedPoller, Keyring, RecurringPosts, safeFetchMedia } from '@ai-staff/core';
 import { DataSource } from '@ai-staff/db';
 import { SocialProviders } from '@ai-staff/social';
 import { AuthModule } from '../auth/auth.module.js';
@@ -21,7 +21,7 @@ import { SocialCallbackController, SocialController } from './social.controller.
       provide: SocialProviders,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) =>
-        new SocialProviders({ ...socialConfig(config), fetchMedia: (url) => safeFetchImage(url) }),
+        new SocialProviders({ ...socialConfig(config), fetchMedia: (url) => safeFetchMedia(url) }),
     },
     { provide: FeedPoller, inject: [DataSource], useFactory: (db: DataSource) => new FeedPoller(db) },
     SocialAccountsService,

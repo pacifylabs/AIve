@@ -4,6 +4,7 @@ import {
   assertPublicUrl,
   isPrivateAddress,
   safeFetchImage,
+  safeFetchMedia,
   safeFetchText,
   summarisePage,
   UnsafeUrlError,
@@ -85,6 +86,25 @@ describe('reading public pages safely', () => {
     await expect(
       safeFetchImage('https://93.184.216.34/a.jpg', answer('image/jpeg', new Uint8Array(11 * 1024 * 1024))),
     ).rejects.toThrow(/larger than 10 MB/);
+  });
+
+  it('reads a picture or an MP4 or MOV video, and refuses other types and a file over 100 MB', async () => {
+    const answer = (type: string, size: number) =>
+      (async () =>
+        new Response(new Uint8Array(size) as BodyInit, {
+          status: 200,
+          headers: { 'content-type': type },
+        })) as typeof fetch;
+    expect((await safeFetchMedia('https://93.184.216.34/a.mp4', answer('video/mp4', 4))).contentType).toBe('video/mp4');
+    expect((await safeFetchMedia('https://93.184.216.34/a.mov', answer('video/quicktime', 4))).contentType).toBe(
+      'video/quicktime',
+    );
+    await expect(safeFetchMedia('https://93.184.216.34/a', answer('video/webm', 4))).rejects.toBeInstanceOf(
+      UnsafeUrlError,
+    );
+    await expect(safeFetchMedia('https://93.184.216.34/a.mp4', answer('video/mp4', 101 * 1024 * 1024))).rejects.toThrow(
+      /larger than 100 MB/,
+    );
   });
 
   it('checks the DNS answer used by the socket, preventing a public hostname from rebinding to a private address', async () => {

@@ -4,6 +4,7 @@ import {
   form,
   type FoundPost,
   mediaKindOf,
+  type MediaFetcher,
   type PostRef,
   type ProviderAccount,
   ProviderError,
@@ -22,9 +23,6 @@ export interface LinkedInConfig {
   /** The month of the versioned API, YYYYMM, sent as `Linkedin-Version`. */
   version: string;
 }
-
-/** Reads a public picture for us. The platform passes one that refuses private addresses; this package never fetches a stranger's address itself. */
-export type MediaFetcher = (url: string) => Promise<{ bytes: Uint8Array; contentType: string }>;
 
 const API = 'https://api.linkedin.com';
 // Member posting and sign-in are self-serve products. Page posting and the pages list need the Community Management product.
@@ -45,8 +43,8 @@ export const escapeCommentary = (text: string): string => text.replace(RESERVED,
  * - A login lasts about 60 days and cannot be renewed in the background (only a few partners get refresh tokens), so
  *   the person connects again, and account health warns ahead of the date.
  * - One login is one person's profile, plus every Company Page they administer when `pages` is on and approved.
- * - Words, words with one picture, and words with a link. The Posts API does not read a link's title for a card, so a
- *   link goes into the text as a plain, clickable address. Videos and several pictures are not sent yet.
+ * - Words, up to twenty pictures, or one MP4 video, and a link. The Posts API does not read a link's title for a card, so
+ *   a link goes into the text as a plain, clickable address.
  * - Numbers on a post need permissions LinkedIn restricts, so they are read when allowed and left out when not.
  */
 export class LinkedInProvider implements SocialProvider {
@@ -255,14 +253,22 @@ export class LinkedInProvider implements SocialProvider {
 
   async publishPost(input: PublishInput): Promise<PublishResult> {
     this.assertConfigured();
-    if (input.mediaUrls.length > 1) {
-      throw new ProviderError('LinkedIn posts here take one picture; pick one.', this.network);
+    const videos = input.mediaUrls.filter((url) => mediaKindOf(url) === 'video');
+    if (videos.length && input.mediaUrls.length > 1) {
+      throw new ProviderError('LinkedIn takes one video, or up to twenty pictures, in a post, not both.', this.network);
     }
-    const [media] = input.mediaUrls;
-    if (media && mediaKindOf(media) === 'video') {
-      throw new ProviderError('Videos are not sent to LinkedIn yet. Use a picture, or none.', this.network);
+    if (input.mediaUrls.length > 20)
+      throw new ProviderError('LinkedIn takes up to twenty pictures in a post.', this.network);
+    let content: Record<string, unknown> | null = null;
+    if (videos.length) {
+      content = { media: { id: await this.uploadVideo(input, videos[0]!) } };
+    } else if (input.mediaUrls.length === 1) {
+      content = { media: { id: await this.uploadImage(input, input.mediaUrls[0]!) } };
+    } else if (input.mediaUrls.length > 1) {
+      const images: { id: string }[] = [];
+      for (const url of input.mediaUrls) images.push({ id: await this.uploadImage(input, url) });
+      content = { multiImage: { images } };
     }
-    const image = media ? await this.uploadImage(input, media) : null;
 
     // The link goes in the text as a plain address: LinkedIn does not read a link's title for a card through the API.
     const text = input.linkUrl ? `${input.body}\n\n${input.linkUrl}` : input.body;
@@ -276,7 +282,7 @@ export class LinkedInProvider implements SocialProvider {
         commentary: escapeCommentary(text),
         visibility: 'PUBLIC',
         distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
-        ...(image ? { content: { media: { id: image } } } : {}),
+        ...(content ? { content } : {}),
         lifecycleState: 'PUBLISHED',
         isReshareDisabledByAuthor: false,
       }),
@@ -291,6 +297,70 @@ export class LinkedInProvider implements SocialProvider {
         true,
       );
     return { externalPostId: urn, permalink: `https://www.linkedin.com/feed/update/${urn}/` };
+  }
+
+  /**
+   * Registers a video with its size, sends each byte range LinkedIn asks for to its own address (keeping the ETag each part
+   * answers with), then finalizes with those tags in order. Returns the video's id for the post. MP4 only; LinkedIn takes
+   * 75 KB to 500 MB. Written from LinkedIn's Videos API documentation; not yet run against a real account.
+   */
+  private async uploadVideo(input: PublishInput, url: string): Promise<string> {
+    if (!this.fetchMedia) throw new ProviderError('Video is not available for LinkedIn on this server.', this.network);
+    let file: { bytes: Uint8Array; contentType: string };
+    try {
+      file = await this.fetchMedia(url);
+    } catch (error) {
+      throw new ProviderError(`LinkedIn could not be sent that video: ${(error as Error).message}`, this.network);
+    }
+    if (file.contentType !== 'video/mp4') throw new ProviderError('LinkedIn takes MP4 video only.', this.network);
+    const start = await this.send(`${API}/rest/videos?action=initializeUpload`, {
+      method: 'POST',
+      accessToken: input.accessToken,
+      versioned: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initializeUploadRequest: {
+          owner: input.externalId,
+          fileSizeBytes: file.bytes.length,
+          uploadCaptions: false,
+          uploadThumbnail: false,
+        },
+      }),
+    });
+    const { video, uploadToken, uploadInstructions } =
+      (
+        start.json as {
+          value?: {
+            video?: string;
+            uploadToken?: string;
+            uploadInstructions?: { uploadUrl: string; firstByte: number; lastByte: number }[];
+          };
+        }
+      ).value ?? {};
+    if (!video || !uploadInstructions?.length)
+      throw new ProviderError('LinkedIn did not accept the video.', this.network);
+    const partIds: string[] = [];
+    for (const part of uploadInstructions) {
+      const sent = await this.send(part.uploadUrl, {
+        method: 'PUT',
+        accessToken: input.accessToken,
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: file.bytes.slice(part.firstByte, part.lastByte + 1) as unknown as RequestInit['body'],
+      });
+      const etag = sent.headers.get('etag');
+      if (!etag) throw new ProviderError('LinkedIn did not confirm a part of the video.', this.network);
+      partIds.push(etag);
+    }
+    await this.send(`${API}/rest/videos?action=finalizeUpload`, {
+      method: 'POST',
+      accessToken: input.accessToken,
+      versioned: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        finalizeUploadRequest: { video, uploadToken: uploadToken ?? '', uploadedPartIds: partIds },
+      }),
+    });
+    return video;
   }
 
   /** Registers a picture, then sends its bytes to the address LinkedIn gives. Returns the picture's id for the post. */

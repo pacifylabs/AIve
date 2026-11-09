@@ -168,6 +168,30 @@ async function fetchPublicText(
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
+const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+
+/**
+ * Reads a public picture or video (MP4 or MOV) for a network that has to be sent the file itself. A file over 100 MB is
+ * refused, since it is held in memory while it is sent on.
+ */
+export async function safeFetchMedia(
+  raw: string,
+  fetcher: typeof fetch = publicFetch,
+): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const { bytes, contentType, truncated } = await fetchPublic(
+    raw,
+    {
+      accept: 'image/jpeg,image/png,image/gif,video/mp4,video/quicktime',
+      contentType: /^(image\/(jpeg|jpg|png|gif)|video\/(mp4|quicktime))\b/i,
+      maxBytes: MAX_MEDIA_BYTES,
+      notTextMessage: 'That address is not a JPEG, PNG or GIF picture, or an MP4 or MOV video.',
+    },
+    fetcher,
+  );
+  if (truncated) throw new UnsafeUrlError('That file is larger than 100 MB.');
+  return { bytes: new Uint8Array(bytes), contentType: contentType.split(';')[0]!.trim() };
+}
+
 /** Reads a public picture (JPEG, PNG or GIF) for a network that has to be sent the file itself. Refuses one over 10 MB. */
 export async function safeFetchImage(
   raw: string,

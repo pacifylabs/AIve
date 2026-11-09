@@ -333,3 +333,6 @@ const VIDEO_EXTENSIONS = /\.(mp4|mov|m4v|webm)(\?|#|$)/i;
 export const mediaKindOf = (url: string): 'image' | 'video' => (VIDEO_EXTENSIONS.test(url) ? 'video' : 'image');
 
 export const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Reads a public picture or video for a network that must be sent the file itself. The platform supplies one that refuses private addresses; this package never fetches a stranger's address on its own. */
+export type MediaFetcher = (url: string) => Promise<{ bytes: Uint8Array; contentType: string }>;

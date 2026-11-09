@@ -214,7 +214,7 @@ describe('MetaProvider', () => {
 describe('XProvider', () => {
   const x = (fetcher: typeof fetch) => new XProvider({ clientId: 'id', clientSecret: 'secret' }, fetcher);
 
-  it('posts text and a link, and refuses media rather than dropping it', async () => {
+  it('posts text and a link', async () => {
     const { fetcher, calls } = scripted({ data: { id: '42' } });
     const result = await x(fetcher).publishPost({
       accessToken: 't',
@@ -226,14 +226,106 @@ describe('XProvider', () => {
     });
     expect(result).toMatchObject({ externalPostId: '42', permalink: 'https://x.com/north/status/42' });
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ text: 'Hi\nhttps://n.test' });
-    await expect(
-      x(scripted().fetcher).publishPost({
-        accessToken: 't',
-        externalId: 'u',
-        body: 'Hi',
-        mediaUrls: ['https://c.test/a.jpg'],
-      }),
-    ).rejects.toThrow(/words and a link only/);
+  });
+
+  describe('pictures and video', () => {
+    const png = new Uint8Array(5 * 1024 * 1024 + 10); // three pieces of 2 MB
+    const fetchMedia = (url: string) =>
+      Promise.resolve(
+        url.endsWith('.mp4')
+          ? { bytes: png, contentType: 'video/mp4' }
+          : { bytes: new Uint8Array([1, 2, 3]), contentType: 'image/png' },
+      );
+    const withMedia = (fetcher: typeof fetch, waits: number[] = []) =>
+      new XProvider({ clientId: 'id', clientSecret: 'secret' }, fetcher, {
+        fetchMedia,
+        sleep: (ms) => {
+          waits.push(ms);
+          return Promise.resolve();
+        },
+      });
+    const login = { accessToken: 't', externalId: 'u', body: 'Look', metadata: { username: 'north' } };
+
+    it('uploads each picture in pieces, then attaches the ids to the post', async () => {
+      const { fetcher, calls } = scripted(
+        { data: { id: 'm1' } },
+        {},
+        {},
+        { data: { id: 'm2' } },
+        {},
+        {},
+        { data: { id: '77' } },
+      );
+      const result = await withMedia(fetcher).publishPost({
+        ...login,
+        mediaUrls: ['https://c.test/a.png', 'https://c.test/b.png'],
+      });
+      expect(result.externalPostId).toBe('77');
+      expect(calls[0]!.url).toBe('https://api.x.com/2/media/upload/initialize');
+      expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({
+        media_type: 'image/png',
+        total_bytes: 3,
+        media_category: 'tweet_image',
+      });
+      expect(calls[1]!.url).toBe('https://api.x.com/2/media/upload/m1/append');
+      expect(calls[2]!.url).toBe('https://api.x.com/2/media/upload/m1/finalize');
+      expect(JSON.parse(String(calls.at(-1)!.init?.body))).toEqual({
+        text: 'Look',
+        media: { media_ids: ['m1', 'm2'] },
+      });
+    });
+
+    it('sends a video in 2 MB pieces and waits until X has processed it', async () => {
+      const waits: number[] = [];
+      const { fetcher, calls } = scripted(
+        { data: { id: 'v1' } },
+        {},
+        {},
+        {},
+        { data: { processing_info: { state: 'pending', check_after_secs: 3 } } },
+        { data: { processing_info: { state: 'in_progress', check_after_secs: 2 } } },
+        { data: { processing_info: { state: 'succeeded' } } },
+        { data: { id: '88' } },
+      );
+      await withMedia(fetcher, waits).publishPost({ ...login, mediaUrls: ['https://c.test/a.mp4'] });
+      const appends = calls.filter((call) => call.url.endsWith('/append'));
+      expect(appends).toHaveLength(3);
+      expect(JSON.parse(String(calls[0]!.init?.body)).media_category).toBe('tweet_video');
+      expect(waits).toEqual([3000, 2000]);
+      expect(calls.some((call) => call.url.includes('media/upload?command=STATUS&media_id=v1'))).toBe(true);
+    });
+
+    it('stops with X’s reason when processing fails, and posts nothing', async () => {
+      const { fetcher, calls } = scripted(
+        { data: { id: 'v1' } },
+        {},
+        {},
+        {},
+        { data: { processing_info: { state: 'failed', error: { message: 'Unsupported codec' } } } },
+      );
+      await expect(withMedia(fetcher).publishPost({ ...login, mediaUrls: ['https://c.test/a.mp4'] })).rejects.toThrow(
+        /Unsupported codec/,
+      );
+      expect(calls.some((call) => call.url.endsWith('/tweets'))).toBe(false);
+    });
+
+    it('refuses what X cannot take, before uploading anything', async () => {
+      const { fetcher, calls } = scripted();
+      const provider = withMedia(fetcher);
+      await expect(
+        provider.publishPost({ ...login, mediaUrls: Array(5).fill('https://c.test/a.png') }),
+      ).rejects.toThrow(/up to four pictures/);
+      await expect(
+        provider.publishPost({ ...login, mediaUrls: ['https://c.test/a.mp4', 'https://c.test/a.png'] }),
+      ).rejects.toThrow(/not both/);
+      await expect(
+        new XProvider({ clientId: 'id', clientSecret: 'secret' }, fetcher).publishPost({
+          ...login,
+          mediaUrls: ['https://c.test/a.png'],
+        }),
+      ).rejects.toThrow(/not available for X on this server/);
+      expect(calls).toHaveLength(0);
+    });
   });
 
   it('needs a PKCE challenge, and keeps the old refresh token if X does not rotate it', async () => {

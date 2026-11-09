@@ -5,6 +5,8 @@ import {
   type ExchangeCodeInput,
   form,
   type FoundPost,
+  mediaKindOf,
+  type MediaFetcher,
   type PostRef,
   ProviderError,
   type ProviderAccount,
@@ -12,6 +14,7 @@ import {
   type ProviderTokens,
   type PublishInput,
   type PublishResult,
+  sleep,
   type SocialProvider,
 } from './provider.js';
 
@@ -25,12 +28,14 @@ const AUTHORIZE = 'https://x.com/i/oauth2/authorize';
 const TOKEN = 'https://api.x.com/2/oauth2/token';
 
 /** `offline.access` is what makes the refresh token appear; without it a connection dies in two hours. */
-const SCOPES = ['tweet.read', 'tweet.write', 'users.read', 'offline.access'];
+// `media.write` lets us upload pictures and video. An account connected before it was added must be connected again.
+const SCOPES = ['tweet.read', 'tweet.write', 'users.read', 'media.write', 'offline.access'];
+
+const CHUNK_BYTES = 2 * 1024 * 1024;
 
 /**
  * X, API v2. OAuth 2.0 with PKCE and rotating refresh tokens: every refresh returns a new refresh token and the old
- * one stops working, so the caller must always store what it gets back. Media upload is not implemented: a post that
- * carries a picture or video is refused for X rather than being sent without it. Ported from KudiBooks; the paid tier
+ * one stops working, so the caller must always store what it gets back. Up to four pictures, or one video, go with a post. Ported from KudiBooks; the paid tier
  * that allows posting at our volume is a Milestone 0 decision.
  */
 export class XProvider implements SocialProvider {
@@ -39,10 +44,17 @@ export class XProvider implements SocialProvider {
   readonly supportsNativeScheduling = false;
   readonly usesPkce = true;
 
+  private readonly fetchMedia: MediaFetcher | undefined;
+  private readonly wait: (ms: number) => Promise<void>;
+
   constructor(
     private readonly config: XConfig,
     private readonly fetcher: typeof fetch = fetch,
-  ) {}
+    options: { fetchMedia?: MediaFetcher | undefined; sleep?: (ms: number) => Promise<void> } = {},
+  ) {
+    this.fetchMedia = options.fetchMedia;
+    this.wait = options.sleep ?? sleep;
+  }
 
   isConfigured() {
     return Boolean(this.config.clientId && this.config.clientSecret);
@@ -148,20 +160,84 @@ export class XProvider implements SocialProvider {
 
   async publishPost(input: PublishInput): Promise<PublishResult> {
     this.assertConfigured();
-    if (input.mediaUrls.length) {
-      throw new ProviderError(
-        'Posts to X are words and a link only for now. Take the picture off, or leave X off this post.',
-        this.network,
-      );
+    const videos = input.mediaUrls.filter((url) => mediaKindOf(url) === 'video');
+    if (videos.length && input.mediaUrls.length > 1) {
+      throw new ProviderError('X takes up to four pictures, or one video, in a post, not both.', this.network);
     }
+    if (input.mediaUrls.length > 4) throw new ProviderError('X takes up to four pictures in a post.', this.network);
+    const mediaIds: string[] = [];
+    for (const url of input.mediaUrls) mediaIds.push(await this.uploadMedia(input.accessToken, url));
     const text = input.linkUrl ? `${input.body}\n${input.linkUrl}`.trim() : input.body;
     const posted = await this.call<{ data: { id: string } }>(`${API}/tweets`, {
       method: 'POST',
       headers: this.bearer(input.accessToken, true),
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, ...(mediaIds.length ? { media: { media_ids: mediaIds } } : {}) }),
     });
     const username = (input.metadata?.username as string | undefined) ?? 'i';
     return { externalPostId: posted.data.id, permalink: `https://x.com/${username}/status/${posted.data.id}` };
+  }
+
+  /**
+   * Sends one picture or video to X in pieces (initialize, append each 2 MB, finalize), and for video waits for X to finish
+   * processing it. Returns the media id for the post. Written from X's current v2 media documentation; not yet run against a
+   * real account.
+   */
+  private async uploadMedia(accessToken: string, url: string): Promise<string> {
+    if (!this.fetchMedia)
+      throw new ProviderError('Pictures and video are not available for X on this server.', this.network);
+    let file: { bytes: Uint8Array; contentType: string };
+    try {
+      file = await this.fetchMedia(url);
+    } catch (error) {
+      throw new ProviderError(`X could not be sent that file: ${(error as Error).message}`, this.network);
+    }
+    const category = file.contentType.startsWith('video/')
+      ? 'tweet_video'
+      : file.contentType === 'image/gif'
+        ? 'tweet_gif'
+        : 'tweet_image';
+    const started = await this.call<{ data: { id: string } }>(`${API}/media/upload/initialize`, {
+      method: 'POST',
+      headers: this.bearer(accessToken, true),
+      body: JSON.stringify({ media_type: file.contentType, total_bytes: file.bytes.length, media_category: category }),
+    });
+    const id = started.data.id;
+    for (let offset = 0, segment = 0; offset < file.bytes.length; offset += CHUNK_BYTES, segment += 1) {
+      const part = new FormData();
+      part.append('segment_index', String(segment));
+      part.append('media', new Blob([file.bytes.slice(offset, offset + CHUNK_BYTES)]));
+      await this.call(`${API}/media/upload/${id}/append`, {
+        method: 'POST',
+        headers: this.bearer(accessToken),
+        body: part,
+      });
+    }
+    type Processing = {
+      data?: { processing_info?: { state: string; check_after_secs?: number; error?: { message?: string } } };
+    };
+    let info = (
+      await this.call<Processing>(`${API}/media/upload/${id}/finalize`, {
+        method: 'POST',
+        headers: this.bearer(accessToken),
+      })
+    ).data?.processing_info;
+    for (let looks = 0; info && (info.state === 'pending' || info.state === 'in_progress'); looks += 1) {
+      if (looks >= 12)
+        throw new ProviderError('X is still processing the video. Try the post again in a few minutes.', this.network);
+      await this.wait((info.check_after_secs ?? 5) * 1000);
+      info = (
+        await this.call<Processing>(`${API}/media/upload?command=STATUS&media_id=${id}`, {
+          headers: this.bearer(accessToken),
+        })
+      ).data?.processing_info;
+    }
+    if (info?.state === 'failed') {
+      throw new ProviderError(
+        `X could not process the file: ${info.error?.message ?? 'no reason given'}`,
+        this.network,
+      );
+    }
+    return id;
   }
 
   schedulePost(): Promise<PublishResult> {

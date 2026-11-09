@@ -173,19 +173,84 @@ describe('LinkedIn', () => {
     expect(bodyOf(calls[2]!).content).toEqual({ media: { id: 'urn:li:image:C49' } });
   });
 
-  it('refuses what it cannot send yet, with a plain reason, before calling LinkedIn', async () => {
+  it('uploads several pictures and posts them as one multi-picture post', async () => {
+    const { fetcher, calls } = scripted(
+      { body: { value: { uploadUrl: 'https://www.linkedin.com/dms-uploads/1', image: 'urn:li:image:A' } } },
+      { status: 201 },
+      { body: { value: { uploadUrl: 'https://www.linkedin.com/dms-uploads/2', image: 'urn:li:image:B' } } },
+      { status: 201 },
+      { status: 201, headers: { 'x-restli-id': 'urn:li:share:3' } },
+    );
+    const provider = new LinkedInProvider(config, {
+      fetcher,
+      fetchMedia: () => Promise.resolve({ bytes: new Uint8Array([1]), contentType: 'image/jpeg' }),
+    });
+    await provider.publishPost({
+      ...login,
+      body: 'Two screens',
+      mediaUrls: ['https://c.test/1.jpg', 'https://c.test/2.jpg'],
+    });
+    expect(bodyOf(calls[4]!).content).toEqual({
+      multiImage: { images: [{ id: 'urn:li:image:A' }, { id: 'urn:li:image:B' }] },
+    });
+  });
+
+  it('uploads a video in the parts LinkedIn asks for, finalizes with their tags, then posts it', async () => {
+    const bytes = new Uint8Array(10);
+    const { fetcher, calls } = scripted(
+      {
+        body: {
+          value: {
+            video: 'urn:li:video:V1',
+            uploadToken: 'tok',
+            uploadInstructions: [
+              { uploadUrl: 'https://www.linkedin.com/dms-uploads/p1', firstByte: 0, lastByte: 5 },
+              { uploadUrl: 'https://www.linkedin.com/dms-uploads/p2', firstByte: 6, lastByte: 9 },
+            ],
+          },
+        },
+      },
+      { status: 200, headers: { etag: 'etag-1' } },
+      { status: 200, headers: { etag: 'etag-2' } },
+      { status: 200 },
+      { status: 201, headers: { 'x-restli-id': 'urn:li:share:4' } },
+    );
+    const provider = new LinkedInProvider(config, {
+      fetcher,
+      fetchMedia: () => Promise.resolve({ bytes, contentType: 'video/mp4' }),
+    });
+    await provider.publishPost({ ...login, body: 'Demo', mediaUrls: ['https://c.test/demo.mp4'] });
+    expect(bodyOf(calls[0]!).initializeUploadRequest).toMatchObject({ owner: 'urn:li:person:abc', fileSizeBytes: 10 });
+    expect((calls[1]!.init!.body as Uint8Array).length).toBe(6);
+    expect((calls[2]!.init!.body as Uint8Array).length).toBe(4);
+    expect(bodyOf(calls[3]!).finalizeUploadRequest).toEqual({
+      video: 'urn:li:video:V1',
+      uploadToken: 'tok',
+      uploadedPartIds: ['etag-1', 'etag-2'],
+    });
+    expect(bodyOf(calls[4]!).content).toEqual({ media: { id: 'urn:li:video:V1' } });
+  });
+
+  it('refuses what it cannot send, with a plain reason, before calling LinkedIn', async () => {
     const { fetcher, calls } = scripted();
     const provider = new LinkedInProvider(config, { fetcher });
-    await expect(provider.publishPost({ ...login, body: 'x', mediaUrls: ['https://c.test/a.mp4'] })).rejects.toThrow(
-      /Videos are not sent/,
-    );
     await expect(
-      provider.publishPost({ ...login, body: 'x', mediaUrls: ['https://c.test/1.png', 'https://c.test/2.png'] }),
-    ).rejects.toThrow(/one picture/);
+      provider.publishPost({ ...login, body: 'x', mediaUrls: ['https://c.test/a.mp4', 'https://c.test/1.png'] }),
+    ).rejects.toThrow(/not both/);
+    await expect(
+      provider.publishPost({ ...login, body: 'x', mediaUrls: Array(21).fill('https://c.test/1.png') }),
+    ).rejects.toThrow(/twenty pictures/);
     await expect(provider.publishPost({ ...login, body: 'x', mediaUrls: ['https://c.test/1.png'] })).rejects.toThrow(
       /Pictures are not available/,
     );
     expect(calls).toHaveLength(0);
+    const mov = new LinkedInProvider(config, {
+      fetcher,
+      fetchMedia: () => Promise.resolve({ bytes: new Uint8Array(4), contentType: 'video/quicktime' }),
+    });
+    await expect(mov.publishPost({ ...login, body: 'x', mediaUrls: ['https://c.test/a.mov'] })).rejects.toThrow(
+      /MP4 video only/,
+    );
   });
 
   it('treats an expired login as a login problem, a limit as a wait, and a post never answered as unknown', async () => {
