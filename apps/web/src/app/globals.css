@@ -198,6 +198,11 @@ body {
     opacity: 0.9;
   }
 
+  .btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
   .btn-quiet {
     border-color: transparent;
     background: transparent;

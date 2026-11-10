@@ -49,31 +49,13 @@ export default async function HirePage({ searchParams }: { searchParams: Promise
         ))}
       </ul>
       {role.key === 'social_media' ? (
-        <>
-          {accounts.ok && accounts.data.length === 0 ? (
-            <p className="card-flat px-3 py-2 text-sm">
-              Connect an account first, on the{' '}
-              <Link href="/app/accounts" className="font-medium text-accent hover:underline">
-                Accounts
-              </Link>{' '}
-              page.
-            </p>
-          ) : null}
-          <div className="card p-6">
-            <SocialHireForm accounts={accounts.ok ? accounts.data : []} questions={questions} />
-          </div>
-        </>
+        <div className="card p-6">
+          <SocialHireForm accounts={accounts.ok ? accounts.data : []} questions={questions} />
+        </div>
       ) : (
-        <>
-          {mailboxes.ok && mailboxes.data.length === 0 ? (
-            <p className="card-flat px-3 py-2 text-sm">
-              Connect a mailbox first, on the Mailboxes page, so there is somewhere to send from.
-            </p>
-          ) : null}
-          <div className="card p-6">
-            <HireForm mailboxes={mailboxes.ok ? mailboxes.data : []} questions={questions} />
-          </div>
-        </>
+        <div className="card p-6">
+          <HireForm mailboxes={mailboxes.ok ? mailboxes.data : []} questions={questions} />
+        </div>
       )}
     </section>
   );

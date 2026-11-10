@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start --port 3101",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-staff/contracts": "workspace:*",
@@ -24,6 +25,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "tailwindcss": "^4.1.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.12"
   }
 }

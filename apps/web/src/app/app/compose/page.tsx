@@ -123,6 +123,7 @@ export default async function ComposePage({
               tags={tags.ok ? tags.data : []}
               library={library.ok ? library.data.items : []}
               start={start}
+              draftName={`compose:${chosen?.id ?? unfinished?.id ?? 'blank'}`}
             />
           </div>
         </>

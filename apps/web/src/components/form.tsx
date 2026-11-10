@@ -1,6 +1,13 @@
 'use client';
 
-import { type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, useId, useState } from 'react';
+import {
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+  useId,
+  useState,
+} from 'react';
 import { useFormStatus } from 'react-dom';
 import type { FormState } from '@/lib/form-state';
 
@@ -42,7 +49,47 @@ export function TextField({ label, error, hint, ...input }: FieldProps) {
   );
 }
 
-/** The one password field used everywhere, with a show/hide toggle. */
+/** A drop-down with the same label, hint and error wiring as TextField. */
+export function SelectField({
+  label,
+  error,
+  hint,
+  children,
+  ...select
+}: { label: string; name: string; error?: string; hint?: string; children: ReactNode } & Omit<
+  SelectHTMLAttributes<HTMLSelectElement>,
+  'id'
+>) {
+  const id = useId();
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-sm font-medium">
+        {label}
+      </label>
+      <select
+        id={id}
+        className={inputClass}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        {...select}
+      >
+        {children}
+      </select>
+      {hint && !error ? (
+        <p id={`${id}-hint`} className="text-xs text-muted">
+          {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** Multi-line text, for drafts and longer answers. Same label, hint and error wiring as TextField. */
 export function TextAreaField({
   label,
@@ -79,6 +126,7 @@ export function TextAreaField({
   );
 }
 
+/** The one password field used everywhere, with a show/hide toggle. */
 export function PasswordField({ label, error, hint, ...input }: FieldProps) {
   const id = useId();
   const [visible, setVisible] = useState(false);

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { logoutAction } from '@/app/actions/auth';
+import { clearAllDrafts, sessionStore } from '@/lib/form-draft';
 import { Icon, type IconName } from './icons';
 import { ALL_ITEMS } from './nav';
 
@@ -51,7 +52,15 @@ export function CommandPalette() {
       { label: 'Hire a staff member', hint: 'Do', icon: 'hire' as const, run: go('/app/hire') },
       { label: 'Connect a social account', hint: 'Do', icon: 'accounts' as const, run: go('/app/accounts') },
       { label: 'Import leads', hint: 'Do', icon: 'leads' as const, run: go('/app/leads') },
-      { label: 'Sign out', hint: 'Do', icon: 'logout' as const, run: () => void logoutAction() },
+      {
+        label: 'Sign out',
+        hint: 'Do',
+        icon: 'logout' as const,
+        run: () => {
+          clearAllDrafts(sessionStore());
+          void logoutAction();
+        },
+      },
     ];
   }, [router]);
 

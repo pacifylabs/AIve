@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRef } from 'react';
 import { logoutAction } from '@/app/actions/auth';
+import { clearAllDrafts, sessionStore } from '@/lib/form-draft';
 import { openPalette } from './command-palette';
 import { Icon } from './icons';
 import { DRAWER_ID } from './mobile-drawer';
@@ -93,7 +94,7 @@ export function Topbar({ email, inboxCount }: { email: string; inboxCount: numbe
           <Link href="/app/settings" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-subtle">
             <Icon name="settings" size={16} /> Settings
           </Link>
-          <form action={logoutAction}>
+          <form action={logoutAction} onSubmit={() => clearAllDrafts(sessionStore())}>
             <button
               type="submit"
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-subtle"
