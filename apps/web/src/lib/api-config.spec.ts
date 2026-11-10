@@ -17,7 +17,7 @@ describe('apiBaseUrl', () => {
 });
 
 describe('API_TIMEOUT_MS', () => {
-  it('outlasts a sleeping API waking up (about 60 seconds at worst)', () => {
-    expect(API_TIMEOUT_MS).toBeGreaterThan(60_000);
+  it('outlasts the slowest wake measured on the hosted API (83 seconds)', () => {
+    expect(API_TIMEOUT_MS).toBeGreaterThan(83_000);
   });
 });

@@ -13,6 +13,9 @@ const geistMono = Geist_Mono({
   display: 'swap',
 });
 
+/** Lets a page or form wait out the API waking from sleep (see API_TIMEOUT_MS in lib/api-config.ts). */
+export const maxDuration = 120;
+
 export const metadata: Metadata = {
   metadataBase: SITE_URL,
   title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },

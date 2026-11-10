@@ -189,7 +189,7 @@ export function SubmitButton({
       </button>
       {slow ? (
         <p role="status" className="mt-2 text-center text-xs text-muted">
-          Still working. The server wakes up after a quiet spell, which can take up to a minute.
+          Still working. The server wakes up after a quiet spell, which can take a minute or two.
         </p>
       ) : null}
     </>

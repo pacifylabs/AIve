@@ -1,10 +1,10 @@
 /**
  * Where the web app finds the API, and how long it waits for it.
  *
- * The hosted API runs on a plan that sleeps when idle, and waking it takes 30 to 60 seconds. A shorter wait turned
- * every first visit after a quiet spell into "We could not reach the server", so calls wait long enough for a wake.
+ * The hosted API runs on a plan that sleeps when idle, and waking it took 35 to 85 seconds when measured. A shorter
+ * wait turned every first visit after a quiet spell into "We could not reach the server", so calls outlast a wake.
  */
-export const API_TIMEOUT_MS = 75_000;
+export const API_TIMEOUT_MS = 110_000;
 
 const LOCAL_API = 'http://localhost:3100';
 
