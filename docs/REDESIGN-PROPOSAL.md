@@ -1,6 +1,6 @@
 # Layout, footer and dashboard proposal (2026-11-10)
 
-Status: **waiting for owner approval. No app code has changed.** The visual proposal is the canvas "AI as a Staff — layout
+Status: **approved and built 2026-11-10** (commits d0906f6 to 6b03fe3). The "Built" section at the end records what changed from the plan. The visual proposal is the canvas "AI as a Staff — layout
 and dashboard proposal" (claude.ai/artifact/Te9h7jdBHXtyw573g5WcU2). It follows `DESIGN-CRITIQUE.md`, whose stepped
 forms, saved drafts and dashboard order shipped earlier the same day.
 
@@ -99,3 +99,20 @@ sidebar, and light and dark modes. New: the two layout tokens, the two page wrap
 - No new pages, features or endpoints.
 - A dashboard summary endpoint to cut the 12 calls stays a separate follow-up.
 - Calendar times in UTC stay a separate follow-up, as in `DESIGN-CRITIQUE.md`.
+
+## Built (2026-11-10)
+
+| Step | Commit | Notes |
+|---|---|---|
+| Shared page edge | d0906f6 | `--page-max` and `--gutter` on `.page`. Checked at 375, 1,280, 1,440 and 1,776px on every public page: the nav border and the text share one line, with no sideways scroll |
+| Email-only sign-up stays safe | 204c985 | Found while building: a footer sign-up with only an email would have reset `role`, `website` and `first_task` for an address already on the list. `role` is now optional in the contract. With no role, the insert does nothing on conflict. New e2e test |
+| Footer | ee0b5f6 | Brand and sign-up on top, five columns (Data deletion and Contact added), back to top. `SOCIAL_PROFILES` in `lib/site.ts` holds empty addresses, so no social link shows yet. Checked: bad email error, success, light and dark, phone |
+| App width | a20d6e6 | Shell and top bar uncapped. Calendar, results, media, audit and inbox use grids on wide screens. Every form page uses `max-w-3xl`. Utility classes were used instead of `PageWide` and `PageForm` components: less code, same rule |
+| Sidebar | 23dfa53 | Grouped by job. New post is a button. Distinct icons for the media library and the audit log. Collapse state lives in a `sidebar` cookie read by the layout (not `localStorage`), so the first paint is right. The phone drawer never collapses |
+| Dashboard | c58a6ec | Last 7 days spans the full width, then a 2:1 split. Setup steps sit two to a row at `xl` |
+| New post preview | 6b03fe3 | Panel at `xl` and up: the text as typed, and the grapheme count against X's 280. **Not checked in a browser**: the local test workspace has no connected social account |
+
+Still open:
+
+- The footer social links need real addresses from the owner. Fill `SOCIAL_PROFILES`.
+- In development, the Next.js dev badge covers the collapsed sidebar's collapse button. Production has no badge.
