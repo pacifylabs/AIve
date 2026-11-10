@@ -45,7 +45,7 @@ export function PendingItem({ item }: { item: InboxItem }) {
   const escalation = item.kind === 'escalation';
 
   return (
-    <article className="space-y-4 card p-5">
+    <article id={`item-${item.id}`} className="card scroll-mt-24 space-y-4 p-5">
       <header className="space-y-1">
         <p className="text-xs text-muted">
           {item.staffName} ·{' '}

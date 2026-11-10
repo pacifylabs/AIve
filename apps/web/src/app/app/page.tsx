@@ -5,16 +5,20 @@ import {
   AccountsCard,
   type Activity,
   ActivityCard,
+  AlertsStrip,
   type AutopilotTask,
   type InboxItem,
   monthBounds,
   MonthCalendar,
   NeedsYouCard,
   type Post,
+  SetupChecklist,
   type StaffMember,
   StaffCards,
   UpcomingPosts,
+  WeekNumbers,
 } from '@/components/app/dashboard';
+import { alertsFor, primaryAction, setupSteps, weekFigures } from '@/lib/dashboard';
 import { apiOrRedirect } from '@/lib/api';
 import { readSession } from '@/lib/session';
 import { CreateWorkspaceForm } from './workspace-forms';
@@ -46,23 +50,45 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const selected = me.data.workspaces.find((workspace) => workspace.id === workspaceId) ?? me.data.workspaces[0]!;
   const month = monthBounds(monthParam);
   const opts = { workspace: true } as const;
-  const [workspace, inbox, staff, autopilot, accounts, posts, activity] = await Promise.all([
-    apiOrRedirect<WorkspaceResponse>('/workspace', '/app', opts),
-    apiOrRedirect<InboxItem[]>('/inbox', '/app', opts),
-    apiOrRedirect<StaffMember[]>('/staff', '/app', opts),
-    apiOrRedirect<AutopilotTask[]>('/autopilot', '/app', opts),
-    apiOrRedirect<Account[]>('/social/accounts', '/app', opts),
-    apiOrRedirect<Post[]>(`/social/posts?from=${month.from.toISOString()}&to=${month.to.toISOString()}`, '/app', opts),
-    apiOrRedirect<Activity[]>('/activity', '/app', opts),
-  ]);
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
+  const [workspace, inbox, staff, autopilot, accounts, posts, activity, company, mailboxes, week, top, stats] =
+    await Promise.all([
+      apiOrRedirect<WorkspaceResponse>('/workspace', '/app', opts),
+      apiOrRedirect<InboxItem[]>('/inbox', '/app', opts),
+      apiOrRedirect<StaffMember[]>('/staff', '/app', opts),
+      apiOrRedirect<AutopilotTask[]>('/autopilot', '/app', opts),
+      apiOrRedirect<Account[]>('/social/accounts', '/app', opts),
+      apiOrRedirect<Post[]>(
+        `/social/posts?from=${month.from.toISOString()}&to=${month.to.toISOString()}`,
+        '/app',
+        opts,
+      ),
+      apiOrRedirect<Activity[]>('/activity', '/app', opts),
+      apiOrRedirect<{ profile: { summary: string | null } }>('/company', '/app', opts),
+      apiOrRedirect<{ id: string }[]>('/mailboxes', '/app', opts),
+      apiOrRedirect<Post[]>(`/social/posts?from=${weekAgo.toISOString()}&to=${now.toISOString()}`, '/app', opts),
+      apiOrRedirect<{ engagement: number }[]>('/social/top-posts?days=7&limit=50', '/app', opts),
+      apiOrRedirect<{ reach: number | null; change: number }[]>('/social/stats?days=7', '/app', opts),
+    ]);
+  const list = <T,>(result: { ok: true; data: T[] } | { ok: false }) => (result.ok ? result.data : []);
+  const waiting = list(inbox);
+  const tasks = list(autopilot);
+  const steps = setupSteps({
+    hasCompany: company.ok && !!company.data.profile.summary?.trim(),
+    hasChannel: list(accounts).length > 0 || list(mailboxes).length > 0,
+    hasStaff: list(staff).some((member) => member.state !== 'archived'),
+    hasApproved: tasks.some((task) => task.progress.approvals > 0),
+  });
+  const primary = primaryAction(waiting.length, steps);
+  const shortcuts = [
+    { label: 'New post', href: '/app/compose' },
+    { label: 'Hire staff', href: '/app/hire' },
+  ].filter((shortcut) => shortcut.href !== primary.href);
+  const timeZone = workspace.ok ? workspace.data.timezone : 'UTC';
   const name = workspace.ok ? workspace.data.name : selected.name;
   const role = selected.role === 'owner' ? 'Owner' : selected.role === 'admin' ? 'Admin' : 'Member';
-  const today = new Date().toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  });
+  const today = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone });
 
   return (
     <div className="space-y-6">
@@ -72,31 +98,37 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <h1 className="page-title">{name}</h1>
           <p className="text-sm text-muted">
             <span className="pill pill-accent mr-2">{role}</span>
-            {inbox.ok && inbox.data.length > 0
-              ? `${inbox.data.length} ${inbox.data.length === 1 ? 'draft is' : 'drafts are'} waiting for you.`
+            {waiting.length > 0
+              ? `${waiting.length} ${waiting.length === 1 ? 'draft is' : 'drafts are'} waiting for you.`
               : 'Nothing is waiting for you right now.'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/app/inbox" className="btn btn-primary">
-            Open inbox
+        <div className="flex flex-wrap gap-2">
+          <Link href={primary.href} className="btn btn-primary">
+            {primary.label}
           </Link>
-          <Link href="/app/hire" className="btn">
-            Hire staff
-          </Link>
+          {shortcuts.map((shortcut) => (
+            <Link key={shortcut.href} href={shortcut.href} className="btn">
+              {shortcut.label}
+            </Link>
+          ))}
         </div>
       </header>
 
+      <AlertsStrip alerts={alertsFor(list(accounts), list(posts))} />
+      <SetupChecklist steps={steps} />
+
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="min-w-0 space-y-6">
-          <NeedsYouCard items={inbox.ok ? inbox.data : []} />
-          <StaffCards staff={staff.ok ? staff.data : []} tasks={autopilot.ok ? autopilot.data : []} />
-          <ActivityCard events={activity.ok ? activity.data : []} />
+          <NeedsYouCard items={waiting} />
+          <WeekNumbers figures={weekFigures(list(week), list(top), list(stats), now)} />
+          <StaffCards staff={list(staff)} tasks={tasks} />
+          <ActivityCard events={list(activity)} />
         </div>
         <div className="min-w-0 space-y-6">
-          <MonthCalendar posts={posts.ok ? posts.data : []} month={month} />
-          <UpcomingPosts posts={posts.ok ? posts.data : []} />
-          <AccountsCard accounts={accounts.ok ? accounts.data : []} />
+          <UpcomingPosts posts={list(posts)} timeZone={timeZone} now={now} />
+          <MonthCalendar posts={list(posts)} month={month} now={now} />
+          <AccountsCard accounts={list(accounts)} />
         </div>
       </div>
     </div>

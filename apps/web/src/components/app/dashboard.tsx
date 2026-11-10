@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Alert, SetupStep, WeekFigures } from '@/lib/dashboard';
 import { Icon } from './icons';
 
 /** The pieces of the Dashboard home. Plain server components: they show what the page fetched and fetch nothing. */
@@ -80,11 +81,13 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 function CardHeader({
+  id,
   title,
   aside,
   href,
   cta,
 }: {
+  id: string;
   title: string;
   aside?: React.ReactNode;
   href?: string;
@@ -93,7 +96,9 @@ function CardHeader({
   return (
     <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
       <div className="flex items-center gap-2.5">
-        <h2 className="text-[0.95rem] font-semibold">{title}</h2>
+        <h2 id={id} className="text-[0.95rem] font-semibold">
+          {title}
+        </h2>
         {aside}
       </div>
       {href ? (
@@ -112,10 +117,8 @@ export function NeedsYouCard({ items }: { items: InboxItem[] }) {
   const shown = items.slice(0, 5);
   return (
     <section className="card" aria-labelledby="needs-you">
-      <div id="needs-you" className="sr-only">
-        Needs you
-      </div>
       <CardHeader
+        id="needs-you"
         title="Needs you"
         aside={items.length ? <span className="pill pill-accent">{items.length} waiting</span> : null}
         href="/app/inbox"
@@ -132,7 +135,10 @@ export function NeedsYouCard({ items }: { items: InboxItem[] }) {
         <ul className="divide-y divide-line-soft">
           {shown.map((item) => (
             <li key={item.id}>
-              <Link href="/app/inbox" className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-subtle">
+              <Link
+                href={`/app/inbox#item-${item.id}`}
+                className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-subtle"
+              >
                 <span
                   className={`grid size-9 flex-none place-items-center rounded-xl ${item.flaggedReason ? 'bg-amber-soft text-amber' : 'bg-accent-soft text-accent'}`}
                 >
@@ -146,7 +152,9 @@ export function NeedsYouCard({ items }: { items: InboxItem[] }) {
                   </span>
                 </span>
                 <span className="hidden flex-none text-xs text-muted sm:block">{timeAgo(item.createdAt)}</span>
-                <span className="btn btn-primary flex-none !px-3 !py-1">Review</span>
+                <span aria-hidden="true" className="flex-none text-sm font-medium text-accent">
+                  Review
+                </span>
               </Link>
             </li>
           ))}
@@ -243,10 +251,10 @@ export function StaffCards({ staff, tasks }: { staff: StaffMember[]; tasks: Auto
               )}
 
               <div className="flex gap-2">
-                <Link href="/app/autopilot" className="btn !px-3 !py-1.5">
+                <Link href="/app/autopilot" className="btn btn-sm">
                   Autopilot
                 </Link>
-                <Link href="/app/inbox" className="btn btn-quiet !px-3 !py-1.5">
+                <Link href="/app/inbox" className="btn btn-quiet btn-sm">
                   Inbox
                 </Link>
               </div>
@@ -277,10 +285,7 @@ export function ActivityCard({ events }: { events: Activity[] }) {
   const shown = events.slice(0, 8);
   return (
     <section className="card" aria-labelledby="activity-heading">
-      <div id="activity-heading" className="sr-only">
-        Recent activity
-      </div>
-      <CardHeader title="Recent activity" />
+      <CardHeader id="activity-heading" title="Recent activity" />
       {shown.length === 0 ? (
         <p className="px-5 pb-6 text-sm text-muted">Nothing yet. What your staff do shows up here.</p>
       ) : (
@@ -295,7 +300,10 @@ export function ActivityCard({ events }: { events: Activity[] }) {
                 className={`relative mt-1.5 size-[0.6875rem] flex-none rounded-full ring-4 ring-surface ${BAD.has(event.type) ? 'bg-danger' : WARN.has(event.type) ? 'bg-amber' : GOOD.has(event.type) ? 'bg-ok' : 'bg-line-strong'}`}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm">{event.summary}</p>
+                <p className="text-sm">
+                  {BAD.has(event.type) ? <span className="sr-only">Problem: </span> : null}
+                  {event.summary}
+                </p>
                 <p className="text-xs text-muted">{timeAgo(event.createdAt)}</p>
               </div>
             </li>
@@ -326,6 +334,9 @@ export function monthBounds(param: string | undefined, now = new Date()) {
     isCurrent: year === now.getUTCFullYear() && month === now.getUTCMonth(),
   };
 }
+
+const dayKey = (first: Date, day: number) =>
+  `${first.getUTCFullYear()}-${String(first.getUTCMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
 export function MonthCalendar({
   posts,
@@ -384,10 +395,10 @@ export function MonthCalendar({
           return (
             <Link
               key={day}
-              href="/app/calendar"
+              href={list.length ? `/app/calendar#day-${dayKey(month.from, day)}` : '/app/calendar'}
               title={list.length ? `${list.length} post${list.length === 1 ? '' : 's'}` : undefined}
               aria-label={`${day} ${month.label}${list.length ? `, ${list.length} post${list.length === 1 ? '' : 's'}` : ''}`}
-              className={`relative mx-auto grid size-9 place-items-center rounded-full tabular-nums transition-colors ${
+              className={`relative mx-auto grid size-10 place-items-center rounded-full tabular-nums transition-colors ${
                 day === today
                   ? 'bg-accent font-semibold text-accent-foreground'
                   : list.length
@@ -416,7 +427,7 @@ export function MonthCalendar({
   );
 }
 
-export function UpcomingPosts({ posts, now = new Date() }: { posts: Post[]; now?: Date }) {
+export function UpcomingPosts({ posts, timeZone, now = new Date() }: { posts: Post[]; timeZone: string; now?: Date }) {
   const next = posts
     .filter((post) => post.state === 'scheduled' && new Date(post.scheduledFor) >= now)
     .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor))
@@ -424,10 +435,7 @@ export function UpcomingPosts({ posts, now = new Date() }: { posts: Post[]; now?
   if (next.length === 0) return null;
   return (
     <section className="card" aria-labelledby="upcoming-heading">
-      <div id="upcoming-heading" className="sr-only">
-        Up next
-      </div>
-      <CardHeader title="Up next" />
+      <CardHeader id="upcoming-heading" title="Up next" />
       <ul className="divide-y divide-line-soft pb-1">
         {next.map((post) => (
           <li key={post.id} className="flex items-start gap-3 px-5 py-3">
@@ -443,9 +451,8 @@ export function UpcomingPosts({ posts, now = new Date() }: { posts: Post[]; now?
                   month: 'short',
                   hour: '2-digit',
                   minute: '2-digit',
-                  timeZone: 'UTC',
-                })}{' '}
-                UTC
+                  timeZone,
+                })}
               </span>
             </span>
           </li>
@@ -460,10 +467,12 @@ export function UpcomingPosts({ posts, now = new Date() }: { posts: Post[]; now?
 export function AccountsCard({ accounts }: { accounts: Account[] }) {
   return (
     <section className="card" aria-labelledby="accounts-heading">
-      <div id="accounts-heading" className="sr-only">
-        Connected accounts
-      </div>
-      <CardHeader title="Accounts" href="/app/accounts" cta={accounts.length ? 'Manage' : 'Connect'} />
+      <CardHeader
+        id="accounts-heading"
+        title="Accounts"
+        href="/app/accounts"
+        cta={accounts.length ? 'Manage' : 'Connect'}
+      />
       {accounts.length === 0 ? (
         <p className="px-5 pb-5 text-sm text-muted">
           Nothing connected yet. Connect a social account so your staff can post.
@@ -496,6 +505,123 @@ export function AccountsCard({ accounts }: { accounts: Account[] }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+// ---- Alerts ------------------------------------------------------------------------------------------------------
+
+export function AlertsStrip({ alerts }: { alerts: Alert[] }) {
+  if (!alerts.length) return null;
+  return (
+    <section aria-label="Needs fixing" className="space-y-2">
+      {alerts.map((alert) => (
+        <div
+          key={alert.id}
+          role="alert"
+          className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
+            alert.tone === 'danger' ? 'border-danger/30 bg-danger-soft' : 'border-amber/30 bg-amber-soft'
+          }`}
+        >
+          <span className={alert.tone === 'danger' ? 'text-danger' : 'text-amber'} aria-hidden="true">
+            <Icon name="alert" size={16} />
+          </span>
+          <p className="min-w-0 flex-1">{alert.text}</p>
+          <Link href={alert.href} className="btn btn-sm">
+            {alert.cta}
+          </Link>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// ---- Setup -------------------------------------------------------------------------------------------------------
+
+/** The first things a new workspace does, in order. Gone once every one is done. */
+export function SetupChecklist({ steps }: { steps: SetupStep[] }) {
+  const done = steps.filter((step) => step.done).length;
+  if (done === steps.length) return null;
+  const next = steps.findIndex((step) => !step.done);
+  return (
+    <section id="setup" className="card scroll-mt-24" aria-labelledby="setup-heading">
+      <CardHeader
+        id="setup-heading"
+        title="Get set up"
+        aside={
+          <span className="pill">
+            {done} of {steps.length} done
+          </span>
+        }
+      />
+      <div
+        role="progressbar"
+        aria-label="Setup progress"
+        aria-valuemin={0}
+        aria-valuemax={steps.length}
+        aria-valuenow={done}
+        className="mx-5 h-1.5 overflow-hidden rounded-full bg-subtle"
+      >
+        <div className="h-full rounded-full bg-accent" style={{ width: `${(done / steps.length) * 100}%` }} />
+      </div>
+      <ol className="divide-y divide-line-soft pt-2 pb-1">
+        {steps.map((step, index) => (
+          <li key={step.label} className="flex items-center gap-3 px-5 py-3">
+            <span
+              className={`grid size-8 flex-none place-items-center rounded-full text-xs font-semibold ${
+                step.done
+                  ? 'bg-ok-soft text-ok'
+                  : index === next
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-subtle text-muted'
+              }`}
+            >
+              {step.done ? <Icon name="check" size={14} /> : index + 1}
+              <span className="sr-only">{step.done ? ' done' : ' to do'}</span>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={`block text-sm font-medium ${step.done ? 'text-muted line-through' : ''}`}>
+                {step.label}
+              </span>
+              {!step.done ? <span className="block text-xs text-muted">{step.text}</span> : null}
+            </span>
+            {!step.done ? (
+              <Link href={step.href} className={`btn btn-sm flex-none ${index === next ? 'btn-primary' : ''}`}>
+                {step.cta}
+              </Link>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+// ---- This week ---------------------------------------------------------------------------------------------------
+
+const compact = new Intl.NumberFormat('en-GB', { notation: 'compact', maximumFractionDigits: 1 });
+
+export function WeekNumbers({ figures }: { figures: WeekFigures }) {
+  const tiles = [
+    { label: 'Posts out', value: compact.format(figures.postsOut) },
+    { label: 'Likes, comments, shares', value: compact.format(figures.engagement) },
+    { label: 'Times seen', value: figures.reach == null ? '—' : compact.format(figures.reach) },
+    {
+      label: 'New followers',
+      value: `${figures.followers > 0 ? '+' : ''}${compact.format(figures.followers)}`,
+    },
+  ];
+  return (
+    <section className="card" aria-labelledby="week-heading">
+      <CardHeader id="week-heading" title="Last 7 days" href="/app/results?days=7" cta="Results" />
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-b-2xl border-t border-line-soft bg-line-soft sm:grid-cols-4">
+        {tiles.map((tile) => (
+          <div key={tile.label} className="bg-surface px-5 py-4">
+            <dt className="text-xs text-muted">{tile.label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums">{tile.value}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

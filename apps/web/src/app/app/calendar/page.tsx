@@ -126,7 +126,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       ) : null}
       {[...days.entries()].map(([key, items]) => (
         <div key={key} className="space-y-2">
-          <h2 className="text-sm font-medium">{day(items[0]!.scheduledFor)}</h2>
+          <h2 id={`day-${key}`} className="scroll-mt-24 text-sm font-medium">
+            {day(items[0]!.scheduledFor)}
+          </h2>
           <ul className="card divide-y divide-line-soft">
             {items.map((post) => (
               <Row key={post.id} post={post}>
