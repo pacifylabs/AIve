@@ -118,15 +118,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <AlertsStrip alerts={alertsFor(list(accounts), list(posts))} />
       <SetupChecklist steps={steps} />
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <WeekNumbers figures={weekFigures(list(week), list(top), list(stats), now)} />
+
+      {/* Work on the left, two parts to one; the people, the month and the accounts on the right. */}
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
         <div className="min-w-0 space-y-6">
           <NeedsYouCard items={waiting} />
-          <WeekNumbers figures={weekFigures(list(week), list(top), list(stats), now)} />
-          <StaffCards staff={list(staff)} tasks={tasks} />
+          <UpcomingPosts posts={list(posts)} timeZone={timeZone} now={now} />
           <ActivityCard events={list(activity)} />
         </div>
         <div className="min-w-0 space-y-6">
-          <UpcomingPosts posts={list(posts)} timeZone={timeZone} now={now} />
+          <StaffCards staff={list(staff)} tasks={tasks} />
           <MonthCalendar posts={list(posts)} month={month} now={now} />
           <AccountsCard accounts={list(accounts)} />
         </div>

@@ -564,7 +564,7 @@ export function SetupChecklist({ steps }: { steps: SetupStep[] }) {
       >
         <div className="h-full rounded-full bg-accent" style={{ width: `${(done / steps.length) * 100}%` }} />
       </div>
-      <ol className="divide-y divide-line-soft pt-2 pb-1">
+      <ol className="divide-y divide-line-soft pt-2 pb-1 xl:grid xl:grid-cols-2 xl:divide-y-0">
         {steps.map((step, index) => (
           <li key={step.label} className="flex items-center gap-3 px-5 py-3">
             <span
