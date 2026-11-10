@@ -36,7 +36,7 @@ export default async function FeedsPage() {
   const nameOf = new Map(connected.map((account) => [account.id, account.name]));
 
   return (
-    <section className="max-w-2xl space-y-8">
+    <section className="max-w-3xl space-y-8">
       <div className="space-y-1">
         <h1 className="page-title">Feeds</h1>
         <p className="text-muted">

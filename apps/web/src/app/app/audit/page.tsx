@@ -47,7 +47,7 @@ export default async function AuditPage({
     : null;
 
   return (
-    <section className="max-w-4xl space-y-6">
+    <section className="space-y-6">
       <div className="space-y-1">
         <h1 className="page-title">Audit log</h1>
         <p className="text-muted">

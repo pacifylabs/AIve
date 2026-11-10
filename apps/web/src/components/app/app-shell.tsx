@@ -28,7 +28,7 @@ export function AppShell({
         </aside>
         <div id="app-main" className="min-w-0">
           <Topbar email={email} inboxCount={sidebar.inboxCount} />
-          <main id="main" className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <main id="main" className="w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <ResumeBanner />
             {children}
           </main>

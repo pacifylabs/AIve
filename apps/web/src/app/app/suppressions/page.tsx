@@ -22,7 +22,7 @@ export default async function SuppressionsPage() {
   const rows = await apiOrRedirect<Suppression[]>('/suppressions', '/app/suppressions', { workspace: true });
   if (!rows.ok) return <p className="text-danger">{rows.problem.title}</p>;
   return (
-    <section className="max-w-2xl space-y-6">
+    <section className="max-w-3xl space-y-6">
       <div className="space-y-1">
         <h1 className="page-title">Do not contact</h1>
         <p className="text-muted">

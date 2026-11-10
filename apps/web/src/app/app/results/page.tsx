@@ -58,7 +58,7 @@ export default async function ResultsPage({
   if (!top.ok) return <p className="text-danger">{top.problem.title}</p>;
 
   return (
-    <section className="max-w-2xl space-y-6">
+    <section className="space-y-6">
       <div className="space-y-1">
         <h1 className="page-title">Results</h1>
         <p className="text-muted">
@@ -100,7 +100,7 @@ export default async function ResultsPage({
           Nothing to rank yet. Numbers arrive a day after a post goes out, and again after a week.
         </p>
       ) : (
-        <ol className="space-y-3">
+        <ol className="grid items-start gap-3 xl:grid-cols-2">
           {top.data.map((post, index) => (
             <li key={post.postId} className="card space-y-3 p-5 text-sm">
               <div className="flex items-start justify-between gap-3">

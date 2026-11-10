@@ -26,7 +26,7 @@ export default async function HirePage({ searchParams }: { searchParams: Promise
   const questions = Object.fromEntries(role.interview.map((item) => [item.key, item.question]));
 
   return (
-    <section className="max-w-2xl space-y-6">
+    <section className="max-w-3xl space-y-6">
       <nav aria-label="Roles" className="inline-flex gap-1 rounded-xl border border-border bg-subtle p-1 text-sm">
         {roles.data.map((candidate) => (
           <Link

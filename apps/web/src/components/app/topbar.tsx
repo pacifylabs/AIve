@@ -21,7 +21,7 @@ export function Topbar({ email, inboxCount }: { email: string; inboxCount: numbe
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-[var(--glass)] backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-2 px-4 sm:px-6 lg:px-8">
+      <div className="flex h-14 w-full items-center gap-2 px-4 sm:px-6 lg:px-8">
         <button
           type="button"
           // Opens the drawer without script of our own.

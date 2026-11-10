@@ -21,7 +21,7 @@ export default async function MediaPage({ searchParams }: { searchParams: Promis
   if (!library.ok) return <p className="text-danger">{library.problem.title}</p>;
 
   return (
-    <section className="max-w-4xl space-y-6">
+    <section className="space-y-6">
       <div className="space-y-1">
         <h1 className="page-title">Media library</h1>
         <p className="text-muted">
@@ -44,7 +44,7 @@ export default async function MediaPage({ searchParams }: { searchParams: Promis
           <p className="empty text-sm text-muted">Nothing uploaded yet.</p>
         ) : null
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
           {library.data.items.map((item) => (
             <li key={item.id} className="card space-y-2 overflow-hidden p-3 text-sm">
               {item.kind === 'image' ? (

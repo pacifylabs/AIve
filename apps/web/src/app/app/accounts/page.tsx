@@ -74,7 +74,7 @@ export default async function AccountsPage({
   const needsAttention = new Set(accounts.data.filter((account) => account.health !== 'ok').map((a) => a.network));
 
   return (
-    <section className="max-w-2xl space-y-8">
+    <section className="max-w-3xl space-y-8">
       <div className="space-y-1">
         <h1 className="page-title">Accounts</h1>
         <p className="text-muted">

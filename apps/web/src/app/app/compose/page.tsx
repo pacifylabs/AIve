@@ -75,7 +75,7 @@ export default async function ComposePage({
         : BLANK;
 
   return (
-    <section className="max-w-2xl space-y-6">
+    <section className="max-w-3xl space-y-6">
       <div className="space-y-1">
         <h1 className="page-title">New post</h1>
         <p className="text-muted">

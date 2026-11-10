@@ -39,7 +39,7 @@ export default async function TemplatesPage() {
   const nameOf = new Map(connected.map((account) => [account.id, account.name]));
 
   return (
-    <section className="max-w-2xl space-y-10">
+    <section className="max-w-3xl space-y-10">
       <div className="space-y-1">
         <h1 className="page-title">Templates and tags</h1>
         <p className="text-muted">

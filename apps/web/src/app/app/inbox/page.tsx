@@ -91,7 +91,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           ))}
         </ul>
       ) : (
-        <div className="space-y-4">
+        <div className="grid items-start gap-4 2xl:grid-cols-2">
           {items.data.map((item) => (
             <PendingItem key={item.id} item={item} />
           ))}
