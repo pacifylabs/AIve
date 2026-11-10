@@ -18,30 +18,29 @@ export class EarlyAccessService {
 
   /**
    * Signing up again with the same address updates the existing row, and the answer is identical either way, so the
-   * form can't be used to find out who is already on the list.
+   * form can't be used to find out who is already on the list. An email-only sign-up (no role) never changes a row
+   * that is already there, so the footer box can't wipe answers someone gave on the full form.
    */
   async join(input: EarlyAccessRequest, ip: string): Promise<void> {
     await this.limiter.consume(
       { key: `early-access:ip:${ip}`, max: 10, windowSec: HOUR },
       { key: `early-access:email:${input.email}`, max: 5, windowSec: HOUR },
     );
-    await this.db
-      .createQueryBuilder()
-      .insert()
-      .into(EarlyAccessSignup)
-      .values(
-        this.db.getRepository(EarlyAccessSignup).create({
-          // Set here because query-builder inserts don't run entity listeners like assignId.
-          id: uuidv7(),
-          email: input.email,
-          website: input.website ?? null,
-          role: input.role,
-          firstTask: input.firstTask ?? null,
-          invitedAt: null,
-        }),
-      )
-      .orUpdate(['website', 'role', 'first_task', 'updated_at'], ['email'])
-      .execute();
+    const row = this.db.getRepository(EarlyAccessSignup).create({
+      // Set here because query-builder inserts don't run entity listeners like assignId.
+      id: uuidv7(),
+      email: input.email,
+      website: input.website ?? null,
+      role: input.role ?? 'both',
+      firstTask: input.firstTask ?? null,
+      invitedAt: null,
+    });
+    const insert = this.db.createQueryBuilder().insert().into(EarlyAccessSignup).values(row);
+    await (
+      input.role === undefined
+        ? insert.orIgnore()
+        : insert.orUpdate(['website', 'role', 'first_task', 'updated_at'], ['email'])
+    ).execute();
   }
 }
 

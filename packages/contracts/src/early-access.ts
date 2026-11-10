@@ -24,7 +24,8 @@ const website = z
 export const earlyAccessRequest = z.object({
   email,
   website,
-  role: z.enum(['social', 'sales', 'both']).default('both'),
+  /** Left out by the footer's email-only sign-up: a new address gets "both", an address already listed keeps its answers. */
+  role: z.enum(['social', 'sales', 'both']).optional(),
   firstTask: optionalText(200),
 });
 export type EarlyAccessRequest = z.infer<typeof earlyAccessRequest>;

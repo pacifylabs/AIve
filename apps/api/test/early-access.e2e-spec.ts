@@ -54,6 +54,21 @@ describe('early access', () => {
     expect(rows[0]).toMatchObject({ role: 'both', website: null });
   });
 
+  it('an email-only sign-up never changes an address already on the list', async () => {
+    const email = uniqueEmail('ea-footer');
+    const http = t.http();
+    await http
+      .post('/v1/early-access')
+      .send({ email, role: 'sales', website: 'northfield.studio', firstTask: 'webinar follow-ups' })
+      .expect(202);
+    await http.post('/v1/early-access').send({ email }).expect(202, { status: 'on_list' });
+    expect(await db.getRepository(EarlyAccessSignup).findOneByOrFail({ email })).toMatchObject({
+      role: 'sales',
+      website: 'northfield.studio',
+      firstTask: 'webinar follow-ups',
+    });
+  });
+
   it('defaults the role to both and leaves optional fields empty', async () => {
     const email = uniqueEmail('ea-min');
     await t.http().post('/v1/early-access').send({ email }).expect(202);
