@@ -355,6 +355,31 @@ body {
   opacity: 1;
 }
 
+/* The desktop sidebar collapses to an icon rail: labels, the workspace box and the nudge hide, links centre. */
+.app-frame {
+  --side-w: 17.5rem;
+}
+.app-frame[data-sidebar='collapsed'] {
+  --side-w: 4.5rem;
+}
+@media (min-width: 64rem) {
+  .app-frame[data-sidebar='collapsed'] .sidebar .side-text {
+    display: none;
+  }
+  .app-frame[data-sidebar='collapsed'] .sidebar :is(.side-link, .side-search, .side-primary) {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .app-frame[data-sidebar='collapsed'] .sidebar .side-count {
+    position: absolute;
+    top: 0;
+    right: 0.125rem;
+    padding-inline: 0.3rem;
+    font-size: 0.625rem;
+    background: var(--side-active);
+  }
+}
+
 /* The mobile drawer: a top-layer popover that slides in from the left and dims the page behind it. */
 .drawer {
   position: fixed;

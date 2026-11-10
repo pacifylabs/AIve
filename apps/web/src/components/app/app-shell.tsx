@@ -11,9 +11,13 @@ import { Topbar } from './topbar';
  */
 export function AppShell({
   email,
+  sidebarCollapsed,
   children,
   ...sidebar
-}: { email: string; children: ReactNode } & Omit<SidebarProps, 'onNavigate'>) {
+}: { email: string; sidebarCollapsed: boolean; children: ReactNode } & Omit<
+  SidebarProps,
+  'onNavigate' | 'collapsible'
+>) {
   return (
     <DraftScope workspaceId={sidebar.currentWorkspaceId}>
       <a
@@ -22,9 +26,12 @@ export function AppShell({
       >
         Skip to content
       </a>
-      <div className="min-h-dvh lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+      <div
+        data-sidebar={sidebarCollapsed ? 'collapsed' : 'open'}
+        className="app-frame min-h-dvh lg:grid lg:grid-cols-[var(--side-w)_minmax(0,1fr)]"
+      >
         <aside className="sidebar hidden lg:block lg:sticky lg:top-0 lg:h-dvh">
-          <SidebarContent {...sidebar} />
+          <SidebarContent {...sidebar} collapsible={{ collapsed: sidebarCollapsed }} />
         </aside>
         <div id="app-main" className="min-w-0">
           <Topbar email={email} inboxCount={sidebar.inboxCount} />

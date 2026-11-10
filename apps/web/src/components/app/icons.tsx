@@ -123,6 +123,20 @@ const PATHS = {
       <circle cx="6" cy="18" r="1.5" />
     </>
   ),
+  image: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="m20.5 16-5-5-9.5 8.5" />
+    </>
+  ),
+  list: <path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10M4.5 6.5l1 1 2-2M4.5 12l1 1 2-2M4.5 17.5l1 1 2-2" />,
+  panel: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15" />
+    </>
+  ),
   bot: (
     <>
       <rect x="4" y="8" width="16" height="11" rx="3" />

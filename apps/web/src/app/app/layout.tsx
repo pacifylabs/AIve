@@ -1,6 +1,8 @@
 import type { MeResponse } from '@ai-staff/contracts';
+import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app/app-shell';
+import { isSidebarCollapsed, SIDEBAR_COOKIE } from '@/components/app/nav';
 import type { Nudge } from '@/components/app/sidebar-content';
 import { apiOrRedirect } from '@/lib/api';
 import { readSession } from '@/lib/session';
@@ -57,6 +59,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell
       email={me.ok ? me.data.email : ''}
+      sidebarCollapsed={isSidebarCollapsed((await cookies()).get(SIDEBAR_COOKIE)?.value)}
       inboxCount={inboxCount}
       workspaces={workspaces.map((workspace) => ({ id: workspace.id, name: workspace.name }))}
       currentWorkspaceId={current?.id}
