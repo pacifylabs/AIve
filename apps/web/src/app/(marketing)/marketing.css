@@ -124,6 +124,10 @@
   color: var(--accent);
 }
 .page {
+  /* One page width and one side margin, shared by the nav and every .wrap, so the nav's border and the page text
+     start on the same line at every width. */
+  --page-max: 1232px;
+  --gutter: clamp(16px, 3vw, 40px);
   container: page/inline-size;
   width: 100%;
   min-width: 0;
@@ -134,10 +138,10 @@
   position: relative;
 }
 .wrap {
-  max-width: 1200px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: 0 40px;
-  box-sizing: border-box;
+  padding: 0 var(--gutter);
+  box-sizing: content-box;
 }
 .mono {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
@@ -957,8 +961,8 @@
   position: sticky;
   top: 12px;
   z-index: 30;
-  width: calc(100% - 32px);
-  max-width: 1232px;
+  width: calc(100% - 2 * var(--gutter));
+  max-width: var(--page-max);
   margin: 12px auto 0;
   box-sizing: border-box;
   border-radius: 18px;
@@ -1292,9 +1296,6 @@
 
 /* Phone */
 @container page (max-width: 600px) {
-  .wrap {
-    padding: 0 16px;
-  }
   .h1 {
     font-size: 42px;
   }
