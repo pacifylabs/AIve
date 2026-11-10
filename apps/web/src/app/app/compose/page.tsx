@@ -3,6 +3,7 @@ import type { Tag } from '@/components/app/tag';
 import { apiOrRedirect } from '@/lib/api';
 import type { LibraryItem } from './media-picker';
 import { ComposeForm, type ComposeStart } from './compose-form';
+import { ComposePreview } from './compose-preview';
 
 export const metadata = { title: 'New post' };
 
@@ -75,8 +76,8 @@ export default async function ComposePage({
         : BLANK;
 
   return (
-    <section className="max-w-3xl space-y-6">
-      <div className="space-y-1">
+    <section className="space-y-6">
+      <div className="max-w-3xl space-y-1">
         <h1 className="page-title">New post</h1>
         <p className="text-muted">
           Write a post yourself. It goes out as soon as you post it, or at the time you pick. It appears on the
@@ -84,7 +85,7 @@ export default async function ComposePage({
         </p>
       </div>
       {usable.length === 0 ? (
-        <div className="empty">
+        <div className="empty max-w-3xl">
           <h2 className="font-medium">No account to post to</h2>
           <p className="mt-1 text-sm text-muted">
             Connect one on the{' '}
@@ -97,7 +98,7 @@ export default async function ComposePage({
       ) : (
         <>
           {saved.length ? (
-            <form method="get" className="flex flex-wrap items-end gap-3">
+            <form method="get" className="flex max-w-3xl flex-wrap items-end gap-3">
               <label className="min-w-0 flex-1 space-y-1 text-sm font-medium">
                 Start from a template
                 <select name="template" className="field font-normal" defaultValue={chosen?.id ?? ''}>
@@ -114,17 +115,20 @@ export default async function ComposePage({
               </button>
             </form>
           ) : null}
-          <div className="card p-6">
-            {/* One id per page view, so sending the form twice makes one post. The key restarts the form for a new template. */}
-            <ComposeForm
-              key={chosen?.id ?? unfinished?.id ?? 'blank'}
-              requestId={crypto.randomUUID()}
-              accounts={usable}
-              tags={tags.ok ? tags.data : []}
-              library={library.ok ? library.data.items : []}
-              start={start}
-              draftName={`compose:${chosen?.id ?? unfinished?.id ?? 'blank'}`}
-            />
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,48rem)_minmax(16rem,24rem)]">
+            <div className="card p-6">
+              {/* One id per page view, so sending the form twice makes one post. The key restarts the form for a new template. */}
+              <ComposeForm
+                key={chosen?.id ?? unfinished?.id ?? 'blank'}
+                requestId={crypto.randomUUID()}
+                accounts={usable}
+                tags={tags.ok ? tags.data : []}
+                library={library.ok ? library.data.items : []}
+                start={start}
+                draftName={`compose:${chosen?.id ?? unfinished?.id ?? 'blank'}`}
+              />
+            </div>
+            <ComposePreview />
           </div>
         </>
       )}
