@@ -24,3 +24,21 @@ export async function joinEarlyAccessAction(_state: EarlyAccessState, data: Form
   if (!result.ok) return { ...fromProblem(result.problem), values };
   return { done: true };
 }
+
+export interface UpdatesState {
+  done?: boolean;
+  error?: string;
+  fields?: Record<string, string>;
+  email?: string;
+}
+
+/**
+ * The footer's email-only sign-up. It sends no role, so an address already on the list keeps the answers it gave on
+ * the full form; a new address joins with role "both".
+ */
+export async function joinUpdatesAction(_state: UpdatesState, data: FormData): Promise<UpdatesState> {
+  const email = field(data, 'email');
+  const result = await api('/early-access', { method: 'POST', body: { email } });
+  if (!result.ok) return { ...fromProblem(result.problem), email };
+  return { done: true };
+}

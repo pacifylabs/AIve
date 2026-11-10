@@ -1759,35 +1759,55 @@
   }
 }
 
-/* Footer: brand and early access on the left, four link columns, then a bottom bar */
+/* Footer: brand and an email sign-up on top, five link columns across the full width, then a bottom bar */
 .site-footer {
   border-top: 1px solid var(--line);
-  padding: 72px 0 36px;
+  padding: 64px 0 32px;
   background: var(--surface-2);
 }
-.footer-grid {
+.footer-top {
   display: grid;
-  grid-template-columns: minmax(0, 2.3fr) repeat(4, minmax(0, 1fr));
-  gap: 40px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px 64px;
+  align-items: start;
 }
 .footer-brand {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
-.footer-cta {
-  border-radius: 16px;
-  padding: 18px;
+.footer-signup {
+  border-radius: 18px;
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: 360px;
+  gap: 12px;
+}
+.footer-signup-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.footer-signup-row .input {
+  flex: 1 1 220px;
+  width: auto;
+  min-width: 0;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 32px 24px;
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 1px solid var(--line);
 }
 .footer-col {
   display: flex;
   flex-direction: column;
   gap: 12px;
   font-size: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .footer-head {
   font-size: 13px;
@@ -1811,8 +1831,8 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px 24px;
-  margin-top: 56px;
-  padding-top: 24px;
+  margin-top: 48px;
+  padding-top: 22px;
   border-top: 1px solid var(--line);
   font-size: 13px;
   color: var(--muted);
@@ -1822,11 +1842,11 @@
   text-decoration: none;
 }
 @container page (max-width: 980px) {
-  .footer-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .footer-top {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .footer-brand {
-    grid-column: 1 / -1;
+  .footer-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @container page (max-width: 600px) {
