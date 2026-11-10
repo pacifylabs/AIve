@@ -1,4 +1,4 @@
-const API_URL = process.env.API_URL ?? 'http://localhost:3100';
+import { API_TIMEOUT_MS, apiBaseUrl } from '@/lib/api-config';
 
 /** Plain HTML, no scripts, light and dark. Nothing in it comes from the request: the token is never echoed. */
 const page = (title: string, message: string, form = false, status = 200) =>
@@ -24,10 +24,10 @@ export function GET() {
  */
 export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const response = await fetch(`${API_URL}/v1/unsubscribe/${encodeURIComponent(token)}`, {
+  const response = await fetch(`${apiBaseUrl()}/v1/unsubscribe/${encodeURIComponent(token)}`, {
     method: 'POST',
     cache: 'no-store',
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   }).catch(() => null);
   if (!response) return page('Try again', 'We could not reach the server. Please try again in a moment.', true, 503);
   if (response.status === 429) return page('Try again later', 'Too many attempts. Please try again later.', false, 429);

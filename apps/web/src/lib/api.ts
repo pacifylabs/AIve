@@ -1,9 +1,8 @@
 import 'server-only';
 import type { MeResponse, Problem } from '@ai-staff/contracts';
 import { redirect } from 'next/navigation';
+import { API_TIMEOUT_MS, apiBaseUrl } from './api-config';
 import { readSession } from './session';
-
-const API_URL = process.env.API_URL ?? 'http://localhost:3100';
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: Problem };
 
@@ -27,14 +26,16 @@ export async function api<T>(path: string, options: CallOptions = {}): Promise<A
     if (workspaceId) headers['X-Workspace-Id'] = workspaceId;
   }
 
+  // Outside the try: a missing API_URL is a broken deployment, not a network blip, and must not be hidden as one.
+  const base = apiBaseUrl();
   let response: Response;
   try {
-    response = await fetch(`${API_URL}/v1${path}`, {
+    response = await fetch(`${base}/v1${path}`, {
       method: options.method ?? 'GET',
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       cache: 'no-store',
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
   } catch {
     return {
@@ -57,6 +58,13 @@ export async function api<T>(path: string, options: CallOptions = {}): Promise<A
     code: 'internal_error',
   };
   return { ok: false, problem };
+}
+
+/** Nudges a sleeping API awake so the visitor's next call does not wait. Never throws. */
+export async function wakeApi(): Promise<void> {
+  await fetch(`${apiBaseUrl()}/health/live`, { cache: 'no-store', signal: AbortSignal.timeout(API_TIMEOUT_MS) }).catch(
+    () => undefined,
+  );
 }
 
 /** With no workspace chosen yet (a fresh sign-in), act in the first one the user belongs to. */

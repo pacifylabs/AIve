@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  useEffect,
   useId,
   useState,
 } from 'react';
@@ -180,11 +181,33 @@ export function SubmitButton({
   variant?: 'primary' | 'secondary';
 }) {
   const { pending } = useFormStatus();
+  const slow = useSlow(pending);
   return (
-    <button type="submit" disabled={pending} className={`btn w-full ${variant === 'primary' ? 'btn-primary' : ''}`}>
-      {pending ? (pendingLabel ?? 'Working…') : children}
-    </button>
+    <>
+      <button type="submit" disabled={pending} className={`btn w-full ${variant === 'primary' ? 'btn-primary' : ''}`}>
+        {pending ? (pendingLabel ?? 'Working…') : children}
+      </button>
+      {slow ? (
+        <p role="status" className="mt-2 text-center text-xs text-muted">
+          Still working. The server wakes up after a quiet spell, which can take up to a minute.
+        </p>
+      ) : null}
+    </>
   );
+}
+
+/** True once `pending` has lasted a few seconds, so a long wait is explained instead of looking frozen. */
+function useSlow(pending: boolean, afterMs = 5_000) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!pending) {
+      setSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => setSlow(true), afterMs);
+    return () => clearTimeout(timer);
+  }, [pending, afterMs]);
+  return slow;
 }
 
 export function FormMessages({ state }: { state: FormState }) {
