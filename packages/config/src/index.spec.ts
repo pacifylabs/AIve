@@ -141,3 +141,47 @@ describe('social network settings', () => {
     expect(() => loadConfig({ ...valid, META_GRAPH_VERSION: '21' })).toThrow(ConfigError);
   });
 });
+
+describe('model provider', () => {
+  const openai = {
+    ...valid,
+    LLM_PROVIDER: 'openai',
+    OPENAI_API_KEY: 'sk-test',
+    OPENAI_MODEL: 'gpt-4o-mini',
+    OPENAI_INPUT_USD_PER_MTOK: '0',
+    OPENAI_OUTPUT_USD_PER_MTOK: '0.6',
+  };
+
+  it('defaults to Claude and needs no OpenAI settings for it', () => {
+    const config = loadConfig(valid);
+    expect(config.LLM_PROVIDER).toBe('anthropic');
+    expect(config.OPENAI_BASE_URL).toBe('https://api.openai.com/v1');
+  });
+
+  it('reads an OpenAI-compatible endpoint, with prices as numbers', () => {
+    const config = loadConfig({ ...openai, OPENAI_BASE_URL: 'https://api.groq.com/openai/v1' });
+    expect(config).toMatchObject({
+      LLM_PROVIDER: 'openai',
+      OPENAI_BASE_URL: 'https://api.groq.com/openai/v1',
+      OPENAI_INPUT_USD_PER_MTOK: 0,
+      OPENAI_OUTPUT_USD_PER_MTOK: 0.6,
+    });
+  });
+
+  it('names every missing setting when LLM_PROVIDER=openai', () => {
+    expect(() =>
+      loadConfig({
+        ...openai,
+        OPENAI_API_KEY: undefined,
+        OPENAI_MODEL: undefined,
+        OPENAI_INPUT_USD_PER_MTOK: undefined,
+      }),
+    ).toThrow(/OPENAI_API_KEY is required[\s\S]*OPENAI_MODEL is required[\s\S]*OPENAI_INPUT_USD_PER_MTOK is required/);
+  });
+
+  it('rejects an unknown provider, a negative price and a base URL that is not a URL', () => {
+    expect(() => loadConfig({ ...valid, LLM_PROVIDER: 'gemini' })).toThrow(/LLM_PROVIDER/);
+    expect(() => loadConfig({ ...openai, OPENAI_OUTPUT_USD_PER_MTOK: '-1' })).toThrow(/OPENAI_OUTPUT_USD_PER_MTOK/);
+    expect(() => loadConfig({ ...openai, OPENAI_BASE_URL: 'groq' })).toThrow(/OPENAI_BASE_URL/);
+  });
+});

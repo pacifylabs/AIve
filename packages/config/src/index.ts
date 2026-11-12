@@ -60,6 +60,19 @@ export const configSchema = z
      * one; without it, model tasks fail loudly (retried, then marked dead with an alert) instead of doing nothing.
      */
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    /**
+     * Which model service staff use. `anthropic` (Claude, the default) or `openai`: any OpenAI-compatible Chat
+     * Completions endpoint (OpenAI, Groq, Google Gemini, OpenRouter, Ollama), set by the OPENAI_* settings below.
+     */
+    LLM_PROVIDER: z.enum(['anthropic', 'openai']).default('anthropic'),
+    /** Required when LLM_PROVIDER=openai. Any non-empty value for a local Ollama. */
+    OPENAI_API_KEY: z.string().min(1).optional(),
+    OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
+    /** Required when LLM_PROVIDER=openai. Answers every staff task, e.g. gpt-4o-mini or llama-3.3-70b-versatile. */
+    OPENAI_MODEL: z.string().min(1).optional(),
+    /** USD per million tokens, required when LLM_PROVIDER=openai so spending caps hold. Use 0 for a free key. */
+    OPENAI_INPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    OPENAI_OUTPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
     /** Meta app (Facebook Pages and Instagram). Both needed to connect accounts; confirmed during Meta app review. */
     META_APP_ID: z.string().min(1).optional(),
     META_APP_SECRET: z.string().min(1).optional(),
@@ -110,6 +123,18 @@ export const configSchema = z
         path: ['RESEND_API_KEY'],
         message: 'RESEND_API_KEY is required when EMAIL_PROVIDER=resend',
       });
+    }
+    if (config.LLM_PROVIDER === 'openai') {
+      for (const key of [
+        'OPENAI_API_KEY',
+        'OPENAI_MODEL',
+        'OPENAI_INPUT_USD_PER_MTOK',
+        'OPENAI_OUTPUT_USD_PER_MTOK',
+      ] as const) {
+        if (config[key] === undefined) {
+          ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when LLM_PROVIDER=openai` });
+        }
+      }
     }
   });
 

@@ -25,8 +25,16 @@ export const MODEL_PRICES: Readonly<Record<string, ModelPrice>> = {
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 
+/** Prices for models an operator configures at startup (an OpenAI-compatible endpoint), from their settings. */
+const configuredPrices = new Map<string, ModelPrice>();
+
+export function setModelPrice(model: string, price: ModelPrice): void {
+  if (!(price.input >= 0 && price.output >= 0)) throw new Error(`The price for model "${model}" must not be negative.`);
+  configuredPrices.set(model, price);
+}
+
 export function priceOf(model: string): ModelPrice {
-  const price = MODEL_PRICES[model];
+  const price = MODEL_PRICES[model] ?? configuredPrices.get(model);
   // An unpriced model would silently cost nothing and slip past every spending cap, so refuse it.
   if (!price) throw new Error(`No price is known for model "${model}". Add it to MODEL_PRICES.`);
   return price;

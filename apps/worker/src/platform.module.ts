@@ -20,7 +20,7 @@ import {
   safeFetchMedia,
 } from '@ai-staff/core';
 import { createDataSource, DataSource, type Mailbox } from '@ai-staff/db';
-import { AnthropicProvider, type ModelProvider } from '@ai-staff/llm';
+import { type ModelProvider, selectModelProvider } from '@ai-staff/llm';
 import { FixtureTransport, type MailboxLogin, type MailTransport, SmtpTransport } from '@ai-staff/mail';
 import { salesSendHooks } from '@ai-staff/role-sales';
 import { SocialProviders } from '@ai-staff/social';
@@ -34,11 +34,6 @@ import { buildRegistry } from './roles.js';
 import { TaskProcessor } from './task.processor.js';
 import { Ticker } from './ticker.service.js';
 import { APP_CONFIG, KEYRING, MODEL_PROVIDER } from './tokens.js';
-
-/** Used when no API key is configured: every model call fails with a message an operator can act on. */
-const notConfigured: ModelProvider = {
-  generate: () => Promise.reject(new Error('ANTHROPIC_API_KEY is not set, so staff cannot call a model.')),
-};
 
 /** The database, the role registry and the task engine, plus the processors and the tick loop that drive them. */
 @Module({
@@ -62,8 +57,8 @@ const notConfigured: ModelProvider = {
     {
       provide: MODEL_PROVIDER,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig): ModelProvider =>
-        config.ANTHROPIC_API_KEY ? new AnthropicProvider({ apiKey: config.ANTHROPIC_API_KEY }) : notConfigured,
+      // LLM_PROVIDER picks Claude or an OpenAI-compatible endpoint (OpenAI, Groq, Gemini, OpenRouter, Ollama).
+      useFactory: (config: AppConfig): ModelProvider => selectModelProvider(config),
     },
     {
       provide: SocialProviders,

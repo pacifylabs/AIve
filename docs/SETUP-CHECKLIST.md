@@ -52,15 +52,30 @@ to is `https://ai-staff-staging.onrender.com` (this is `API_PUBLIC_URL`). The we
 - [ ] Optional: Redis `ajo-redis` is shared with another project and has no persistence, so queued jobs are lost if it
       restarts. Fine for review; move to its own instance before real use.
 
-## 2. Anthropic API key
+## 2. A model key (Claude, or any OpenAI-compatible service)
 
-Without it every staff task that writes text (weekly plans, drafts, article posts, replies) fails and retries. The app
-itself, the composer and publishing do not need it.
+Without one, every staff task that writes text (weekly plans, drafts, article posts, replies) fails and retries. The app
+itself, the composer and publishing do not need it. `LLM_PROVIDER` on Render picks the service. Change it and Render
+restarts the service with the new choice. No code change is needed.
+
+**Option A: Claude (the default, best quality).**
 
 - [ ] Create a key at https://console.anthropic.com, and set a spend limit on the organisation.
-- [ ] Add `ANTHROPIC_API_KEY` on Render.
-- [ ] Check: on **Feeds**, add a feed and use **Check now**. A draft should reach the **Inbox** within a minute or two.
-      If not, Render's **Logs** will say why (look for `ANTHROPIC_API_KEY is not set`).
+- [ ] Add `ANTHROPIC_API_KEY` on Render (leave `LLM_PROVIDER` unset or `anthropic`).
+
+**Option B: a free or cheaper key for testing.** Any service with an OpenAI-compatible Chat Completions endpoint works.
+Groq, Google AI Studio (Gemini) and OpenRouter (models ending in `:free`) offer free tiers with rate limits. OpenAI's
+own API is paid. One model answers every staff task, so drafts will be weaker than Claude's.
+
+- [ ] Get a key from the service you pick.
+- [ ] On Render set `LLM_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `OPENAI_MODEL`. The base URL and
+      model examples for each service are in `.env.example`.
+- [ ] Set `OPENAI_INPUT_USD_PER_MTOK` and `OPENAI_OUTPUT_USD_PER_MTOK` (USD per million tokens, from the service's price
+      page). Use `0` and `0` for a free key. Both are required, so spending caps keep working.
+
+**Check either option:** on **Feeds**, add a feed and use **Check now**. A draft should reach the **Inbox** within a
+minute or two. If not, Render's **Logs** say why: a missing key (`is not set`), or the service's own reply
+(`The model endpoint answered 401: …`).
 
 ## 3. Telegram (done)
 
