@@ -3,6 +3,19 @@ import { z } from 'zod';
 const port = z.coerce.number().int().min(1).max(65535);
 const hexKey = /^[a-z0-9_-]{1,32}:[0-9a-f]{64}$/i;
 
+export const LLM_PROVIDERS = ['anthropic', 'openai', 'groq', 'gemini', 'openrouter', 'ollama'] as const;
+export type LlmProvider = (typeof LLM_PROVIDERS)[number];
+
+/** What each model service cannot start without. Claude is left out: without its key, tasks fail loudly instead. */
+const LLM_REQUIRED = {
+  anthropic: [],
+  openai: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'LLM_INPUT_USD_PER_MTOK', 'LLM_OUTPUT_USD_PER_MTOK'],
+  groq: ['GROQ_API_KEY'],
+  gemini: ['GEMINI_API_KEY'],
+  openrouter: ['OPENROUTER_API_KEY'],
+  ollama: ['OLLAMA_MODEL'],
+} as const satisfies Record<LlmProvider, readonly string[]>;
+
 /**
  * Every setting the API and worker read, validated once at start-up. Nothing else in the codebase reads process.env,
  * so a missing or malformed value stops the process with a clear message instead of failing later at runtime.
@@ -61,18 +74,32 @@ export const configSchema = z
      */
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
     /**
-     * Which model service staff use. `anthropic` (Claude, the default) or `openai`: any OpenAI-compatible Chat
-     * Completions endpoint (OpenAI, Groq, Google Gemini, OpenRouter, Ollama), set by the OPENAI_* settings below.
+     * Which model service staff use. `anthropic` (Claude, the default), or one of the OpenAI-compatible services:
+     * `groq`, `gemini`, `openrouter` (all with free tiers), `ollama` (local) or `openai` (OpenAI itself, or any other
+     * compatible endpoint through OPENAI_BASE_URL). Each service keeps its own key, so all can be set at once and this
+     * one setting switches between them.
      */
-    LLM_PROVIDER: z.enum(['anthropic', 'openai']).default('anthropic'),
-    /** Required when LLM_PROVIDER=openai. Any non-empty value for a local Ollama. */
+    LLM_PROVIDER: z.enum(LLM_PROVIDERS).default('anthropic'),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
-    /** Required when LLM_PROVIDER=openai. Answers every staff task, e.g. gpt-4o-mini or llama-3.3-70b-versatile. */
+    /** Required for `openai`: it is paid and its model list changes, so nothing is assumed. */
     OPENAI_MODEL: z.string().min(1).optional(),
-    /** USD per million tokens, required when LLM_PROVIDER=openai so spending caps hold. Use 0 for a free key. */
-    OPENAI_INPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
-    OPENAI_OUTPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    GROQ_API_KEY: z.string().min(1).optional(),
+    /** Optional overrides of each free service's default model (see packages/llm/src/select.ts). */
+    GROQ_MODEL: z.string().min(1).optional(),
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    GEMINI_MODEL: z.string().min(1).optional(),
+    OPENROUTER_API_KEY: z.string().min(1).optional(),
+    OPENROUTER_MODEL: z.string().min(1).optional(),
+    OLLAMA_BASE_URL: z.url().default('http://localhost:11434/v1'),
+    /** Required for `ollama`: whichever model was pulled locally. */
+    OLLAMA_MODEL: z.string().min(1).optional(),
+    /**
+     * USD per million tokens for the OpenAI-compatible service in use, so spending caps hold. Required for `openai`;
+     * the free services default to 0. Set them if a paid plan is used on one of those.
+     */
+    LLM_INPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    LLM_OUTPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
     /** Meta app (Facebook Pages and Instagram). Both needed to connect accounts; confirmed during Meta app review. */
     META_APP_ID: z.string().min(1).optional(),
     META_APP_SECRET: z.string().min(1).optional(),
@@ -124,16 +151,13 @@ export const configSchema = z
         message: 'RESEND_API_KEY is required when EMAIL_PROVIDER=resend',
       });
     }
-    if (config.LLM_PROVIDER === 'openai') {
-      for (const key of [
-        'OPENAI_API_KEY',
-        'OPENAI_MODEL',
-        'OPENAI_INPUT_USD_PER_MTOK',
-        'OPENAI_OUTPUT_USD_PER_MTOK',
-      ] as const) {
-        if (config[key] === undefined) {
-          ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when LLM_PROVIDER=openai` });
-        }
+    for (const key of LLM_REQUIRED[config.LLM_PROVIDER]) {
+      if (config[key] === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${key} is required when LLM_PROVIDER=${config.LLM_PROVIDER}`,
+        });
       }
     }
   });

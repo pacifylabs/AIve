@@ -63,15 +63,25 @@ restarts the service with the new choice. No code change is needed.
 - [ ] Create a key at https://console.anthropic.com, and set a spend limit on the organisation.
 - [ ] Add `ANTHROPIC_API_KEY` on Render (leave `LLM_PROVIDER` unset or `anthropic`).
 
-**Option B: a free or cheaper key for testing.** Any service with an OpenAI-compatible Chat Completions endpoint works.
-Groq, Google AI Studio (Gemini) and OpenRouter (models ending in `:free`) offer free tiers with rate limits. OpenAI's
-own API is paid. One model answers every staff task, so drafts will be weaker than Claude's.
+**Option B: a free key for testing.** Groq, Google Gemini and OpenRouter have free tiers (with rate limits), and
+Ollama runs models on your own machine. Each has its own key setting, so you can add several and switch between them by
+changing `LLM_PROVIDER` alone. One model answers every staff task, so drafts will be weaker than Claude's.
 
-- [ ] Get a key from the service you pick.
-- [ ] On Render set `LLM_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `OPENAI_MODEL`. The base URL and
-      model examples for each service are in `.env.example`.
-- [ ] Set `OPENAI_INPUT_USD_PER_MTOK` and `OPENAI_OUTPUT_USD_PER_MTOK` (USD per million tokens, from the service's price
-      page). Use `0` and `0` for a free key. Both are required, so spending caps keep working.
+| `LLM_PROVIDER` | Key from                                   | Key setting          | Model used unless you set one          |
+| -------------- | ------------------------------------------ | -------------------- | -------------------------------------- |
+| `groq`         | https://console.groq.com/keys              | `GROQ_API_KEY`       | `llama-3.3-70b-versatile` (`GROQ_MODEL`) |
+| `gemini`       | https://aistudio.google.com/apikey         | `GEMINI_API_KEY`     | `gemini-3.1-flash-lite` (`GEMINI_MODEL`) |
+| `openrouter`   | https://openrouter.ai/keys                 | `OPENROUTER_API_KEY` | `openrouter/free` (`OPENROUTER_MODEL`)  |
+| `ollama`       | none (local only, not reachable from Render) | none               | required: `OLLAMA_MODEL`               |
+| `openai`       | https://platform.openai.com (paid)         | `OPENAI_API_KEY`     | required: `OPENAI_MODEL`               |
+
+- [ ] Get a key from one or more of the services above.
+- [ ] Add each key on Render, then set `LLM_PROVIDER` to the one you want to use.
+- [ ] For `openai` only, also set `LLM_INPUT_USD_PER_MTOK` and `LLM_OUTPUT_USD_PER_MTOK` (USD per million tokens, from
+      OpenAI's price page) so spending caps keep working. The free services count as 0. If you pay for one of them,
+      set its prices too. `OPENAI_BASE_URL` points `openai` at any other compatible service.
+
+If a setting the chosen service needs is missing, the service will not start and its log names the setting.
 
 **Check either option:** on **Feeds**, add a feed and use **Check now**. A draft should reach the **Inbox** within a
 minute or two. If not, Render's **Logs** say why: a missing key (`is not set`), or the service's own reply

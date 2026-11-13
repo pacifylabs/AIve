@@ -147,41 +147,54 @@ describe('model provider', () => {
     ...valid,
     LLM_PROVIDER: 'openai',
     OPENAI_API_KEY: 'sk-test',
-    OPENAI_MODEL: 'gpt-4o-mini',
-    OPENAI_INPUT_USD_PER_MTOK: '0',
-    OPENAI_OUTPUT_USD_PER_MTOK: '0.6',
+    OPENAI_MODEL: 'gpt-x',
+    LLM_INPUT_USD_PER_MTOK: '0',
+    LLM_OUTPUT_USD_PER_MTOK: '0.6',
   };
 
-  it('defaults to Claude and needs no OpenAI settings for it', () => {
+  it('defaults to Claude and needs no other model settings for it', () => {
     const config = loadConfig(valid);
     expect(config.LLM_PROVIDER).toBe('anthropic');
     expect(config.OPENAI_BASE_URL).toBe('https://api.openai.com/v1');
+    expect(config.OLLAMA_BASE_URL).toBe('http://localhost:11434/v1');
   });
 
-  it('reads an OpenAI-compatible endpoint, with prices as numbers', () => {
-    const config = loadConfig({ ...openai, OPENAI_BASE_URL: 'https://api.groq.com/openai/v1' });
-    expect(config).toMatchObject({
+  it('reads OpenAI with its prices as numbers', () => {
+    expect(loadConfig(openai)).toMatchObject({
       LLM_PROVIDER: 'openai',
-      OPENAI_BASE_URL: 'https://api.groq.com/openai/v1',
-      OPENAI_INPUT_USD_PER_MTOK: 0,
-      OPENAI_OUTPUT_USD_PER_MTOK: 0.6,
+      LLM_INPUT_USD_PER_MTOK: 0,
+      LLM_OUTPUT_USD_PER_MTOK: 0.6,
     });
   });
 
-  it('names every missing setting when LLM_PROVIDER=openai', () => {
+  it('needs only the key for a free service, and keeps every service key at once', () => {
+    const keys = { GROQ_API_KEY: 'g', GEMINI_API_KEY: 'm', OPENROUTER_API_KEY: 'r' };
+    for (const provider of ['groq', 'gemini', 'openrouter'] as const) {
+      expect(loadConfig({ ...valid, ...keys, LLM_PROVIDER: provider })).toMatchObject({
+        LLM_PROVIDER: provider,
+        ...keys,
+      });
+    }
+    expect(loadConfig({ ...valid, LLM_PROVIDER: 'ollama', OLLAMA_MODEL: 'llama3.2' }).OLLAMA_MODEL).toBe('llama3.2');
+  });
+
+  it('names the setting each service is missing', () => {
     expect(() =>
-      loadConfig({
-        ...openai,
-        OPENAI_API_KEY: undefined,
-        OPENAI_MODEL: undefined,
-        OPENAI_INPUT_USD_PER_MTOK: undefined,
-      }),
-    ).toThrow(/OPENAI_API_KEY is required[\s\S]*OPENAI_MODEL is required[\s\S]*OPENAI_INPUT_USD_PER_MTOK is required/);
+      loadConfig({ ...openai, OPENAI_API_KEY: undefined, OPENAI_MODEL: undefined, LLM_INPUT_USD_PER_MTOK: undefined }),
+    ).toThrow(
+      /OPENAI_API_KEY is required when LLM_PROVIDER=openai[\s\S]*OPENAI_MODEL is required[\s\S]*LLM_INPUT_USD_PER_MTOK is required/,
+    );
+    expect(() => loadConfig({ ...valid, LLM_PROVIDER: 'groq' })).toThrow(
+      /GROQ_API_KEY is required when LLM_PROVIDER=groq/,
+    );
+    expect(() => loadConfig({ ...valid, LLM_PROVIDER: 'gemini' })).toThrow(/GEMINI_API_KEY is required/);
+    expect(() => loadConfig({ ...valid, LLM_PROVIDER: 'openrouter' })).toThrow(/OPENROUTER_API_KEY is required/);
+    expect(() => loadConfig({ ...valid, LLM_PROVIDER: 'ollama' })).toThrow(/OLLAMA_MODEL is required/);
   });
 
   it('rejects an unknown provider, a negative price and a base URL that is not a URL', () => {
-    expect(() => loadConfig({ ...valid, LLM_PROVIDER: 'gemini' })).toThrow(/LLM_PROVIDER/);
-    expect(() => loadConfig({ ...openai, OPENAI_OUTPUT_USD_PER_MTOK: '-1' })).toThrow(/OPENAI_OUTPUT_USD_PER_MTOK/);
+    expect(() => loadConfig({ ...valid, LLM_PROVIDER: 'mistral' })).toThrow(/LLM_PROVIDER/);
+    expect(() => loadConfig({ ...openai, LLM_OUTPUT_USD_PER_MTOK: '-1' })).toThrow(/LLM_OUTPUT_USD_PER_MTOK/);
     expect(() => loadConfig({ ...openai, OPENAI_BASE_URL: 'groq' })).toThrow(/OPENAI_BASE_URL/);
   });
 });
