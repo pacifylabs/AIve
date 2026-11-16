@@ -1,9 +1,7 @@
 import Link from 'next/link';
-import { liveProfiles, SOCIAL_PROFILES } from '@/lib/site';
+import { COMPANY, CONTACT, liveProfiles, SOCIAL_PROFILES } from '@/lib/site';
 import { FooterSignup } from './footer-signup';
 import { BrandMark } from './primitives';
-
-const CONTACT = 'pacifylabs@gmail.com';
 
 const COLUMNS = [
   {
@@ -97,7 +95,7 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 AI as a Staff</span>
+          <span>© 2026 {COMPANY}. AI as a Staff</span>
           <span>Earth imagery: NASA</span>
           <a href="#top">Back to top ↑</a>
         </div>

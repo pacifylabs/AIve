@@ -36,7 +36,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="space-y-1">
           <h1 className="page-title">Set up your workspace</h1>
           <p className="text-muted">
-            Your AI staff, approvals and billing live in a workspace. You can invite your team next.
+            Your AI staff, approvals and settings live in a workspace. You can invite your team next.
           </p>
         </div>
         <div className="card p-6">

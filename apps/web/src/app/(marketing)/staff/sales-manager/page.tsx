@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: 'Sales Manager Staff',
   description:
-    'An AI sales staff member that researches leads, writes from your own mailbox, sorts every reply and answers your sales line, handing money, contracts and complaints to you.',
+    'An AI sales staff member that researches leads, writes from your own mailbox, and sorts every reply, handing money, contracts and complaints to you. A phone line is coming soon.',
   alternates: { canonical: '/staff/sales-manager' },
 };
 
@@ -32,7 +32,7 @@ export default function SalesManagerStaffPage() {
         roleName="Sales Manager Staff"
         titleStart="Follows up properly."
         titleEnd="Hands over when it matters."
-        lead="It reads each lead's website, writes from your own mailbox, sorts every reply and answers your sales line. Money, contracts and complaints always come to you."
+        lead="It reads each lead's website, writes from your own mailbox, and sorts every reply. Money, contracts and complaints always come to you. A phone line is coming soon."
         primaryLabel="Hire Sales Manager Staff"
         secondary={{ href: '/safety', label: 'How it protects you' }}
         aside={<StatusList heading="REPLIES SORTED THIS MORNING · EXAMPLE" live="Live" rows={[...REPLIES]} />}
@@ -122,10 +122,10 @@ export default function SalesManagerStaffPage() {
               },
               {
                 key: 'phone',
-                label: 'Phone line',
+                label: 'Phone line · soon',
                 panel: (
                   <CapabilityPanel
-                    title="Your sales line, answered"
+                    title="Coming soon: your sales line, answered"
                     text="Its own number in the US, Canada or UK, or your existing line forwarded. It says it's an AI, answers from your facts, sends booking links, and puts callers through to you with a whispered summary."
                   >
                     <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -166,7 +166,7 @@ export default function SalesManagerStaffPage() {
           { task: 'First emails and follow-ups', starts: 'Draft', alone: { text: 'After 25 approvals', tone: 'ok' } },
           { task: 'Answering questions', starts: 'Draft', alone: { text: 'After 15 approvals', tone: 'ok' } },
           {
-            task: 'Callbacks to people who asked',
+            task: 'Callbacks to people who asked (coming soon)',
             starts: 'You approve each',
             alone: { text: 'After 20 calls', tone: 'ok' },
           },

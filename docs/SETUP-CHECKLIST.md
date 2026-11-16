@@ -49,6 +49,13 @@ to is `https://ai-staff-staging.onrender.com` (this is `API_PUBLIC_URL`). The we
       password when you run a migration from your own machine:
       `DB_HOST=… DB_NAME=ai_staff DB_ADMIN_USER=ai_staff_owner DB_ADMIN_PASSWORD=… DB_SSL=true DB_PORT=5432 pnpm db:migrate`
       (set `DB_PORT=5432`, or the repo's local `.env` file points the command at the local test database).
+- [ ] **Have a lawyer read the legal pages before paid launch.** `/terms`, `/privacy` and `/acceptable-use` are now
+      written in full (Pacify Labs, Nigerian law, NDPA 2023). Check the company's registered name, add its address if
+      it should appear, and confirm the liability cap, the refund rule and the list of businesses we do not serve. The
+      date to change with any edit is `LEGAL_UPDATED` in `apps/web/src/components/marketing/legal-page.tsx`, and the
+      list of processors is in `privacy/page.tsx`.
+- [ ] **Free model keys and real data.** The privacy policy says AI providers may not train on customer content. Some
+      free tiers (Google Gemini's, for one) allow the provider to use what you send. Use free keys only with test data.
 - [ ] Optional: Redis `ajo-redis` is shared with another project and has no persistence, so queued jobs are lost if it
       restarts. Fine for review; move to its own instance before real use.
 

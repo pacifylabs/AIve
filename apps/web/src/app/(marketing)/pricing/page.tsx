@@ -26,14 +26,19 @@ const PLANS = [
 const INCLUDED: [string, ...{ text: string; muted?: boolean }[]][] = [
   ['Approval inbox and weekly report', { text: 'Yes' }, { text: 'Yes' }, { text: 'Yes' }],
   ['Promotion to act on its own', { text: 'No', muted: true }, { text: 'Yes' }, { text: 'Yes' }],
-  ['Video (Social)', { text: 'Template videos', muted: true }, { text: 'All styles' }, { text: 'All styles' }],
   [
-    'Phone line (Sales)',
+    'Video (Social) · coming soon',
+    { text: 'Template videos', muted: true },
+    { text: 'All styles' },
+    { text: 'All styles' },
+  ],
+  [
+    'Phone line (Sales) · coming soon',
     { text: 'Answers calls', muted: true },
     { text: 'Plus callbacks people asked for' },
     { text: 'Plus callbacks people asked for' },
   ],
-  ['Phone number', { text: '1 per Sales seat' }, { text: '1 per Sales seat' }, { text: '1 included' }],
+  ['Phone number · coming soon', { text: '1 per Sales seat' }, { text: '1 per Sales seat' }, { text: '1 included' }],
   ['Spending cap you set', { text: 'Yes' }, { text: 'Yes' }, { text: 'One cap for both' }],
 ];
 
@@ -44,7 +49,7 @@ const FAQ = [
   ],
   [
     'What happens when I hit my cap?',
-    'Your staff pause and we ask whether to top up, upgrade or wait for next month. A call in progress finishes politely first.',
+    'Your staff pause and we ask whether to top up, upgrade or wait for next month. When the phone line arrives, a call in progress finishes politely first.',
   ],
   [
     'Whose domain does it email from?',
@@ -52,7 +57,7 @@ const FAQ = [
   ],
   [
     'Does it pretend to be human?',
-    "No. On the phone it says it's an AI before anything else. In writing you choose: sign as a named person on your team who agrees to it, or use a name labelled as AI.",
+    "No. In writing you choose: sign as a named person on your team who agrees to it, or use a name labelled as AI. The phone line, coming soon, says it's an AI before anything else.",
   ],
   [
     'Can I change plans later?',

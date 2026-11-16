@@ -399,7 +399,7 @@ export default function HowItWorksPage() {
           <DemoStepper
             stories={[
               { key: 'email', label: 'Sales emails', steps: EMAIL_STEPS },
-              { key: 'call', label: 'A phone call', steps: CALL_STEPS },
+              { key: 'call', label: 'A phone call · coming soon', steps: CALL_STEPS },
             ]}
           />
         </div>

@@ -14,11 +14,11 @@ import {
 export const metadata: Metadata = {
   title: 'Social Media Staff',
   description:
-    'An AI social media staff member that plans your week, writes for each network, makes short videos you watch before they post, and turns buying comments into leads.',
+    'An AI social media staff member that plans your week, writes for eight networks, repeats your best posts, and turns buying comments into leads. Short videos are coming soon.',
   alternates: { canonical: '/staff/social-media' },
 };
 
-const NETWORKS = ['Facebook Pages', 'Instagram', 'LinkedIn Pages', 'X'];
+const NETWORKS = ['Facebook Pages', 'Instagram', 'LinkedIn', 'X', 'Threads', 'TikTok', 'Telegram', 'Discord'];
 
 export default function SocialMediaStaffPage() {
   return (
@@ -27,8 +27,8 @@ export default function SocialMediaStaffPage() {
         who="social"
         roleName="Social Media Staff"
         titleStart="Posts that sound like you."
-        titleEnd="Videos you watch first."
-        lead="It plans your week, writes for each network, makes short videos from your own products, and spots people ready to buy. Everything waits for you until it has earned more."
+        titleEnd="Nothing posts without you."
+        lead="It plans your week, writes for each network, repeats what worked, and spots people ready to buy. Everything waits for you until it has earned more."
         primaryLabel="Hire Social Media Staff"
         secondary={{ href: '/pricing', label: 'See pricing' }}
         aside={
@@ -91,7 +91,7 @@ export default function SocialMediaStaffPage() {
                       <span className="eyebrow" style={{ fontSize: 11 }}>
                         Plan · next week
                       </span>
-                      <span style={{ fontSize: 14 }}>5 posts · 1 video · 3 topics from your company record</span>
+                      <span style={{ fontSize: 14 }}>5 posts · 1 thread · 3 topics from your company record</span>
                       <div style={{ display: 'flex', gap: 8 }} aria-hidden="true">
                         <span className="btn btn-dark btn-sm">Approve plan</span>
                         <span className="btn btn-light btn-sm">Change</span>
@@ -147,10 +147,10 @@ export default function SocialMediaStaffPage() {
               },
               {
                 key: 'video',
-                label: 'Video',
+                label: 'Video · soon',
                 panel: (
                   <CapabilityPanel
-                    title="Short videos, always watched first"
+                    title="Coming soon: short videos, always watched first"
                     text="Idea, then script, then a rendered video made from your own product photos. It can't be approved until someone watches it to the end, and it's labelled as AI-made when it posts."
                   >
                     <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -227,7 +227,7 @@ export default function SocialMediaStaffPage() {
           { task: 'Weekly plan', starts: 'Shown to you', alone: { text: 'Yes, from day one' } },
           { task: 'Publishing posts', starts: 'Draft', alone: { text: 'After 20 approvals', tone: 'ok' } },
           { task: 'Replies to comments and messages', starts: 'Draft', alone: { text: 'Not at launch', tone: 'grey' } },
-          { task: 'Videos', starts: 'Draft', alone: { text: 'Never', tone: 'ink' } },
+          { task: 'Videos (coming soon)', starts: 'Draft', alone: { text: 'Never', tone: 'ink' } },
           { task: 'Complaints, refunds, legal', starts: 'Handed to you', alone: { text: 'Never', tone: 'ink' } },
         ]}
       />
@@ -245,7 +245,7 @@ export default function SocialMediaStaffPage() {
                   {network}
                 </li>
               ))}
-              {['TikTok', 'YouTube Shorts'].map((network) => (
+              {['YouTube Shorts'].map((network) => (
                 <li
                   key={network}
                   className="badge"
@@ -260,7 +260,9 @@ export default function SocialMediaStaffPage() {
                 </li>
               ))}
             </ul>
-            <span className="small">TikTok and YouTube Shorts join as each network approves us.</span>
+            <span className="small">
+              YouTube Shorts joins once YouTube approves us. LinkedIn Company Pages follow LinkedIn&apos;s approval.
+            </span>
           </div>
           <NumberedQuestions
             heading="HIRING TAKES FIVE QUESTIONS"

@@ -2070,3 +2070,30 @@
     transition: none;
   }
 }
+
+/* Legal pages: numbered sections of plain text and lists */
+.legal {
+  display: grid;
+  gap: 28px;
+}
+.legal section {
+  display: grid;
+  gap: 10px;
+}
+.legal p,
+.legal ul {
+  margin: 0;
+}
+.legal ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 20px;
+  list-style: disc;
+}
+.legal h2,
+.legal strong {
+  color: var(--ink);
+}
+.legal strong {
+  font-weight: 500;
+}

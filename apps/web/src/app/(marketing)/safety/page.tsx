@@ -8,7 +8,7 @@ import { Arrow, Eyebrow } from '@/components/marketing/primitives';
 export const metadata: Metadata = {
   title: 'Safety',
   description:
-    'The rules your AI staff follow whatever their record: facts only, your own mailbox, instant opt-outs, AI disclosure on calls, every video watched first, and a spending cap you set.',
+    'The rules your AI staff follow whatever their record: facts only, your own mailbox, instant opt-outs, and a spending cap you set. When calls and videos arrive, AI disclosure on every call and every video watched first.',
   alternates: { canonical: '/safety' },
 };
 
@@ -40,12 +40,12 @@ const RULES: { title: string; text: string; icon: ReactNode }[] = [
   },
   {
     title: "It says it's an AI",
-    text: 'Every call opens with that and a recording notice. Calls go out only to people who asked.',
+    text: 'In writing, you choose a named person who agrees or a name labelled as AI. When the phone line arrives, every call opens with that and a recording notice.',
     icon: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />,
   },
   {
     title: 'Every video watched first',
-    text: 'No video posts until a person watches it to the end. AI-made videos are labelled when they post.',
+    text: 'Coming with video: nothing posts until a person watches it to the end, and AI-made videos are labelled when they post.',
     icon: (
       <>
         <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -55,7 +55,7 @@ const RULES: { title: string; text: string; icon: ReactNode }[] = [
   },
   {
     title: 'A spending cap you set',
-    text: 'Staff pause at your monthly cap. A call in progress ends politely, never mid-sentence.',
+    text: 'Staff pause at your monthly cap, and nothing is spent past it.',
     icon: (
       <>
         <circle cx="12" cy="12" r="9" />
@@ -73,7 +73,7 @@ const DATA = [
   ['Connections encrypted', 'Account connections and mailbox passwords are stored encrypted, and never shown again.'],
   [
     'Deleted on request',
-    "Remove a contact's data in one step. Call recordings are kept 30 days by default, or not at all.",
+    "Ask us and we remove a contact's data. Their opt-out stays, so they are never contacted again.",
   ],
 ] as const;
 

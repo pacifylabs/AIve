@@ -15,23 +15,26 @@ export const metadata: Metadata = {
 const WORK = [
   ['social', 'ok', 'Posted', 'Why onboarding stalls in week two', 'LINKEDIN · MON 10:00'],
   ['sales', 'ok', 'Sent', 'First email to Dana Okafor', 'APPROVED · 1 EDIT'],
-  ['social', 'wait', 'Watch to approve', '30-second kickoff checklist video', 'INSTAGRAM · TEMPLATE'],
+  ['social', 'wait', 'Waiting for you', 'Your best post, rewritten for LinkedIn', 'REPURPOSED · FROM X'],
   ['sales', 'wait', 'Handed to you', 'Reply asks for a yearly discount', 'RULE · DISCOUNTS'],
   ['sales', 'ink', 'Stopped for good', '“Please take me off your list”', 'OPT-OUT · INSTANT'],
   ['social', 'grey', 'Draft', 'Reply to a question on Facebook', 'COMMENT · 2 MIN AGO'],
-  ['sales', 'ok', 'Call transferred', 'Jane Mensah, 40-seat enquiry', 'VOICE · 02:31'],
+  ['social', 'ok', 'Posted', 'Monday tip for your channel', 'TELEGRAM · EVERY MONDAY'],
   ['social', 'ok', 'Lead created', '“How much for 10 seats?”', 'INSTAGRAM → SALES'],
 ] as const;
 
 const PROOF = [
-  ['M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0M8 12h8M12 8v8', 'Posts to Facebook, Instagram, LinkedIn and X'],
+  [
+    'M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0M8 12h8M12 8v8',
+    'Posts to Facebook, Instagram, LinkedIn, X, Threads, TikTok, Telegram and Discord',
+  ],
   [
     'M5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9A2.5 2.5 0 0 1 5.5 5zM3.5 7l8.5 6 8.5-6',
     'Emails from your own mailbox',
   ],
   [
     'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2',
-    'Answers your phone line',
+    'Phone line coming soon',
   ],
 ] as const;
 
@@ -85,7 +88,7 @@ export default function HomePage() {
       <TickList
         items={[
           'Plans a week of posts around your offers',
-          'Makes short videos you watch before they post',
+          'Repeats your best posts and keeps a media library',
           'Turns buying comments into sales leads',
         ]}
       />
@@ -116,7 +119,7 @@ export default function HomePage() {
         items={[
           'Writes first emails and follow-ups from your mailbox',
           'Sorts every reply, stops at the first “no”',
-          'Answers your sales line, puts callers through to you',
+          'Coming soon: answers your sales line and puts callers through to you',
         ]}
       />
       <div style={{ marginTop: 'auto' }}>
@@ -315,7 +318,7 @@ export default function HomePage() {
                   <div className="meter">
                     <span />
                   </div>
-                  <span className="small">3 of 5 posts drafted · 1 video script</span>
+                  <span className="small">3 of 5 posts drafted · 1 reply thread</span>
                 </div>
                 <div className="wire" />
                 <div className="node">
@@ -491,7 +494,7 @@ export default function HomePage() {
               ],
               [
                 'A person on every hard call',
-                'Discounts, contracts and complaints always come to you, live on the phone.',
+                'Discounts, contracts and complaints always come to you, never to a machine.',
               ],
             ].map(([title, text], i) => (
               <div key={title} className="safety-item">

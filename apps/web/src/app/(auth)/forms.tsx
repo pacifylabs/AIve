@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState } from 'react';
 import {
   forgotPasswordAction,
@@ -36,6 +37,17 @@ export function SignupForm() {
         error={state.fields?.password}
       />
       <SubmitButton pendingLabel="Creating your account…">Create account</SubmitButton>
+      <p className="text-center text-xs text-muted">
+        By creating an account you agree to our{' '}
+        <Link href="/terms" className="text-accent hover:underline">
+          Terms
+        </Link>{' '}
+        and{' '}
+        <Link href="/privacy" className="text-accent hover:underline">
+          Privacy policy
+        </Link>
+        .
+      </p>
     </form>
   );
 }

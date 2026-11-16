@@ -3,6 +3,12 @@ export const SITE_URL = new URL(process.env.SITE_URL ?? 'http://localhost:3101')
 
 export const SITE_NAME = 'AI as a Staff';
 
+/** The company behind the service, as named in the legal pages. */
+export const COMPANY = 'Pacify Labs';
+
+/** Where people reach us, about anything from support to data requests. */
+export const CONTACT = 'pacifylabs@gmail.com';
+
 export interface SocialProfile {
   label: string;
   href: string;
