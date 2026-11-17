@@ -1,8 +1,10 @@
+import type { WorkspaceResponse } from '@ai-staff/contracts';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { type Tag, TagPill } from '@/components/app/tag';
 import { cancelPostAction, resolvePostAction, setPostTagAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
+import { localDate, localTime, zoneLabel } from '@/lib/zoned';
 import { DayStrip, DraggablePost } from './calendar-dnd';
 import { PostEditForm } from './post-edit-form';
 
@@ -53,34 +55,37 @@ function Row({ post, children }: { post: Post; children: ReactNode }) {
   );
 }
 
-const day = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+const day = (iso: string, timeZone: string) =>
+  new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone });
 
-/** The next two weeks, as days to drop a post on (UTC, as the calendar shows its times). */
-function nextDays() {
+/** The next two weeks, as days to drop a post on, in the workspace's time zone like the times shown. */
+function nextDays(timeZone: string) {
   return Array.from({ length: 14 }, (_, index) => {
     const date = new Date(Date.now() + index * 86_400_000);
     return {
-      date: date.toISOString().slice(0, 10),
-      label: date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }),
+      date: localDate(date.toISOString(), timeZone),
+      label: date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone }),
     };
   });
 }
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ tag?: string }> }) {
   const { tag } = await searchParams;
-  const [posts, tags] = await Promise.all([
+  const [posts, tags, workspace] = await Promise.all([
     apiOrRedirect<Post[]>(`/social/posts${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`, '/app/calendar', {
       workspace: true,
     }),
     apiOrRedirect<Tag[]>('/social/tags', '/app/calendar', { workspace: true }),
+    apiOrRedirect<WorkspaceResponse>('/workspace', '/app/calendar', { workspace: true }),
   ]);
+  // Times are planned in the workspace's zone (a 09:00 slot is 09:00 there), so they are shown in it too.
+  const timeZone = workspace.ok ? workspace.data.timezone : 'UTC';
   if (!posts.ok) return <p className="text-danger">{posts.problem.title}</p>;
   const allTags = tags.ok ? tags.data : [];
 
   const days = new Map<string, Post[]>();
   for (const post of posts.data) {
-    const key = post.scheduledFor.slice(0, 10);
+    const key = localDate(post.scheduledFor, timeZone);
     days.set(key, [...(days.get(key) ?? []), post]);
   }
 
@@ -89,7 +94,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="page-title">Calendar</h1>
-          <p className="text-muted">Posts that are scheduled, published or waiting on you. Times are shown in UTC.</p>
+          <p className="text-muted">
+            Posts that are scheduled, published or waiting on you. Times are shown in {zoneLabel(timeZone)}.
+          </p>
         </div>
         <Link href="/app/compose" className="btn btn-primary">
           New post
@@ -117,7 +124,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           ))}
         </nav>
       ) : null}
-      {posts.data.some(isEditable) ? <DayStrip days={nextDays()} /> : null}
+      {posts.data.some(isEditable) ? <DayStrip days={nextDays(timeZone)} timeZone={timeZone} /> : null}
       {posts.data.length === 0 ? (
         <div className="empty">
           <h2 className="font-medium">No posts yet</h2>
@@ -128,7 +135,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         {[...days.entries()].map(([key, items]) => (
           <div key={key} className="space-y-2">
             <h2 id={`day-${key}`} className="scroll-mt-24 text-sm font-medium">
-              {day(items[0]!.scheduledFor)}
+              {day(items[0]!.scheduledFor, timeZone)}
             </h2>
             <ul className="card divide-y divide-line-soft">
               {items.map((post) => (
@@ -138,7 +145,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                       {post.account?.name ?? 'Account removed'}
                       <span className="text-muted">
                         {' '}
-                        · {post.account?.network} · {new Date(post.scheduledFor).toISOString().slice(11, 16)}
+                        · {post.account?.network} · {localTime(post.scheduledFor, timeZone)}
                       </span>
                     </span>
                     <span className="flex items-center gap-2">

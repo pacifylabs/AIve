@@ -30,7 +30,7 @@ export function DraggablePost({
 }
 
 /** The next two weeks as days to drop a post on. Keeps its time of day; a refusal is shown in words. */
-export function DayStrip({ days }: { days: { date: string; label: string }[] }) {
+export function DayStrip({ days, timeZone }: { days: { date: string; label: string }[]; timeZone: string }) {
   const router = useRouter();
   const [over, setOver] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export function DayStrip({ days }: { days: { date: string; label: string }[] }) 
     setOver(null);
     if (!raw) return;
     const { id, updatedAt, scheduledFor } = JSON.parse(raw) as { id: string; updatedAt: string; scheduledFor: string };
-    const result = await movePostAction(id, updatedAt, scheduledFor, date);
+    const result = await movePostAction(id, updatedAt, scheduledFor, date, timeZone);
     setMessage(result.error ?? null);
     router.refresh();
   }

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Problem } from '@ai-staff/contracts';
 import { api } from '@/lib/api';
+import { sameTimeOnDay } from '@/lib/zoned';
 import { echo, field, type FormState, fromProblem } from '@/lib/form-state';
 
 function expired(returnTo: string): never {
@@ -198,11 +199,13 @@ export async function movePostAction(
   expectedUpdatedAt: string,
   currentIso: string,
   day: string,
+  timeZone: string,
 ): Promise<{ error?: string }> {
   const result = await api(`/social/posts/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     workspace: true,
-    body: { expectedUpdatedAt, scheduledFor: `${day}T${currentIso.slice(11)}` },
+    // Same local time on the new day; the API keeps it on the day the person sees, across daylight-saving changes too.
+    body: { expectedUpdatedAt, scheduledFor: sameTimeOnDay(currentIso, day, timeZone) },
   });
   if (!result.ok) {
     if (result.problem.status === 401) expired('/app/calendar');
