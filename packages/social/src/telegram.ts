@@ -84,6 +84,14 @@ export class TelegramProvider extends CredentialProvider {
       : `@${chatInput.replace(/^@/, '').replace(/^https?:\/\/t\.me\//, '')}`;
     const bot = await this.call<{ id: number; username?: string }>(token, 'getMe');
     const chat = await this.call<Chat>(token, 'getChat', { chat_id: chatId });
+    // A private chat (a person, or the bot's own name) answers getChat too, but a bot can only post to a channel or a
+    // group. Refuse it here rather than save an account every post will fail on.
+    if (chat.type === 'private') {
+      throw new ProviderError(
+        `${chatId} is a person or the bot itself, not a channel or group. Enter the channel the bot is an administrator of, for example @yourchannel.`,
+        this.network,
+      );
+    }
     const member = await this.call<{ status: string; can_post_messages?: boolean }>(token, 'getChatMember', {
       chat_id: chat.id,
       user_id: bot.id,

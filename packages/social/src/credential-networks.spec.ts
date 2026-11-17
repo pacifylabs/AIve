@@ -49,6 +49,20 @@ describe('Telegram', () => {
     ).rejects.toThrow(/administrator/);
   });
 
+  it('refuses a private chat, such as the bot itself, since posts can only go to a channel or group', async () => {
+    // Seen on staging: "@Dosinex_bot" was entered as the channel. Telegram answers getChat with the bot's own private
+    // chat and calls the bot a "member" of it, so the old check let it through and every post then failed.
+    const { fetcher, calls } = scripted(
+      { ok: true, result: { id: 8853163496, username: 'Dosinex_bot' } },
+      { ok: true, result: { id: 8853163496, username: 'Dosinex_bot', first_name: 'Dosinex', type: 'private' } },
+    );
+    const error = await new TelegramProvider(fetcher)
+      .connectWithCredentials({ botToken: '1:a', chat: '@Dosinex_bot' })
+      .catch((caught: unknown) => caught);
+    expect((error as Error).message).toMatch(/not a channel or group/);
+    expect(calls).toHaveLength(2);
+  });
+
   it('turns the member-list refusal into the same plain instruction, since only admins may read that list', async () => {
     const { fetcher } = scripted(
       { ok: true, result: { id: 42, username: 'ourbot' } },
