@@ -13,6 +13,8 @@ import {
 } from '@ai-staff/db';
 import { v7 as uuidv7 } from 'uuid';
 import type { RoleRegistry } from '../roles/registry.js';
+import { firstRunsFor } from './first-runs.js';
+import { insertRun } from './triggers.js';
 
 export class NotFoundError extends Error {}
 
@@ -211,6 +213,7 @@ export async function hireStaff(
         }),
       );
     }
+    for (const run of firstRunsFor(role, staff, new Date())) await insertRun(m, run);
     await m.save(
       m.create(AuditEntry, {
         ...actor,

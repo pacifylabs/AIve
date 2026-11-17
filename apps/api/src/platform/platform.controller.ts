@@ -18,6 +18,7 @@ import {
   configureAutopilotRequest,
   decidePromotionRequest,
   enableAutopilotRequest,
+  runTaskRequest,
   rejectWorkItemRequest,
   spendCapRequest,
   updateCompanyProfileRequest,
@@ -186,6 +187,17 @@ export class StaffController {
     @Body(new ZodPipe(enableAutopilotRequest)) _body: z.output<typeof enableAutopilotRequest>,
   ) {
     return this.platform.enableAutopilot(ctx, id, taskType);
+  }
+
+  @Post('staff/:id/tasks/:taskType/run')
+  @RequireRole('admin')
+  runTask(
+    @CurrentWorkspace() ctx: WorkspaceContext,
+    @Param('id', UuidPipe) id: string,
+    @Param('taskType', new ZodPipe(taskTypeParam)) taskType: string,
+    @Body(new ZodPipe(runTaskRequest)) body: z.output<typeof runTaskRequest>,
+  ) {
+    return this.platform.runTask(ctx, id, taskType, body.requestId);
   }
 
   @Post('staff/:id/autopilot/:taskType/stop')

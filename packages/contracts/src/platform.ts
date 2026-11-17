@@ -68,6 +68,9 @@ export const configureAutopilotRequest = z.object({
   rules: autopilotRulesRequest.default({}),
 });
 
+/** Starts a task now. `requestId` makes a double click harmless: the same id never queues a second run. */
+export const runTaskRequest = z.object({ requestId: z.string().trim().min(8).max(100) });
+
 export const enableAutopilotRequest = z.object({
   confirm: z.literal(true, 'Confirm that you want this task to act without your approval.'),
 });

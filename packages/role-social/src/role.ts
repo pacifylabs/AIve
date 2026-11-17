@@ -107,4 +107,6 @@ export const socialMediaRole: RoleDefinition = {
     },
   ],
   emits: ['social.plan_approved'],
+  // A new hire plans the coming week at once, so the first plan is in the inbox the day it is hired, not on Friday.
+  firstRun: ['social_media.plan_week'],
 };

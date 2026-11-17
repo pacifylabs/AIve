@@ -5,8 +5,11 @@ import {
   type AutopilotChange,
   AutopilotNotAllowedError,
   AutopilotService,
+  canRunNow,
   CompanyBrain,
+  insertRun,
   NotFoundError,
+  RoleRegistry,
   type ProfileChanges,
   WorkItemNotPendingError,
 } from '@ai-staff/core';
@@ -53,6 +56,7 @@ export class PlatformService {
     @Inject(ApprovalService) private readonly approvals: ApprovalService,
     @Inject(AutopilotService) private readonly autopilot: AutopilotService,
     @Inject(CompanyBrain) private readonly brain: CompanyBrain,
+    @Inject(RoleRegistry) private readonly registry: RoleRegistry,
     @InjectQueue(PLATFORM_QUEUE) private readonly platformQueue: Queue<PlatformJob>,
   ) {}
 
@@ -217,6 +221,32 @@ export class PlatformService {
 
   stopAutopilot(ctx: WorkspaceContext, staffId: string, taskType: string) {
     return translate(() => this.autopilot.stop(ctx, staffId, taskType));
+  }
+
+  /** A person starts a task now, such as "plan next week". Returns whether a new run was queued. */
+  runTask(ctx: WorkspaceContext, staffId: string, taskType: string, requestId: string) {
+    return this.tx(ctx, async (m) => {
+      const staff = await m.findOneBy(StaffMember, { workspaceId: ctx.workspaceId, id: staffId });
+      if (!staff || staff.state === 'archived') throw AppError.notFound('Staff member not found.');
+      if (staff.state !== 'active') throw AppError.conflict(`${staff.displayName} is paused. Resume it first.`);
+      if (!this.registry.hasRole(staff.roleKey) || !canRunNow(this.registry.role(staff.roleKey), taskType)) {
+        throw AppError.notFound('This staff member has no such task to start.');
+      }
+      const setting = await m.findOneBy(StaffTaskSetting, { workspaceId: ctx.workspaceId, staffId, taskType });
+      if (setting?.autonomy === 'off') throw AppError.conflict('This task is turned off.');
+      const { task } = this.registry.task(taskType);
+      const id = await insertRun(m, {
+        workspaceId: ctx.workspaceId,
+        staffId,
+        taskType,
+        trigger: 'person',
+        idempotencyKey: `person:${staffId}:${requestId}`,
+        input: {},
+        runAt: new Date(),
+        maxAttempts: task.maxAttempts,
+      });
+      return { queued: id !== null };
+    });
   }
 
   // ---- Activity and spending ---------------------------------------------------------------------------------

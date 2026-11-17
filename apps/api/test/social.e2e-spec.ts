@@ -355,6 +355,50 @@ describe('hiring Social Media Staff', () => {
   });
 });
 
+describe('a new social media hire', () => {
+  it('plans its first week straight away, and a person can ask for another plan without duplicates', async () => {
+    const a = await workspace('first1');
+    t.social.facebook.accounts = [{ externalId: 'fp', name: 'FP', kind: 'page' }];
+    const pending = (await signIn(a.as)).landed.searchParams.get('pending')!;
+    const [account] = (
+      await t
+        .http()
+        .post(`/v1/social/pending/${pending}/select`)
+        .set(a.as)
+        .send({ externalIds: ['fp'] })
+        .expect(200)
+    ).body as { id: string }[];
+    const staff = (
+      await t
+        .http()
+        .post('/v1/staff')
+        .set(a.as)
+        .send({ roleKey: 'social_media', displayName: 'Sam', settings: { accountIds: [account!.id] } })
+        .expect(201)
+    ).body as { id: string };
+
+    const runs = () =>
+      withTenant(db, { workspaceId: a.workspaceId, userId: null }, (m) =>
+        m.query(`SELECT task_type, trigger FROM task_runs WHERE staff_id = $1 ORDER BY created_at`, [staff.id]),
+      ) as Promise<{ task_type: string; trigger: string }[]>;
+    expect(await runs()).toEqual([{ task_type: 'social_media.plan_week', trigger: 'person' }]);
+
+    const run = (requestId: string) =>
+      t.http().post(`/v1/staff/${staff.id}/tasks/social_media.plan_week/run`).set(a.as).send({ requestId });
+    expect((await run('click-0001').expect(201)).body).toEqual({ queued: true });
+    expect((await run('click-0001').expect(201)).body).toEqual({ queued: false });
+    expect(await runs()).toHaveLength(2);
+
+    // Only tasks a person may start: drafting from an article waits for an article.
+    await t
+      .http()
+      .post(`/v1/staff/${staff.id}/tasks/social_media.draft_from_article/run`)
+      .set(a.as)
+      .send({ requestId: 'click-0002' })
+      .expect(404);
+  });
+});
+
 describe('networks that connect with a pasted login', () => {
   const connect = (as: Record<string, string>, network: string, credentials: Record<string, string>) =>
     t.http().post(`/v1/social/accounts/connect/${network}/credentials`).set(as).send({ credentials });

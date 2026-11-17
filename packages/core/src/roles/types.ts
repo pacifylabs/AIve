@@ -283,6 +283,8 @@ export interface RoleDefinition {
   tasks: TaskDefinition<any, any>[];
   subscribes: EventSubscription[];
   emits: string[];
+  /** Tasks queued the moment a staff member is hired, so it starts working that day. Each needs a `person` trigger. */
+  firstRun?: string[];
 }
 
 /** Wraps untrusted text so the model treats it as data. Tags inside the text are neutralised so it cannot close the block. */
