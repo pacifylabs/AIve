@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { enableAutopilotAction, saveAutopilotAction } from '@/app/actions/platform';
 import { FormMessages, SubmitButton, TextField } from '@/components/form';
 import { initialFormState } from '@/lib/form-state';
@@ -26,6 +26,53 @@ const MODES = [
   { value: 'off', label: 'Always ask me', help: 'Every draft waits for my approval. Do not offer autopilot.' },
 ] as const;
 
+/** What the closed rules panel says, so the choice is visible without opening it. */
+export function modeLabel(mode: 'off' | 'ask' | 'auto'): string {
+  return MODES.find((option) => option.value === mode)?.label ?? mode;
+}
+
+/**
+ * The rules behind a summary that shows the current choice. Closed by default, and it closes again after a save so
+ * the person sees that it took.
+ */
+export function RulesPanel(props: {
+  staffId: string;
+  taskType: string;
+  mode: 'off' | 'ask' | 'auto';
+  rules: AutopilotRules;
+  defaults: AutopilotRules;
+}) {
+  const [open, setOpen] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  return (
+    <details
+      className="card-flat px-4 py-3"
+      open={open}
+      onToggle={(event) => setOpen((event.target as HTMLDetailsElement).open)}
+    >
+      <summary className="cursor-pointer text-sm">
+        <span className="font-medium">Rules</span>
+        <span className="text-muted"> · {modeLabel(props.mode)}</span>
+        {savedAt && !open ? (
+          <span className="text-ok" role="status">
+            {' '}
+            · Saved
+          </span>
+        ) : null}
+      </summary>
+      <div className="pt-4">
+        <RulesForm
+          {...props}
+          onSaved={() => {
+            setSavedAt(Date.now());
+            setOpen(false);
+          }}
+        />
+      </div>
+    </details>
+  );
+}
+
 /** The mode and the rules that must be met. Blank boxes keep the role's own numbers. */
 export function RulesForm({
   staffId,
@@ -33,14 +80,20 @@ export function RulesForm({
   mode,
   rules,
   defaults,
+  onSaved,
 }: {
   staffId: string;
   taskType: string;
   mode: 'off' | 'ask' | 'auto';
   rules: AutopilotRules;
   defaults: AutopilotRules;
+  onSaved?: () => void;
 }) {
   const [state, action] = useActionState(saveAutopilotAction, initialFormState);
+  useEffect(() => {
+    if (state.notice && !state.error && !state.fields) onSaved?.();
+    // Keyed on the result alone: only a new answer from the action should close the panel.
+  }, [state]);
   const value = (name: string, fallback: number) => state.values?.[name] ?? String(fallback);
   return (
     <form action={action} className="space-y-4" noValidate>

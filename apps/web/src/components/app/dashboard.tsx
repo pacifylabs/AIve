@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Alert, SetupStep, WeekFigures } from '@/lib/dashboard';
 import { Icon } from './icons';
+import { PlanWeekButton } from './plan-week-button';
 
 /** The pieces of the Dashboard home. Plain server components: they show what the page fetched and fetch nothing. */
 
@@ -249,6 +250,15 @@ export function StaffCards({ staff, tasks }: { staff: StaffMember[]; tasks: Auto
               ) : (
                 <p className="text-sm text-muted">Everything waits for your approval.</p>
               )}
+
+              {social && member.state === 'active' ? (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted">
+                    {member.displayName} plans each week on Fridays. Want the first plan sooner?
+                  </p>
+                  <PlanWeekButton staffId={member.id} />
+                </div>
+              ) : null}
 
               <div className="flex gap-2">
                 <Link href="/app/autopilot" className="btn btn-sm">

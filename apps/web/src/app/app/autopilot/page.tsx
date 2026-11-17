@@ -1,6 +1,6 @@
 import { decideOfferAction, stopAutopilotAction } from '@/app/actions/platform';
 import { apiOrRedirect } from '@/lib/api';
-import { type AutopilotRules, EnableNowForm, RulesForm } from './autopilot-forms';
+import { type AutopilotRules, EnableNowForm, RulesPanel } from './autopilot-forms';
 
 export const metadata = { title: 'Autopilot' };
 
@@ -29,7 +29,10 @@ function Status({ task }: { task: TaskView }) {
   if (task.autonomy === 'off') {
     return <span className="pill">Turned off</span>;
   }
-  return <span className="pill pill-warn">Waiting for your approval</span>;
+  // Still on approval: say what happens next, which depends on the choice made in the rules.
+  if (task.mode === 'off') return <span className="pill">Always asks you</span>;
+  if (task.mode === 'auto') return <span className="pill pill-accent">Turns on by itself</span>;
+  return <span className="pill pill-warn">Tells you when it is ready</span>;
 }
 
 function Record({ task }: { task: TaskView }) {
@@ -106,8 +109,8 @@ export default async function AutopilotPage() {
             <li key={`${task.staffId}:${task.taskType}`} className="space-y-5 card p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">{task.staffName}</h2>
-                  <p className="text-sm text-muted">{task.taskName}</p>
+                  <h2 className="text-lg font-semibold">{task.taskName}</h2>
+                  <p className="text-sm text-muted">{task.staffName}</p>
                 </div>
                 <Status task={task} />
               </div>
@@ -127,7 +130,13 @@ export default async function AutopilotPage() {
                 </div>
               ) : (
                 <>
-                  <Record task={task} />
+                  {task.mode === 'off' ? (
+                    <p className="text-sm text-muted">
+                      Every draft from this task waits for your approval. Change the rules to let it earn autopilot.
+                    </p>
+                  ) : (
+                    <Record task={task} />
+                  )}
                   {task.demotedReason ? (
                     <p className="card-flat px-3 py-2 text-sm text-muted">
                       Pulled back to approval: {task.demotedReason}
@@ -157,18 +166,13 @@ export default async function AutopilotPage() {
                 </>
               )}
 
-              <details className="card-flat px-4 py-3" open={task.autonomy !== 'act'}>
-                <summary className="cursor-pointer text-sm font-medium">Rules</summary>
-                <div className="pt-4">
-                  <RulesForm
-                    staffId={task.staffId}
-                    taskType={task.taskType}
-                    mode={task.mode}
-                    rules={task.rules}
-                    defaults={task.defaults}
-                  />
-                </div>
-              </details>
+              <RulesPanel
+                staffId={task.staffId}
+                taskType={task.taskType}
+                mode={task.mode}
+                rules={task.rules}
+                defaults={task.defaults}
+              />
 
               {task.autonomy === 'draft' ? (
                 <details className="card-flat px-4 py-3">

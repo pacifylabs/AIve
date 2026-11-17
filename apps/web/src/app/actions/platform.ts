@@ -182,6 +182,19 @@ export async function enableAutopilotAction(_state: FormState, data: FormData): 
   return { notice: 'Autopilot is on.' };
 }
 
+/** "Plan next week now": starts the social staff member's weekly plan instead of waiting for Friday. */
+export async function planWeekNowAction(_state: FormState, data: FormData): Promise<FormState> {
+  const staffId = field(data, 'staffId');
+  const result = await api<{ queued: boolean }>(
+    `/staff/${encodeURIComponent(staffId)}/tasks/social_media.plan_week/run`,
+    // A fresh id per press; the button is disabled while a press is in flight, so a double click sends one.
+    { method: 'POST', workspace: true, body: { requestId: crypto.randomUUID() } },
+  );
+  if (!result.ok) return result.problem.status === 401 ? expired('/app') : fromProblem(result.problem);
+  revalidatePath('/app');
+  return { notice: 'Planning started. The plan arrives in your inbox in a minute or two.' };
+}
+
 export async function stopAutopilotAction(data: FormData): Promise<void> {
   const result = await api(`${autopilotPath(data)}/stop`, { method: 'POST', workspace: true });
   if (!result.ok && result.problem.status === 401) expired('/app/autopilot');
