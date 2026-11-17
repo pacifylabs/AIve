@@ -27,7 +27,7 @@ to-do list that sits on top of it.
 | 6 | Threads | Create an app, two keys, add yourself as tester | [ ] |
 | 7 | TikTok | Create an app, two keys, verify a video domain | [ ] |
 | 8 | LinkedIn Company Pages | Apply to LinkedIn, then one switch | [ ] |
-| 9 | Facebook and Instagram | Meta app, review, two keys | [ ] |
+| 9 | Facebook and Instagram | Meta app, three settings (review only for other people) | [ ] |
 | 10 | X | Pick a paid plan, two keys | [ ] |
 | 11 | Email from its own domain | Verify a domain in Resend | [ ] |
 | 12 | A first full test | About 15 minutes | [ ] |
@@ -207,29 +207,38 @@ review and can take weeks.
 Do not set `LINKEDIN_PAGES=true` earlier: LinkedIn refuses the whole sign-in if the app asks for permissions it does not
 have.
 
-## 9. Facebook and Instagram (later)
+## 9. Facebook and Instagram
 
-Needs a Meta app with Facebook Login, and Meta's App Review before anyone but you can connect.
+One Meta app covers both. While the app is in **Development** mode only people with a role on it (you) can connect,
+which is all a first test needs. Anyone else needs Meta's App Review (and business verification, which takes longest).
+Meta renames dashboard items now and then; the steps below match the dashboard as of 2026-11-17.
 
-- [ ] https://developers.facebook.com/apps, create an app (business type). Start **business verification** now; it takes
-      the longest.
-- [ ] Add redirect URIs `https://ai-staff-staging.onrender.com/v1/social/callback/facebook` and `…/instagram`.
-- [ ] Permissions the code asks for: Facebook `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`; Instagram
-      `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`. Messaging
-      (`META_MESSAGING=true`) needs more and is off.
-- [ ] On Render add `META_APP_ID` and `META_APP_SECRET`.
-- [ ] Until the app passes review, only people with a role on the app can connect.
-- Instagram posts need a picture or video, and the account must be a business account linked to a Facebook Page.
+Before you start: a **Facebook Page** for the business, and an **Instagram professional account** (business or
+creator) linked to that Page (Instagram app, Settings, Account type and tools; then link it to the Page from the Page's
+settings).
+
+- [ ] https://developers.facebook.com/apps, **Create app**. Choose the use case for **managing a Page** (posting to it)
+      and add the use case for **Instagram with Facebook Login**. App type **Business**, linked to your business
+      portfolio.
+- [ ] **Facebook Login for Business, Configurations, Create.** Token type **User access token**. Assets: Pages and
+      Instagram accounts. Permissions: `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`,
+      `instagram_basic`, `instagram_content_publish` (add `business_management` if your Page belongs to a business
+      portfolio). Save, and copy the **configuration ID** (a number).
+- [ ] **Valid OAuth redirect URIs** (Facebook Login for Business, Settings):
+      `https://ai-staff-staging.onrender.com/v1/social/callback/facebook` and
+      `https://ai-staff-staging.onrender.com/v1/social/callback/instagram`.
+- [ ] **App settings, Basic:** privacy policy URL `https://a-ive.vercel.app/privacy`; data deletion requests URL
+      `https://ai-staff-staging.onrender.com/v1/social/meta/data-deletion`; deauthorize callback
+      `https://ai-staff-staging.onrender.com/v1/social/meta/deauthorize` (both check Meta's signature with the app
+      secret). Copy the **App ID** and **App secret**.
+- [ ] On Render add `META_APP_ID`, `META_APP_SECRET` and `META_LOGIN_CONFIG_ID` (the configuration ID). If
+      `META_GRAPH_VERSION` is set there, set it to `v25.0` or delete it (v25.0 is the default; v21.0 stops working on
+      2027-01-21).
+- Instagram posts need a picture or video; text-only posts are refused by Instagram.
 - [ ] **Reach (optional):** to show "seen N times" for Instagram and Facebook, add `instagram_manage_insights` and
-      `read_insights` to the app and to Meta's App Review, then reconnect the accounts. The code is already written and
-      asks for yesterday's figure each night; without the permission Meta refuses and the Accounts page simply shows no
-      reach for them (followers still work). Threads reach needs nothing more: `threads_manage_insights` is already asked.
-
-- [ ] In the app's settings, set the **Deauthorize callback URL** to
-      `https://ai-staff-staging.onrender.com/v1/social/meta/deauthorize` and the **Data deletion requests URL** to
-      `https://ai-staff-staging.onrender.com/v1/social/meta/data-deletion`. Both check Meta's signature with
-      `META_APP_SECRET`. Accounts connected before 2026-11-09 do not carry the Meta user id these need; connect them
-      again (none are connected on the hosted site yet).
+      `read_insights` to the configuration (and to App Review for other people), then reconnect. Without them the
+      Accounts page shows no reach for those two (followers still work).
+- Messaging (`META_MESSAGING=true`) needs more permissions and App Review, and is off.
 
 ## 10. X
 

@@ -107,7 +107,13 @@ export const configSchema = z
     META_GRAPH_VERSION: z
       .string()
       .regex(/^v\d+\.\d+$/)
-      .default('v21.0'),
+      // v21.0 stops working on 2027-01-21; v25.0 is supported until 2028-07-29 (Meta's version table, 2026-11-17).
+      .default('v25.0'),
+    /**
+     * The "Facebook Login for Business" configuration id from the Meta app dashboard. Business apps need it, since
+     * they ignore the permissions listed in the sign-in link. Leave it unset for a classic Facebook Login app.
+     */
+    META_LOGIN_CONFIG_ID: z.string().regex(/^\d+$/, 'META_LOGIN_CONFIG_ID is the number Meta shows').optional(),
     /** Switch on only once the app is approved to read and answer messages. */
     META_MESSAGING: z.stringbool().default(false),
     /** X API app (OAuth 2.0 client). */
@@ -197,6 +203,7 @@ export function socialConfig(
     | 'META_APP_SECRET'
     | 'META_GRAPH_VERSION'
     | 'META_MESSAGING'
+    | 'META_LOGIN_CONFIG_ID'
     | 'X_CLIENT_ID'
     | 'X_CLIENT_SECRET'
     | 'LINKEDIN_CLIENT_ID'
@@ -215,6 +222,7 @@ export function socialConfig(
       appSecret: config.META_APP_SECRET ?? '',
       graphVersion: config.META_GRAPH_VERSION,
       messaging: config.META_MESSAGING,
+      loginConfigId: config.META_LOGIN_CONFIG_ID,
     },
     x: { clientId: config.X_CLIENT_ID ?? '', clientSecret: config.X_CLIENT_SECRET ?? '' },
     linkedin: {

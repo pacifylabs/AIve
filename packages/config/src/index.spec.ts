@@ -100,10 +100,10 @@ describe('loadConfig', () => {
 describe('social network settings', () => {
   it('are optional, and an unset network is passed on as empty credentials', () => {
     const config = loadConfig(valid);
-    expect(config.META_GRAPH_VERSION).toBe('v21.0');
+    expect(config.META_GRAPH_VERSION).toBe('v25.0');
     expect(config.META_MESSAGING).toBe(false);
     expect(socialConfig(config)).toEqual({
-      meta: { appId: '', appSecret: '', graphVersion: 'v21.0', messaging: false },
+      meta: { appId: '', appSecret: '', graphVersion: 'v25.0', messaging: false },
       x: { clientId: '', clientSecret: '' },
       linkedin: { clientId: '', clientSecret: '', pages: false, version: '202610' },
       threads: { appId: '', appSecret: '' },

@@ -204,6 +204,29 @@ describe('MetaProvider', () => {
     expect(none).toBeNull();
   });
 
+  it('asks for the permissions in the sign-in link when no login configuration is set', () => {
+    const url = new URL(
+      new MetaProvider('instagram', meta).getAuthUrl({ redirectUri: 'https://api.test/cb', state: 'st' }),
+    );
+    expect(url.searchParams.get('scope')).toBe(
+      'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement',
+    );
+    expect(url.searchParams.get('config_id')).toBeNull();
+  });
+
+  it('sends the Facebook Login for Business configuration instead of scopes when one is set', () => {
+    // Business apps ignore `scope`; the permissions live in the configuration made in the app's dashboard.
+    const url = new URL(
+      new MetaProvider('facebook', { ...meta, loginConfigId: '123456789' }).getAuthUrl({
+        redirectUri: 'https://api.test/cb',
+        state: 'st',
+      }),
+    );
+    expect(url.searchParams.get('config_id')).toBe('123456789');
+    expect(url.searchParams.get('scope')).toBeNull();
+    expect(url.searchParams.get('state')).toBe('st');
+  });
+
   it('says plainly when the app is not configured', async () => {
     const unset = new MetaProvider('facebook', { ...meta, appId: '' });
     expect(unset.isConfigured()).toBe(false);

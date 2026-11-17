@@ -27,6 +27,11 @@ export interface MetaConfig {
   graphVersion: string;
   /** Messages need an approved app and a webhook; until then none of it is switched on. */
   messaging: boolean;
+  /**
+   * A "Facebook Login for Business" configuration. Business apps ignore `scope` and take their permissions from this
+   * configuration instead; without one, the classic Facebook Login permissions are asked for.
+   */
+  loginConfigId?: string;
 }
 
 export interface MetaOptions {
@@ -122,7 +127,7 @@ export class MetaProvider implements SocialProvider {
       redirect_uri: redirectUri,
       state,
       response_type: 'code',
-      scope: scopes.join(','),
+      ...(this.config.loginConfigId ? { config_id: this.config.loginConfigId } : { scope: scopes.join(',') }),
     });
     return `https://www.facebook.com/${this.config.graphVersion}/dialog/oauth?${query}`;
   }

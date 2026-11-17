@@ -44,7 +44,7 @@ export class SocialProviders {
   private readonly providers = new Map<SocialNetwork, SocialProvider>();
 
   constructor(config: SocialConfig = {}, overrides: SocialProvider[] = []) {
-    const meta = config.meta ?? { appId: '', appSecret: '', graphVersion: 'v21.0', messaging: false };
+    const meta = config.meta ?? { appId: '', appSecret: '', graphVersion: 'v25.0', messaging: false };
     this.providers.set('facebook', new MetaProvider('facebook', meta));
     this.providers.set('instagram', new MetaProvider('instagram', meta));
     this.providers.set(
