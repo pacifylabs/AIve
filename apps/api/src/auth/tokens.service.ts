@@ -6,6 +6,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { AppError } from '../common/app-error.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.module.js';
 import { randomToken, sha256 } from '../crypto/crypto.js';
+import { refreshDecision } from './refresh-decision.js';
 
 export interface AccessClaims {
   sub: string;
@@ -38,8 +39,9 @@ export class TokensService {
   }
 
   /**
-   * Exchanges a refresh token for a new pair. A token that was already exchanged means it was copied, so the whole
-   * family is revoked and the caller must sign in again.
+   * Exchanges a refresh token for a new pair. A token exchanged moments ago is a race between two requests and gets a
+   * pair of its own (see `REUSE_GRACE_MS`); one exchanged longer ago means it was copied, so the whole family is revoked
+   * and the caller must sign in again.
    */
   async rotate(presented: string, userAgent: string | undefined): Promise<TokenPair> {
     const outcome = await this.db.transaction(async (m) => {
@@ -47,14 +49,17 @@ export class TokensService {
         where: { tokenHash: sha256(presented) },
         lock: { mode: 'pessimistic_write' },
       });
-      if (!row || row.revokedAt || row.expiresAt <= new Date()) return { kind: 'invalid' as const };
-      if (row.rotatedAt) {
+      const now = new Date();
+      const decision = refreshDecision(row, now);
+      if (decision === 'invalid' || !row) return { kind: 'invalid' as const };
+      if (decision === 'reused') {
         // Committed before answering: an error thrown inside this transaction would roll the revocation back.
-        await m.update(RefreshToken, { familyId: row.familyId, revokedAt: IsNull() }, { revokedAt: new Date() });
+        await m.update(RefreshToken, { familyId: row.familyId, revokedAt: IsNull() }, { revokedAt: now });
         return { kind: 'reused' as const };
       }
       const user = await m.findOneByOrFail(User, { id: row.userId });
-      await m.update(RefreshToken, { id: row.id }, { rotatedAt: new Date() });
+      // Inside the grace window the row keeps its first rotation time, so the window never stretches.
+      if (decision === 'rotate') await m.update(RefreshToken, { id: row.id }, { rotatedAt: now });
       return { kind: 'rotated' as const, pair: await this.mint(user, row.familyId, userAgent, m) };
     });
     if (outcome.kind === 'rotated') return outcome.pair;

@@ -1,5 +1,7 @@
+import { DataSource } from '@ai-staff/db';
 import { Secret, TOTP } from 'otpauth';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { sha256 } from '../src/crypto/crypto.js';
 import { PASSWORD, signedInUser, startApp, type TestApp, uniqueEmail } from './helpers/app.js';
 
 let t: TestApp;
@@ -174,9 +176,27 @@ describe('refresh tokens', () => {
     await t.http().post('/v1/auth/refresh').send({ refreshToken: next.body.refreshToken }).expect(200);
   });
 
-  it('revokes the whole family when an old token is replayed', async () => {
+  it('lets two refreshes racing with the same token both through', async () => {
+    const user = await signedInUser(t, 'race');
+    const [first, second] = await Promise.all([
+      t.http().post('/v1/auth/refresh').send({ refreshToken: user.refreshToken }),
+      t.http().post('/v1/auth/refresh').send({ refreshToken: user.refreshToken }),
+    ]);
+    expect([first.status, second.status]).toEqual([200, 200]);
+    // Neither pair was revoked by the other.
+    await t.http().post('/v1/auth/refresh').send({ refreshToken: first.body.refreshToken }).expect(200);
+    await t.http().post('/v1/auth/refresh').send({ refreshToken: second.body.refreshToken }).expect(200);
+  });
+
+  it('revokes the whole family when an old token is replayed after the grace window', async () => {
     const user = await signedInUser(t, 'reuse');
     const next = await t.http().post('/v1/auth/refresh').send({ refreshToken: user.refreshToken }).expect(200);
+    // As if the first exchange happened two minutes ago.
+    await t.app
+      .get(DataSource)
+      .query(`UPDATE refresh_tokens SET rotated_at = now() - interval '2 minutes' WHERE token_hash = $1`, [
+        sha256(user.refreshToken),
+      ]);
     const replay = await t.http().post('/v1/auth/refresh').send({ refreshToken: user.refreshToken }).expect(401);
     expect(replay.body.code).toBe('refresh_token_reused');
     const after = await t.http().post('/v1/auth/refresh').send({ refreshToken: next.body.refreshToken }).expect(401);
