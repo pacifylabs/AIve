@@ -1,7 +1,7 @@
 import { APPROVED_PAYLOAD, Cancel, type TaskDefinition } from '@ai-staff/core';
 import { ConnectedAccount, In, Workspace } from '@ai-staff/db';
 import { z } from 'zod';
-import { companyBlock, RULES, SMALL_MODEL, styleBlock } from '../prompts.js';
+import { companyBlock, PLAN_MODEL, RULES, styleBlock } from '../prompts.js';
 import { settingsOf } from '../settings.js';
 import { nextWeekStart, weekDates, zonedTimeToUtc } from '../time.js';
 
@@ -55,7 +55,7 @@ export const planWeek: TaskDefinition<Input, Plan> = {
   triggers: [{ schedule: '0 10 * * 5' }, { person: true }],
   inputSchema: input,
   maxAttempts: 3,
-  model: SMALL_MODEL,
+  model: PLAN_MODEL,
   outputSchema: planSchema,
   async buildPrompt(ctx, { weekStart }) {
     const settings = settingsOf(ctx.staff);

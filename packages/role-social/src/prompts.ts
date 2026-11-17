@@ -6,6 +6,15 @@ import type { SocialSettings } from './settings.js';
 export const SMALL_MODEL: ModelChoice = { name: 'claude-haiku-5-5', maxTokens: 1200 };
 
 /**
+ * The weekly plan answers with up to 15 ideas at once, which needs far more room than a single post: at 1,200 tokens a
+ * nine-idea plan was cut off on staging and retried until it died.
+ */
+export const PLAN_MODEL: ModelChoice = { ...SMALL_MODEL, maxTokens: 4000 };
+
+/** A drafted post may fill every field: body, first comment and up to three replies (about 10,500 characters). */
+export const POST_MODEL: ModelChoice = { ...SMALL_MODEL, maxTokens: 4000 };
+
+/**
  * What the model is told, kept in one place. Ported from KudiBooks `SocialCaptionsService`, with the market-specific
  * wording removed: how the company sounds comes from its profile, not from the platform.
  */

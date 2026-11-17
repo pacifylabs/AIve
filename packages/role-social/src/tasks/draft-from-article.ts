@@ -2,7 +2,7 @@ import { Cancel, type TaskDefinition, untrusted } from '@ai-staff/core';
 import { ConnectedAccount, FeedItem } from '@ai-staff/db';
 import { z } from 'zod';
 import type { PostOutput } from '../guardrails.js';
-import { companyBlock, EMOJI_RULE, RULES, SMALL_MODEL, styleBlock } from '../prompts.js';
+import { companyBlock, EMOJI_RULE, RULES, POST_MODEL, styleBlock } from '../prompts.js';
 import { settingsOf } from '../settings.js';
 import {
   lengthHint,
@@ -45,7 +45,7 @@ export const draftFromArticle: TaskDefinition<Input, PostOutput> = {
   triggers: [{ event: 'content.article_found' }],
   inputSchema: input,
   maxAttempts: 3,
-  model: SMALL_MODEL,
+  model: POST_MODEL,
   outputSchema: postOutputSchema,
   async buildPrompt(ctx, task) {
     const settings = settingsOf(ctx.staff);

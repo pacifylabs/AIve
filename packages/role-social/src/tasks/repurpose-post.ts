@@ -2,7 +2,7 @@ import { Cancel, engagementOf, type TaskDefinition, untrusted } from '@ai-staff/
 import { ConnectedAccount, SocialMetric, SocialPost } from '@ai-staff/db';
 import { z } from 'zod';
 import type { PostOutput } from '../guardrails.js';
-import { companyBlock, EMOJI_RULE, RULES, SMALL_MODEL, styleBlock } from '../prompts.js';
+import { companyBlock, EMOJI_RULE, RULES, POST_MODEL, styleBlock } from '../prompts.js';
 import { settingsOf } from '../settings.js';
 import { articlePostTime } from './draft-from-article.js';
 import {
@@ -42,7 +42,7 @@ export const repurposePost: TaskDefinition<Input, PostOutput> = {
   triggers: [{ event: 'post.repurpose_requested' }],
   inputSchema: input,
   maxAttempts: 3,
-  model: SMALL_MODEL,
+  model: POST_MODEL,
   outputSchema: postOutputSchema,
   async buildPrompt(ctx, task) {
     const settings = settingsOf(ctx.staff);
