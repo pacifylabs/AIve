@@ -42,7 +42,7 @@ export default async function CompanyPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-4 card p-6">
           <h2 className="font-medium">Profile</h2>
-          <ProfileForm profile={profile} canEdit={canEdit} />
+          <ProfileForm key={profile.prefilledAt ?? 'none'} profile={profile} canEdit={canEdit} />
         </div>
         <div className="space-y-4 card p-6">
           <h2 className="font-medium">Start from your website</h2>

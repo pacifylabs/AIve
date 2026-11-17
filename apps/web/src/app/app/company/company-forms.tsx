@@ -1,10 +1,13 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useActionState, useEffect, useState } from 'react';
 import { addFactAction, prefillAction, updateCompanyAction, updateFactAction } from '@/app/actions/platform';
 import { FormMessages, SubmitButton, TextAreaField, TextField } from '@/components/form';
 import { initialFormState } from '@/lib/form-state';
+import { pollDelay } from '@/lib/poll';
 import { FACT_KINDS } from './fact-kinds';
+import { VoicePicker } from './voice-picker';
 
 export interface Profile {
   website: string | null;
@@ -14,6 +17,7 @@ export interface Profile {
   escalationEmail: string | null;
   prefillState: 'none' | 'queued' | 'running' | 'done' | 'failed';
   prefillError: string | null;
+  prefilledAt?: string | null;
 }
 
 export function ProfileForm({ profile, canEdit }: { profile: Profile; canEdit: boolean }) {
@@ -36,12 +40,10 @@ export function ProfileForm({ profile, canEdit }: { profile: Profile; canEdit: b
           defaultValue={state.values?.summary ?? profile.summary ?? ''}
           error={state.fields?.summary}
         />
-        <TextAreaField
-          label="How you sound"
+        <VoicePicker
           name="voice"
-          rows={2}
           defaultValue={state.values?.voice ?? profile.voice ?? ''}
-          hint="For example: plain and friendly, no jargon."
+          disabled={!canEdit}
           error={state.fields?.voice}
         />
         <TextAreaField
@@ -73,9 +75,33 @@ const PREFILL_STATUS: Record<Profile['prefillState'], string> = {
   failed: 'Could not read your website.',
 };
 
+/**
+ * While the website is being read, the page checks back on its own so the suggestions appear without a refresh. It
+ * stops when the read is done or failed, or after ten minutes.
+ */
+function useRefreshWhile(active: boolean) {
+  const router = useRouter();
+  useEffect(() => {
+    if (!active) return;
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      const delay = pollDelay(Date.now() - started);
+      if (delay === null) return;
+      timer = setTimeout(() => {
+        router.refresh();
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => clearTimeout(timer);
+  }, [active, router]);
+}
+
 export function PrefillButton({ profile }: { profile: Profile }) {
   const [state, action] = useActionState(prefillAction, initialFormState);
   const busy = profile.prefillState === 'queued' || profile.prefillState === 'running';
+  useRefreshWhile(busy);
   return (
     <form action={action} className="space-y-2" noValidate>
       <FormMessages state={state} />
