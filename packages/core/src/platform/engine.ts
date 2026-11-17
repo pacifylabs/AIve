@@ -15,6 +15,7 @@ import { costUsd, ModelRefusalError, type ModelProvider, worstCaseUsd } from '@a
 import { Cancel, Defer } from '../errors.js';
 import { applyGuardrails } from '../guardrails/index.js';
 import type { RoleRegistry } from '../roles/registry.js';
+import { deadRunSummary } from './dead-run.js';
 import type { AutonomyLevel, Effect, TaskContext, TaskDefinition } from '../roles/types.js';
 import { autoActionsInLastDay, resolveAutopilotRules } from './autopilot.js';
 import { BudgetService } from './budget.js';
@@ -315,13 +316,7 @@ export class TaskEngine {
           finishedAt: now,
           error: message.slice(0, 1000),
         });
-        await this.activity(
-          m,
-          run,
-          'task.dead',
-          `A ${run.taskType} run failed ${run.attempts} times and stopped.`,
-          null,
-        );
+        await this.activity(m, run, 'task.dead', deadRunSummary(this.taskName(run.taskType), run.attempts), null);
         this.logger.error({ runId: run.id, taskType: run.taskType, error: message }, 'task run dead');
         return { state: 'dead', error: message };
       }
@@ -339,6 +334,10 @@ export class TaskEngine {
 
   private async releaseReservation(workspaceId: string, reservationId: string): Promise<void> {
     await withTenant(this.db, { workspaceId, userId: null }, (m) => this.budget.release(m, workspaceId, reservationId));
+  }
+
+  private taskName(type: string): string | null {
+    return this.registry.hasTask(type) ? this.registry.task(type).task.name : null;
   }
 
   private async activity(m: EntityManager, run: TaskRun, type: string, summary: string, cost: number | null) {
