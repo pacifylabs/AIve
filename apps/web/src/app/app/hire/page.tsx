@@ -21,7 +21,11 @@ export default async function HirePage({ searchParams }: { searchParams: Promise
     apiOrRedirect<AccountOption[]>('/social/accounts', '/app/hire', { workspace: true }),
   ]);
   if (!roles.ok) return <p className="text-danger">{roles.problem.title}</p>;
-  const role = roles.data.find((candidate) => candidate.key === requested) ?? roles.data[0];
+  // Most owners start with Social, so it opens first unless another role is asked for.
+  const role =
+    roles.data.find((candidate) => candidate.key === requested) ??
+    roles.data.find((candidate) => candidate.key === 'social_media') ??
+    roles.data[0];
   if (!role) return <p className="text-muted">No roles are available yet.</p>;
   const questions = Object.fromEntries(role.interview.map((item) => [item.key, item.question]));
 

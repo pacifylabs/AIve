@@ -20,7 +20,8 @@ export async function createWorkspaceAction(_state: FormState, data: FormData): 
   });
   if (!result.ok) return result.problem.status === 401 ? expired('/app') : fromProblem(result.problem);
   await chooseWorkspace(result.data.id);
-  redirect('/app');
+  // A new workspace has nobody on staff yet: go straight on to choosing the first hire.
+  redirect('/app/welcome?step=role');
 }
 
 export async function switchWorkspaceAction(data: FormData): Promise<void> {

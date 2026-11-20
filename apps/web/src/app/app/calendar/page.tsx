@@ -108,9 +108,6 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
               Posts that are scheduled, published or waiting on you. Times are shown in {zoneLabel(timeZone)}.
             </p>
           </div>
-          <Link href="/app/compose" className="btn btn-primary">
-            New post
-          </Link>
         </div>
         {allTags.length ? (
           <nav aria-label="Filter by tag" className="flex flex-wrap items-center gap-2 text-sm">

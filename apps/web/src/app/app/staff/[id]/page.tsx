@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { setStaffStateAction } from '@/app/actions/platform';
 import { timeAgo } from '@/components/app/dashboard';
 import { Icon } from '@/components/app/icons';
+import { FirstWorkWatcher } from '@/components/app/first-work-watcher';
 import { PlanWeekButton } from '@/components/app/plan-week-button';
 import { StaffAvatar } from '@/components/app/staff-avatar';
 import { SubmitButton } from '@/components/form';
@@ -121,10 +122,10 @@ export default async function StaffMemberPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; hired?: string }>;
 }) {
   const { id } = await params;
-  const { tab: requested } = await searchParams;
+  const { tab: requested, hired } = await searchParams;
   const tab: Tab = TABS.some(([key]) => key === requested) ? (requested as Tab) : 'overview';
   const here = `/app/staff/${id}`;
   const [staff, autopilot, inbox, activity, accounts] = await Promise.all([
@@ -179,6 +180,57 @@ export default async function StaffMemberPage({
           {social && !paused ? <PlanWeekButton staffId={member.id} /> : null}
         </div>
       </header>
+
+      {hired ? (
+        <section aria-labelledby="hired-heading" className="card space-y-5 border-social/40 p-6">
+          <div className="space-y-1">
+            <p className="font-mono text-xs tracking-wide text-social uppercase">Hired · on probation</p>
+            <h2 id="hired-heading" className="text-xl font-semibold tracking-tight">
+              {member.displayName} has started work.
+            </h2>
+            <p className="text-sm text-muted">
+              Everything {member.displayName} makes waits for you in Review work. Nothing goes out without your yes.
+            </p>
+          </div>
+          {social ? (
+            waiting.length ? (
+              <p className="flex flex-wrap items-center gap-3 rounded-xl bg-ok-soft px-4 py-3 text-sm text-ok">
+                <span className="min-w-0 flex-1">Their first weekly plan is ready for you.</span>
+                <Link href={`/app/inbox?item=${waiting[0]!.id}`} className="btn btn-sm btn-primary">
+                  Review it
+                </Link>
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Writing your first weekly plan</p>
+                <FirstWorkWatcher arrived={waiting.length > 0} />
+              </div>
+            )
+          ) : (
+            <p className="flex flex-wrap items-center gap-3 rounded-xl bg-subtle px-4 py-3 text-sm">
+              <span className="min-w-0 flex-1">
+                Add a few leads so {member.displayName} can research them and write the first emails.
+              </span>
+              <Link href="/app/leads" className="btn btn-sm btn-primary">
+                Add leads
+              </Link>
+            </p>
+          )}
+          <ol className="grid gap-3 text-sm sm:grid-cols-4">
+            {[
+              'Their work arrives in Review work',
+              'You approve, edit or reject each piece',
+              'Each decision builds their record',
+              'A clean record lets you promote them, task by task',
+            ].map((text, index) => (
+              <li key={text} className="space-y-1 rounded-xl bg-subtle p-3">
+                <span className="font-mono text-xs text-muted">{index + 1}</span>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       {paused ? (
         <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-text-2">

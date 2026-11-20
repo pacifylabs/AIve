@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { PATH_HEADER } from './lib/request-path';
 
 /**
  * Next.js 16 calls this file `proxy.ts` (formerly middleware). It is only an optimistic check that a session cookie
@@ -15,7 +16,10 @@ export function proxy(request: NextRequest) {
   if ((path === '/' || path === '/login' || path === '/signup') && signedIn) {
     return NextResponse.redirect(new URL('/app', request.url));
   }
-  return NextResponse.next();
+  // Layouts cannot read the path, and the app layout needs it to give onboarding the whole screen.
+  const headers = new Headers(request.headers);
+  headers.set(PATH_HEADER, path);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = { matcher: ['/', '/login', '/signup', '/app/:path*'] };

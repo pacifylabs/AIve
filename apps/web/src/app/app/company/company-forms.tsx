@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useState } from 'react';
-import { addFactAction, prefillAction, updateCompanyAction, updateFactAction } from '@/app/actions/platform';
+import { addFactAction, readWebsiteAction, updateCompanyAction, updateFactAction } from '@/app/actions/platform';
 import { FormMessages, SubmitButton, TextAreaField, TextField } from '@/components/form';
 import { initialFormState } from '@/lib/form-state';
 import { pollDelay } from '@/lib/poll';
@@ -26,14 +26,6 @@ export function ProfileForm({ profile, canEdit }: { profile: Profile; canEdit: b
     <form action={action} className="space-y-4" noValidate>
       <FormMessages state={state} />
       <fieldset disabled={!canEdit} className="space-y-4">
-        <TextField
-          label="Website"
-          name="website"
-          defaultValue={state.values?.website ?? profile.website ?? ''}
-          inputMode="url"
-          placeholder="company.com"
-          error={state.fields?.website}
-        />
         <TextAreaField
           label="What the company does"
           name="summary"
@@ -98,22 +90,38 @@ function useRefreshWhile(active: boolean) {
   }, [active, router]);
 }
 
-export function PrefillButton({ profile }: { profile: Profile }) {
-  const [state, action] = useActionState(prefillAction, initialFormState);
+/** The website box and the button that reads it, together: what most people start from. */
+export function WebsiteReader({ profile }: { profile: Profile }) {
+  const [state, action] = useActionState(readWebsiteAction, initialFormState);
   const busy = profile.prefillState === 'queued' || profile.prefillState === 'running';
   useRefreshWhile(busy);
   return (
-    <form action={action} className="space-y-2" noValidate>
+    <form action={action} className="space-y-3" noValidate>
       <FormMessages state={state} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="min-w-0 flex-1">
+          <TextField
+            label="Your website"
+            name="website"
+            inputMode="url"
+            placeholder="company.com"
+            defaultValue={state.values?.website ?? profile.website ?? ''}
+            error={state.fields?.website}
+            disabled={busy}
+          />
+        </div>
+        {!busy ? (
+          <div className="sm:pt-7">
+            <SubmitButton pendingLabel="Starting…" full={false}>
+              {profile.prefillState === 'done' ? 'Read it again' : 'Read my website'}
+            </SubmitButton>
+          </div>
+        ) : null}
+      </div>
       <p className="text-sm text-muted" role="status">
         {PREFILL_STATUS[profile.prefillState]}
         {profile.prefillState === 'failed' && profile.prefillError ? ` ${profile.prefillError}` : ''}
       </p>
-      {!busy ? (
-        <SubmitButton pendingLabel="Starting…">
-          {profile.prefillState === 'done' ? 'Read the website again' : 'Fill this in from my website'}
-        </SubmitButton>
-      ) : null}
     </form>
   );
 }

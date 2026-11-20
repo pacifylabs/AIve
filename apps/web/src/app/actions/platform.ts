@@ -74,17 +74,15 @@ export async function updateCompanyAction(_state: FormState, data: FormData): Pr
   const result = await api('/company', {
     method: 'PATCH',
     workspace: true,
-    body: {
-      website: optional(field(data, 'website')),
-      summary: optional(field(data, 'summary')),
-      voice: optional(field(data, 'voice')),
-      audience: optional(field(data, 'audience')),
-      escalationEmail: optional(field(data, 'escalationEmail')),
-    },
+    // Only the boxes this form has: a field it leaves out must not be wiped (the website has its own form).
+    body: Object.fromEntries(
+      PROFILE_FIELDS.filter((name) => data.has(name)).map((name) => [name, optional(field(data, name))]),
+    ),
   });
   if (!result.ok)
     return result.problem.status === 401 ? expired('/app/company') : failed(result.problem, data, PROFILE_FIELDS);
   revalidatePath('/app/company');
+  revalidatePath('/app/welcome');
   return { notice: 'Saved.' };
 }
 
@@ -97,6 +95,7 @@ export async function addFactAction(_state: FormState, data: FormData): Promise<
   if (!result.ok)
     return result.problem.status === 401 ? expired('/app/company') : failed(result.problem, data, ['kind', 'text']);
   revalidatePath('/app/company');
+  revalidatePath('/app/welcome');
   return { notice: 'Added. Your staff will use it from now on.' };
 }
 
@@ -109,6 +108,7 @@ export async function updateFactAction(_state: FormState, data: FormData): Promi
   if (!result.ok)
     return result.problem.status === 401 ? expired('/app/company') : failed(result.problem, data, ['text']);
   revalidatePath('/app/company');
+  revalidatePath('/app/welcome');
   return { notice: 'Updated. Drafts that used the old wording were withdrawn.' };
 }
 
@@ -119,6 +119,7 @@ export async function confirmFactAction(data: FormData): Promise<void> {
   });
   if (!result.ok && result.problem.status === 401) expired('/app/company');
   revalidatePath('/app/company');
+  revalidatePath('/app/welcome');
 }
 
 export async function removeFactAction(data: FormData): Promise<void> {
@@ -128,12 +129,25 @@ export async function removeFactAction(data: FormData): Promise<void> {
   });
   if (!result.ok && result.problem.status === 401) expired('/app/company');
   revalidatePath('/app/company');
+  revalidatePath('/app/welcome');
 }
 
-export async function prefillAction(_state: FormState): Promise<FormState> {
+/** Saves the website and starts reading it in one step, so the person never has to save a form first. */
+export async function readWebsiteAction(_state: FormState, data: FormData): Promise<FormState> {
+  const website = field(data, 'website').trim();
+  if (!website) return { fields: { website: 'Enter your website, like company.com' }, values: { website } };
+  const saved = await api('/company', { method: 'PATCH', workspace: true, body: { website } });
+  if (!saved.ok) {
+    if (saved.problem.status === 401) expired('/app/company');
+    return { ...fromProblem(saved.problem), values: { website } };
+  }
   const result = await api('/company/prefill', { method: 'POST', workspace: true });
-  if (!result.ok) return result.problem.status === 401 ? expired('/app/company') : fromProblem(result.problem);
+  if (!result.ok) {
+    if (result.problem.status === 401) expired('/app/company');
+    return { ...fromProblem(result.problem), values: { website } };
+  }
   revalidatePath('/app/company');
+  revalidatePath('/app/welcome');
   return { notice: 'Reading your website. Suggestions appear below for you to confirm.' };
 }
 

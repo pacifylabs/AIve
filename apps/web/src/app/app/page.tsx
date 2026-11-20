@@ -1,5 +1,6 @@
 import type { MeResponse, WorkspaceResponse } from '@ai-staff/contracts';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   type Account,
   type Activity,
@@ -17,7 +18,6 @@ import { apiOrRedirect } from '@/lib/api';
 import { readSession } from '@/lib/session';
 import { activityTone, ROLE_LABEL, STANDING_LABEL, standingOf, type TaskProgress } from '@/lib/staff';
 import { kindLabel } from '@/lib/review';
-import { CreateWorkspaceForm } from './workspace-forms';
 
 export const metadata = { title: 'Home' };
 
@@ -50,21 +50,8 @@ export default async function HomePage() {
   const me = await apiOrRedirect<MeResponse>('/me', '/app');
   if (!me.ok) return <p className="text-danger">{me.problem.title}</p>;
 
-  if (me.data.workspaces.length === 0) {
-    return (
-      <section className="mx-auto max-w-md space-y-6 pt-8">
-        <div className="space-y-1">
-          <h1 className="page-title">Set up your workspace</h1>
-          <p className="text-muted">
-            Your AI staff, approvals and settings live in a workspace. You can invite your team next.
-          </p>
-        </div>
-        <div className="card p-6">
-          <CreateWorkspaceForm />
-        </div>
-      </section>
-    );
-  }
+  // No workspace yet: the guided setup starts by making one.
+  if (me.data.workspaces.length === 0) redirect('/app/welcome');
 
   const { workspaceId } = await readSession();
   const selected = me.data.workspaces.find((workspace) => workspace.id === workspaceId) ?? me.data.workspaces[0]!;
@@ -137,6 +124,27 @@ export default async function HomePage() {
             className="inline-flex h-11 flex-none items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#0b1324] hover:bg-[#eef2f8]"
           >
             Review now <Icon name="arrow" size={16} />
+          </Link>
+        </section>
+      ) : members.length === 0 ? (
+        <section
+          aria-labelledby="first-hire-heading"
+          className="flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-[#0b1324] px-6 py-6 text-white sm:px-8 dark:bg-[#111c33]"
+        >
+          <div className="min-w-0 space-y-2">
+            <p className="font-mono text-xs tracking-wide text-[#9fc0ff]">NEXT STEP</p>
+            <h2 id="first-hire-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">
+              Hire your first staff member
+            </h2>
+            <p className="text-sm text-[#b7c3d6]">
+              A few minutes: choose a role, confirm what is true about your business, and they start on probation.
+            </p>
+          </div>
+          <Link
+            href="/app/welcome"
+            className="inline-flex h-11 flex-none items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#0b1324] hover:bg-[#eef2f8]"
+          >
+            Continue setting up <Icon name="arrow" size={16} />
           </Link>
         </section>
       ) : members.length > 0 ? (

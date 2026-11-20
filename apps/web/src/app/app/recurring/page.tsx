@@ -65,9 +65,6 @@ export default async function RecurringPage() {
               one. Removing a rule keeps the posts already made.
             </p>
           </div>
-          <Link href="/app/compose" className="btn btn-primary">
-            New post
-          </Link>
         </div>
         {rules.data.length === 0 ? (
           <p className="empty text-sm text-muted">

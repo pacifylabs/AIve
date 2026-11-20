@@ -64,6 +64,7 @@ export async function connectMailboxAction(_state: FormState, data: FormData): P
   });
   if (!result.ok) return failed(result.problem, data, '/app/mailboxes', MAILBOX_FIELDS);
   revalidatePath('/app/mailboxes');
+  revalidatePath('/app/welcome');
   // The forwarding URL holds the mailbox's secret and is shown only now.
   return {
     notice: imap
@@ -80,6 +81,7 @@ export async function testMailboxAction(_state: FormState, data: FormData): Prom
   });
   if (!result.ok) return failed(result.problem, data, '/app/mailboxes', ['to']);
   revalidatePath('/app/mailboxes');
+  revalidatePath('/app/welcome');
   return { notice: 'Sent. Reply to it from that address with anything and this mailbox becomes verified.' };
 }
 
@@ -90,6 +92,7 @@ export async function checkDnsAction(data: FormData): Promise<void> {
   });
   if (!result.ok && result.problem.status === 401) expired('/app/mailboxes');
   revalidatePath('/app/mailboxes');
+  revalidatePath('/app/welcome');
 }
 
 export async function resumeMailboxAction(data: FormData): Promise<void> {
@@ -99,6 +102,7 @@ export async function resumeMailboxAction(data: FormData): Promise<void> {
   });
   if (!result.ok && result.problem.status === 401) expired('/app/mailboxes');
   revalidatePath('/app/mailboxes');
+  revalidatePath('/app/welcome');
 }
 
 // ---- Leads -------------------------------------------------------------------------------------------------
@@ -252,7 +256,7 @@ export async function hireSalesManagerAction(_state: FormState, data: FormData):
     if (!fact.ok) return failed(fact.problem, data, '/app/hire', HIRE_FIELDS);
     offerFactIds = [fact.data.id];
   }
-  const result = await api('/staff', {
+  const result = await api<{ id: string }>('/staff', {
     method: 'POST',
     workspace: true,
     body: {
@@ -270,6 +274,6 @@ export async function hireSalesManagerAction(_state: FormState, data: FormData):
     },
   });
   if (!result.ok) return failed(result.problem, data, '/app/hire', HIRE_FIELDS);
-  revalidatePath('/app/hire');
-  redirect('/app/leads');
+  revalidatePath('/app', 'layout');
+  redirect(`/app/staff/${result.data.id}?hired=1`);
 }

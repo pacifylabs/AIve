@@ -1,20 +1,10 @@
 import type { MeResponse } from '@ai-staff/contracts';
-import { confirmFactAction, removeFactAction } from '@/app/actions/platform';
 import { apiOrRedirect } from '@/lib/api';
 import { readSession } from '@/lib/session';
-import { AddFactForm, EditFactForm, PrefillButton, type Profile, ProfileForm } from './company-forms';
-import { FACT_KINDS } from './fact-kinds';
+import { type Fact, FactsList } from '@/components/app/facts-list';
+import { AddFactForm, WebsiteReader, type Profile, ProfileForm } from './company-forms';
 
-export const metadata = { title: 'Company' };
-
-interface Fact {
-  id: string;
-  kind: (typeof FACT_KINDS)[number][0];
-  text: string;
-  source: 'owner' | 'website';
-  sourceUrl: string | null;
-  confirmedAt: string | null;
-}
+export const metadata = { title: 'Business info' };
 
 export default async function CompanyPage() {
   const [company, me] = await Promise.all([
@@ -30,91 +20,73 @@ export default async function CompanyPage() {
   const canEdit = role === 'owner' || role === 'admin';
   const { profile, facts } = company.data;
 
+  const confirmed = facts.filter((fact) => fact.confirmedAt).length;
+  const toConfirm = facts.length - confirmed;
+
   return (
-    <section className="space-y-8">
+    <section className="max-w-5xl space-y-10">
       <div className="space-y-1">
-        <h1 className="page-title">Company</h1>
+        <h1 className="page-title">Business info</h1>
         <p className="text-muted">
-          Your staff only use what is written here. Prices, offers and claims anywhere else are refused.
+          What every staff member knows about your business. They only use what you have confirmed here; prices, offers
+          and claims anywhere else are refused.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-4 card p-6">
-          <h2 className="font-medium">Profile</h2>
-          <ProfileForm key={profile.prefilledAt ?? 'none'} profile={profile} canEdit={canEdit} />
-        </div>
-        <div className="space-y-4 card p-6">
-          <h2 className="font-medium">Start from your website</h2>
+      <section aria-labelledby="site-heading" className="card space-y-4 p-6">
+        <div className="space-y-1">
+          <h2 id="site-heading" className="font-semibold">
+            Start from your website
+          </h2>
           <p className="text-sm text-muted">
             We read a few pages of your site and suggest facts. Nothing is used until you confirm it.
           </p>
-          {canEdit ? (
-            <PrefillButton profile={profile} />
-          ) : (
-            <p className="text-sm text-muted">Ask an admin to do this.</p>
-          )}
         </div>
-      </div>
+        {canEdit ? <WebsiteReader profile={profile} /> : <p className="text-sm text-muted">Ask an admin to do this.</p>}
+      </section>
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Facts</h2>
-        {FACT_KINDS.map(([kind, heading]) => {
-          const ofKind = facts.filter((fact) => fact.kind === kind);
-          if (!ofKind.length) return null;
-          return (
-            <div key={kind} className="space-y-2">
-              <h3 className="text-sm font-medium text-muted">{heading}</h3>
-              <ul className="card divide-y divide-line-soft">
-                {ofKind.map((fact) => (
-                  <li key={fact.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 text-sm">
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p>{fact.text}</p>
-                      {!fact.confirmedAt ? (
-                        <p className="text-xs text-muted">
-                          From your website{fact.sourceUrl ? ` (${new URL(fact.sourceUrl).pathname})` : ''}. Not used
-                          until you confirm it.
-                        </p>
-                      ) : null}
-                    </div>
-                    {canEdit ? (
-                      <div className="flex flex-wrap items-center gap-3">
-                        {!fact.confirmedAt ? (
-                          <form action={confirmFactAction}>
-                            <input type="hidden" name="id" value={fact.id} />
-                            <button type="submit" className="text-sm font-medium text-accent hover:underline">
-                              Confirm
-                            </button>
-                          </form>
-                        ) : null}
-                        <EditFactForm id={fact.id} text={fact.text} />
-                        <form action={removeFactAction}>
-                          <input type="hidden" name="id" value={fact.id} />
-                          <button type="submit" className="text-sm text-danger hover:underline">
-                            Remove
-                          </button>
-                        </form>
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
+      <section aria-labelledby="facts-heading" className="space-y-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="facts-heading" className="text-lg font-semibold">
+            Facts
+          </h2>
+          {facts.length ? (
+            <p className="text-sm text-muted">
+              {confirmed} confirmed{toConfirm ? ` · ${toConfirm} waiting for you to confirm` : ''}
+            </p>
+          ) : null}
+        </div>
         {facts.length === 0 ? (
           <div className="empty">
             <h3 className="font-medium">No facts yet</h3>
-            <p className="mt-1 text-sm text-muted">Add what you sell and your prices, or start from your website.</p>
+            <p className="mt-1 text-sm text-muted">
+              Read your website above, or add what you sell, your offers and prices yourself.
+            </p>
           </div>
-        ) : null}
+        ) : (
+          <FactsList facts={facts} canEdit={canEdit} />
+        )}
         {canEdit ? (
-          <div className="max-w-xl space-y-3 card p-6">
-            <h3 className="font-medium">Add a fact</h3>
-            <AddFactForm />
-          </div>
+          <details className="card max-w-xl p-6">
+            <summary className="cursor-pointer font-medium">Add a fact yourself</summary>
+            <div className="mt-4">
+              <AddFactForm />
+            </div>
+          </details>
         ) : null}
-      </div>
+      </section>
+
+      <section aria-labelledby="profile-heading" className="card max-w-3xl space-y-4 p-6">
+        <div className="space-y-1">
+          <h2 id="profile-heading" className="font-semibold">
+            How you sound and who you sell to
+          </h2>
+          <p className="text-sm text-muted">
+            Filled in from your website when you read it. Change anything that is off.
+          </p>
+        </div>
+        <ProfileForm key={profile.prefilledAt ?? 'none'} profile={profile} canEdit={canEdit} />
+      </section>
     </section>
   );
 }

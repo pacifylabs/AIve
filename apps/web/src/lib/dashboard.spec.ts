@@ -40,7 +40,7 @@ describe('setupSteps', () => {
     expect(setupSteps(none).map((step) => step.href)).toEqual([
       '/app/company',
       '/app/accounts',
-      '/app/hire',
+      '/app/welcome',
       '/app/inbox',
     ]);
     expect(setupSteps({ ...none, hasStaff: true }).map((step) => step.done)).toEqual([false, false, true, false]);

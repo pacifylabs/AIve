@@ -67,6 +67,7 @@ export async function connectLoginAction(_state: FormState, data: FormData): Pro
   }
   revalidatePath('/app/accounts');
   revalidatePath('/app/calendar');
+  revalidatePath('/app/welcome');
   return { notice: `Connected ${result.data.map((account) => account.name).join(', ')}.` };
 }
 
@@ -539,7 +540,7 @@ const HIRE_FIELDS = ['displayName', 'signature', 'goal', 'pillars', 'styleExampl
 
 /** Hires Social Media Staff from the interview. The accounts chosen are the only ones it will post to. */
 export async function hireSocialAction(_state: FormState, data: FormData): Promise<FormState> {
-  const result = await api('/staff', {
+  const result = await api<{ id: string }>('/staff', {
     method: 'POST',
     workspace: true,
     body: {
@@ -561,6 +562,7 @@ export async function hireSocialAction(_state: FormState, data: FormData): Promi
     },
   });
   if (!result.ok) return failed(result.problem, data, '/app/hire', HIRE_FIELDS);
-  revalidatePath('/app/hire');
-  redirect('/app/calendar');
+  revalidatePath('/app', 'layout');
+  // Their own page, marked as just hired: it shows probation starting and their first plan on its way.
+  redirect(`/app/staff/${result.data.id}?hired=1`);
 }

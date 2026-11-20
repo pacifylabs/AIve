@@ -108,3 +108,19 @@ export const STANDING_LABEL: Record<Standing, string> = {
   ready: 'Ready for promotion',
   trusted: 'Promoted',
 };
+
+/** What each role does, never does and needs, for the hiring cards. Written to match the role definitions. */
+export const ROLE_CARD: Record<string, { tagline: string; does: string; never: string; needs: string }> = {
+  social_media: {
+    tagline: 'Keeps your accounts active and sounding like you',
+    does: 'Plans your week, writes posts for each network, repeats what worked, and turns buying comments into leads.',
+    never: 'Posts while on probation, invents prices or offers, or replies to complaints.',
+    needs: 'One connected social account to post to.',
+  },
+  sales_manager: {
+    tagline: 'Follows up properly and knows when to stop',
+    does: "Reads each lead's website, writes first emails and follow-ups, and sorts every reply.",
+    never: 'Writes to anyone who opted out, offers discounts, or agrees to contracts.',
+    needs: 'A mailbox on your own domain, and a few leads.',
+  },
+};

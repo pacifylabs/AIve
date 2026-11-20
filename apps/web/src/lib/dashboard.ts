@@ -89,7 +89,7 @@ export function setupSteps(facts: SetupFacts): SetupStep[] {
     {
       label: 'Hire a staff member',
       text: 'Pick a role and answer a few questions. They start drafting for your approval.',
-      href: '/app/hire',
+      href: '/app/welcome',
       cta: 'Hire',
       done: facts.hasStaff,
     },
