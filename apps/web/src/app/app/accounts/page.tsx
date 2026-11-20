@@ -1,5 +1,6 @@
 import { connectNetworkAction, disconnectAccountAction, removeMentionAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
+import { NETWORK_LABEL } from '@/lib/staff';
 import { ConnectLoginForm, type LoginField } from './login-form';
 import { MentionForm } from './mention-form';
 import { PickAccountsForm } from './pick-form';
@@ -7,7 +8,7 @@ import { Sparkline } from '@/components/app/sparkline';
 import { SignatureForm } from './signature-form';
 import { SectionTabs } from '@/components/app/section-tabs';
 
-export const metadata = { title: 'Accounts' };
+export const metadata = { title: 'Social accounts' };
 
 interface Account {
   id: string;
@@ -72,6 +73,8 @@ export default async function AccountsPage({
   const usesLogin = new Set(
     networks.ok ? networks.data.filter((n) => n.auth === 'credentials').map((n) => n.network) : [],
   );
+  const available = networks.ok ? networks.data.filter((network) => network.configured) : [];
+  const unavailable = networks.ok ? networks.data.filter((network) => !network.configured) : [];
   const needsAttention = new Set(accounts.data.filter((account) => account.health !== 'ok').map((a) => a.network));
 
   return (
@@ -79,9 +82,10 @@ export default async function AccountsPage({
       <SectionTabs section="connections" />
       <section className="max-w-3xl space-y-8">
         <div className="space-y-1">
-          <h1 className="page-title">Accounts</h1>
+          <h1 className="page-title">Social accounts</h1>
           <p className="text-muted">
-            The social accounts your staff post to. You sign in at the network; we never see your password.
+            Where your staff may post. You sign in at the network; we never see your password, and you can disconnect at
+            any time.
           </p>
         </div>
         {error ? (
@@ -107,7 +111,16 @@ export default async function AccountsPage({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>
                     <span className="font-medium">{account.name}</span>
-                    <span className="text-muted"> · {account.network}</span>
+                    <span className="text-muted"> · {NETWORK_LABEL[account.network] ?? account.network}</span>
+                    <span
+                      className={`ml-2 ${account.health === 'ok' ? 'pill pill-ok' : account.health === 'degraded' ? 'pill pill-warn' : 'pill pill-danger'}`}
+                    >
+                      {account.health === 'ok'
+                        ? 'Connected'
+                        : account.health === 'degraded'
+                          ? 'Renew soon'
+                          : 'Reconnect'}
+                    </span>
                     {statOf.get(account.id) ? (
                       <span className="mt-1 flex items-center gap-3 text-xs text-muted">
                         <span>
@@ -174,39 +187,40 @@ export default async function AccountsPage({
         <div className="space-y-3">
           <h2 className="font-medium">Connect an account</h2>
           <ul className="grid gap-2 sm:grid-cols-2">
-            {networks.ok
-              ? networks.data.map((network) => (
-                  <li key={network.network} className="card p-4 text-sm">
-                    <p className="font-medium">{network.label}</p>
-                    {network.configured && network.auth === 'credentials' ? (
-                      <details
-                        id={`connect-${network.network}`}
-                        className="mt-2"
-                        open={needsAttention.has(network.network)}
-                      >
-                        <summary className="cursor-pointer font-medium text-accent hover:underline">Connect</summary>
-                        <div className="pt-3">
-                          <ConnectLoginForm network={network.network} fields={network.fields} />
-                        </div>
-                      </details>
-                    ) : network.configured ? (
-                      <form action={connectNetworkAction} className="mt-2">
-                        <input type="hidden" name="network" value={network.network} />
-                        <button type="submit" className="font-medium text-accent hover:underline">
-                          Connect
-                        </button>
-                      </form>
-                    ) : (
-                      <p className="mt-2 text-xs text-muted">Not available yet on this server.</p>
-                    )}
-                  </li>
-                ))
-              : null}
+            {available.map((network) => (
+              <li key={network.network} className="card p-4 text-sm">
+                <p className="font-medium">{network.label}</p>
+                {network.auth === 'credentials' ? (
+                  <details
+                    id={`connect-${network.network}`}
+                    className="mt-2"
+                    open={needsAttention.has(network.network)}
+                  >
+                    <summary className="cursor-pointer font-medium text-accent hover:underline">Connect</summary>
+                    <div className="pt-3">
+                      <ConnectLoginForm network={network.network} fields={network.fields} />
+                    </div>
+                  </details>
+                ) : (
+                  <form action={connectNetworkAction} className="mt-2">
+                    <input type="hidden" name="network" value={network.network} />
+                    <button type="submit" className="font-medium text-accent hover:underline">
+                      Connect
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
           </ul>
+          {unavailable.length ? (
+            <p className="text-sm text-muted">
+              Not switched on for this workspace yet: {unavailable.map((network) => network.label).join(', ')}.
+            </p>
+          ) : null}
         </div>
-        <div className="space-y-3">
-          <h2 className="font-medium">Accounts your staff may tag</h2>
-          <p className="text-sm text-muted">
+        <details className="space-y-3">
+          <summary className="cursor-pointer font-medium">Advanced: accounts your staff may tag</summary>
+          <p className="pt-3 text-sm text-muted">
             Your staff member never tags anyone it was not given. Save the accounts it may tag, per network. A post that
             tags any other account is stopped.
           </p>
@@ -242,7 +256,7 @@ export default async function AccountsPage({
               <MentionForm networks={networks.ok ? networks.data : []} />
             </div>
           </details>
-        </div>
+        </details>
       </section>
     </>
   );

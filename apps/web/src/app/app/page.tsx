@@ -68,7 +68,11 @@ export default async function HomePage() {
     apiOrRedirect<Account[]>('/social/accounts', '/app', opts),
     apiOrRedirect<Post[]>(`/social/posts?from=${from}&to=${to}`, '/app', opts),
     apiOrRedirect<Event[]>('/activity', '/app', opts),
-    apiOrRedirect<{ profile: { summary: string | null } }>('/company', '/app', opts),
+    apiOrRedirect<{ profile: { summary: string | null }; facts: { confirmedAt: string | null }[] }>(
+      '/company',
+      '/app',
+      opts,
+    ),
     apiOrRedirect<{ id: string }[]>('/mailboxes', '/app', opts),
   ]);
   const list = <T,>(result: { ok: true; data: T[] } | { ok: false }) => (result.ok ? result.data : []);
@@ -77,7 +81,9 @@ export default async function HomePage() {
   const members = list(staff).filter((member) => member.state !== 'archived');
   const events = list(activity);
   const steps = setupSteps({
-    hasCompany: company.ok && !!company.data.profile.summary?.trim(),
+    // Either a description or a confirmed fact is enough for staff to work from.
+    hasCompany:
+      company.ok && (!!company.data.profile.summary?.trim() || company.data.facts.some((fact) => fact.confirmedAt)),
     hasChannel: list(accounts).length > 0 || list(mailboxes).length > 0,
     hasStaff: members.length > 0,
     hasApproved: tasks.some((task) => task.progress.approvals > 0),
