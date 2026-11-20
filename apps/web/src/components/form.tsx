@@ -174,21 +174,25 @@ export function SubmitButton({
   children,
   pendingLabel,
   variant = 'primary',
+  full = true,
 }: {
   children: ReactNode;
   pendingLabel?: string;
-  /** `secondary` for the lesser of two buttons side by side, such as Reject beside Approve. */
-  variant?: 'primary' | 'secondary';
+  /** `secondary` for the lesser of two buttons side by side, `danger` for one that rejects or removes. */
+  variant?: 'primary' | 'secondary' | 'danger';
+  /** Fill the width, as in a narrow form. Off for a button in a row of actions. */
+  full?: boolean;
 }) {
   const { pending } = useFormStatus();
   const slow = useSlow(pending);
+  const tone = variant === 'primary' ? 'btn-primary' : variant === 'danger' ? 'btn-danger' : '';
   return (
     <>
-      <button type="submit" disabled={pending} className={`btn w-full ${variant === 'primary' ? 'btn-primary' : ''}`}>
+      <button type="submit" disabled={pending} className={`btn ${full ? 'w-full' : ''} ${tone}`}>
         {pending ? (pendingLabel ?? 'Working…') : children}
       </button>
       {slow ? (
-        <p role="status" className="mt-2 text-center text-xs text-muted">
+        <p role="status" className={`mt-2 text-xs text-muted ${full ? 'text-center' : 'basis-full'}`}>
           Still working. The server wakes up after a quiet spell, which can take a minute or two.
         </p>
       ) : null}

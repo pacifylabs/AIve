@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import type { Problem } from '@ai-staff/contracts';
 import { api } from '@/lib/api';
 import { echo, field, type FormState, fromProblem } from '@/lib/form-state';
+import { approvedPayload } from '@/lib/review';
 
 /** An expired access token inside an action: refresh, then come back to the page the form was on. */
 function expired(returnTo: string): never {
@@ -19,37 +20,37 @@ const failed = (problem: Problem, data: FormData, names: readonly string[]): For
 
 const PAYLOAD_FIELD = 'payload.';
 
-/**
- * Rebuilds a draft from the form. Text fields arrive as `payload.<key>`; everything else in the original payload
- * (numbers, lists) is carried over unchanged from the hidden copy, so only text a person can see is editable.
- */
-function editedPayload(data: FormData): Record<string, unknown> {
+/** The payload the person approved: their text, their time, and for a plan only the ideas they kept. */
+function decided(data: FormData) {
   let original: Record<string, unknown> = {};
   try {
     original = JSON.parse(field(data, 'original')) as Record<string, unknown>;
   } catch {
     original = {};
   }
-  const edited = { ...original };
-  for (const [key, value] of data.entries()) {
-    if (key.startsWith(PAYLOAD_FIELD) && typeof value === 'string') edited[key.slice(PAYLOAD_FIELD.length)] = value;
-  }
-  return edited;
+  return approvedPayload(original, data.entries(), field(data, 'timeZone') || 'UTC');
 }
 
 export async function approveAction(_state: FormState, data: FormData): Promise<FormState> {
+  const decision = decided(data);
+  const keepTyped = (name: string) => name.startsWith(PAYLOAD_FIELD) || name === 'scheduledLocal';
+  if (!decision.ok) {
+    return { error: decision.message, fields: { [decision.field]: decision.message }, values: echo(data, keepTyped) };
+  }
   const id = encodeURIComponent(field(data, 'id'));
   const result = await api(`/inbox/${id}/approve`, {
     method: 'POST',
     workspace: true,
-    body: { payload: editedPayload(data) },
+    body: { payload: decision.payload },
   });
   if (!result.ok) {
     if (result.problem.status === 401) expired('/app/inbox');
-    return { ...fromProblem(result.problem), values: echo(data, (name) => name.startsWith(PAYLOAD_FIELD)) };
+    return { ...fromProblem(result.problem), values: echo(data, keepTyped) };
   }
   revalidatePath('/app/inbox');
-  return { notice: 'Approved.' };
+  revalidatePath('/app');
+  // Move on: the page opens the next item and says what happened to this one.
+  redirect(`/app/inbox?done=${decision.payload.items ? 'plan' : 'approved'}`);
 }
 
 export async function rejectAction(_state: FormState, data: FormData): Promise<FormState> {
@@ -62,7 +63,8 @@ export async function rejectAction(_state: FormState, data: FormData): Promise<F
   if (!result.ok)
     return result.problem.status === 401 ? expired('/app/inbox') : failed(result.problem, data, ['reason']);
   revalidatePath('/app/inbox');
-  return { notice: 'Rejected. Your reason helps it next time.' };
+  revalidatePath('/app');
+  redirect(`/app/inbox?done=${field(data, 'closing') ? 'closed' : 'rejected'}`);
 }
 
 const optional = (value: string) => (value.trim() ? value : null);

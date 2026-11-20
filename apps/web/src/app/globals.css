@@ -208,6 +208,14 @@ body {
     opacity: 0.9;
   }
 
+  .btn-danger {
+    border-color: transparent;
+    background: var(--danger);
+    color: #ffffff;
+  }
+  .btn-danger:hover {
+    filter: brightness(1.08);
+  }
   .btn-sm {
     padding: 0.25rem 0.75rem;
     font-size: 0.8125rem;
