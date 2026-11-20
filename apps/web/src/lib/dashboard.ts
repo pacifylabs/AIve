@@ -95,50 +95,18 @@ export function setupSteps(facts: SetupFacts): SetupStep[] {
     },
     {
       label: 'Approve a first draft',
-      text: 'Drafts wait in your inbox. Nothing goes out until you approve it.',
+      text: 'Drafts wait in Review work. Nothing goes out until you approve it.',
       href: '/app/inbox',
-      cta: 'Open inbox',
+      cta: 'Review work',
       done: facts.hasApproved,
     },
   ];
 }
 
-export interface PrimaryAction {
-  label: string;
-  href: string;
-}
-
-/** The header's main button follows what matters most now: drafts waiting, then setup, then writing a post. */
-export function primaryAction(waiting: number, steps: SetupStep[]): PrimaryAction {
-  if (waiting > 0) return { label: `Review ${waiting} draft${waiting === 1 ? '' : 's'}`, href: '/app/inbox' };
-  if (steps.some((step) => !step.done)) return { label: 'Finish setup', href: '#setup' };
-  return { label: 'New post', href: '/app/compose' };
-}
-
-export interface WeekFigures {
-  postsOut: number;
-  engagement: number;
-  /** Null when no connected network reports it. */
-  reach: number | null;
-  followers: number;
-}
-
-/** The last seven days, from the posts list, the top-posts readings and the per-account stats. */
-export function weekFigures(
-  posts: PostState[],
-  top: { engagement: number }[],
-  stats: { reach: number | null; change: number }[],
-  now = new Date(),
-): WeekFigures {
-  const since = now.getTime() - 7 * 86_400_000;
-  const reaches = stats.map((stat) => stat.reach).filter((value): value is number => value != null);
-  return {
-    postsOut: posts.filter((post) => {
-      const at = new Date(post.scheduledFor).getTime();
-      return post.state === 'published' && at >= since && at <= now.getTime();
-    }).length,
-    engagement: top.reduce((sum, post) => sum + post.engagement, 0),
-    reach: reaches.length ? reaches.reduce((sum, value) => sum + value, 0) : null,
-    followers: stats.reduce((sum, stat) => sum + stat.change, 0),
-  };
+/** "Good morning" and so on, by the hour where the workspace is, with the person's first name when we have it. */
+export function greeting(name: string, timeZone: string, now = new Date()): string {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone }).format(now));
+  const part = hour < 5 ? 'Good evening' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const first = name.trim().split(/\s+/)[0];
+  return first ? `${part}, ${first}` : part;
 }
