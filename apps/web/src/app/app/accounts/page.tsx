@@ -3,6 +3,7 @@ import { apiOrRedirect } from '@/lib/api';
 import { NETWORK_LABEL } from '@/lib/staff';
 import { ConnectLoginForm, type LoginField } from './login-form';
 import { MentionForm } from './mention-form';
+import { RemoveAccountButton } from './remove-button';
 import { PickAccountsForm } from './pick-form';
 import { Sparkline } from '@/components/app/sparkline';
 import { SignatureForm } from './signature-form';
@@ -161,12 +162,16 @@ export default async function AccountsPage({
                         </button>
                       </form>
                     ) : null}
-                    <form action={disconnectAccountAction}>
-                      <input type="hidden" name="id" value={account.id} />
-                      <button type="submit" className="text-danger hover:underline">
-                        Disconnect
-                      </button>
-                    </form>
+                    {account.health === 'ok' ? (
+                      <form action={disconnectAccountAction}>
+                        <input type="hidden" name="id" value={account.id} />
+                        <button type="submit" className="text-danger hover:underline">
+                          Disconnect
+                        </button>
+                      </form>
+                    ) : (
+                      <RemoveAccountButton id={account.id} name={account.name} />
+                    )}
                   </span>
                 </div>
                 {account.health !== 'broken' ? (

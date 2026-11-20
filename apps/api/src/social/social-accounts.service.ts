@@ -286,6 +286,37 @@ export class SocialAccountsService {
     });
   }
 
+  /**
+   * Deletes an account that is not working (failed, expiring or already disconnected), for good. Its post history goes
+   * with it, so a working account must be disconnected first. Staff that posted to it stop listing it.
+   */
+  async remove(ctx: WorkspaceContext, id: string) {
+    await this.tx(ctx, async (m) => {
+      const account = await m.findOneBy(ConnectedAccount, { workspaceId: ctx.workspaceId, id });
+      if (!account) throw AppError.notFound('Account not found.');
+      if (account.health === 'ok') throw AppError.conflict('Disconnect this account first, then remove it.');
+      await m.query(
+        `UPDATE staff_members
+            SET settings = jsonb_set(
+              settings #- ARRAY['signatures', $1::text],
+              '{accountIds}',
+              COALESCE((SELECT jsonb_agg(x) FROM jsonb_array_elements(settings->'accountIds') x WHERE x <> to_jsonb($1::text)), '[]'::jsonb))
+          WHERE workspace_id = $2 AND settings ? 'accountIds'`,
+        [id, ctx.workspaceId],
+      );
+      await m.save(
+        m.create(AuditEntry, {
+          workspaceId: ctx.workspaceId,
+          userId: ctx.userId,
+          action: 'social.account_removed',
+          target: id,
+          detail: { name: account.name, network: account.network },
+        }),
+      );
+      await m.delete(ConnectedAccount, { id });
+    });
+  }
+
   /** Meta (Threads, or Facebook and Instagram) tells us, with a signed message, that a person removed the app or asked for their data to be deleted. */
   async metaRevoked(app: 'threads' | 'meta', kind: 'deauthorize' | 'data-deletion', signed: string) {
     const secret = (app === 'threads' ? this.config.THREADS_APP_SECRET : this.config.META_APP_SECRET) ?? '';

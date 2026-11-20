@@ -141,6 +141,14 @@ export class SocialController {
     await this.accounts.disconnect(ctx, id);
   }
 
+  /** Permanently removes an account that is not working. A working one must be disconnected first. */
+  @Delete('accounts/:id/remove')
+  @HttpCode(204)
+  @RequireRole('admin')
+  async remove(@CurrentWorkspace() ctx: WorkspaceContext, @Param('id', UuidPipe) id: string) {
+    await this.accounts.remove(ctx, id);
+  }
+
   @Get('posts')
   postsList(
     @CurrentWorkspace() ctx: WorkspaceContext,

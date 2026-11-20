@@ -316,6 +316,38 @@ describe('posts and disconnecting', () => {
     expect(row.intent.state).toBe('cancelled');
   });
 
+  it('removes an account that is not working for good, and refuses one that still is', async () => {
+    const w = await accountWithPost('post5');
+    await t.http().delete(`/v1/social/accounts/${w.account.id}/remove`).set(w.as).expect(409);
+    // Disconnecting leaves it broken; now it can go.
+    await t.http().delete(`/v1/social/accounts/${w.account.id}`).set(w.as).expect(204);
+    await t.http().delete(`/v1/social/accounts/${w.account.id}/remove`).set(w.as).expect(204);
+    const left = await withTenant(db, { workspaceId: w.workspaceId, userId: null }, async (m) => ({
+      account: await m.findOneBy(ConnectedAccount, { id: w.account.id }),
+      post: await m.findOneBy(SocialPost, { id: w.post.id }),
+    }));
+    expect(left).toEqual({ account: null, post: null });
+    expect((await t.http().get('/v1/social/accounts').set(w.as).expect(200)).body).toEqual([]);
+    await t.http().delete(`/v1/social/accounts/${w.account.id}/remove`).set(w.as).expect(404);
+  });
+
+  it('takes a removed account out of a staff member\'s settings, and another workspace cannot remove it', async () => {
+    const w = await accountWithPost('post6');
+    const other = await workspace('post6b');
+    await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) =>
+      m.update(
+        StaffMember,
+        { workspaceId: w.workspaceId },
+        { settings: { accountIds: [w.account.id], signatures: { [w.account.id]: 'Sam' }, cadence: 3 } },
+      ),
+    );
+    await t.http().delete(`/v1/social/accounts/${w.account.id}`).set(w.as).expect(204);
+    await t.http().delete(`/v1/social/accounts/${w.account.id}/remove`).set(other.as).expect(404);
+    await t.http().delete(`/v1/social/accounts/${w.account.id}/remove`).set(w.as).expect(204);
+    const [staff] = await withTenant(db, { workspaceId: w.workspaceId, userId: null }, (m) => m.find(StaffMember));
+    expect(staff!.settings).toEqual({ accountIds: [], signatures: {}, cadence: 3 });
+  });
+
   it('another workspace cannot see, cancel or disconnect them', async () => {
     const a = await accountWithPost('post4a');
     const b = await workspace('post4b');

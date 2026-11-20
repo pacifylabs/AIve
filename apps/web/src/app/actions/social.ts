@@ -97,6 +97,19 @@ export async function disconnectAccountAction(data: FormData): Promise<void> {
   revalidatePath('/app/calendar');
 }
 
+/** Deletes an account that is not working, for good. The API refuses one that still works. */
+export async function removeAccountAction(data: FormData): Promise<void> {
+  const result = await api(`/social/accounts/${encodeURIComponent(field(data, 'id'))}/remove`, {
+    method: 'DELETE',
+    workspace: true,
+  });
+  if (!result.ok && result.problem.status === 401) expired('/app/accounts');
+  if (!result.ok) redirect(`/app/accounts?error=${encodeURIComponent(result.problem.title)}`);
+  revalidatePath('/app/accounts');
+  revalidatePath('/app/calendar');
+  revalidatePath('/app/welcome');
+}
+
 // ---- Posts -------------------------------------------------------------------------------------------------
 
 export async function cancelPostAction(data: FormData): Promise<void> {
