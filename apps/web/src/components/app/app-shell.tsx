@@ -2,12 +2,13 @@ import type { ReactNode } from 'react';
 import { DraftScope, ResumeBanner } from '@/components/form-draft';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
+import { MobileTabs } from './mobile-tabs';
 import { SidebarContent, type SidebarProps } from './sidebar-content';
 import { Topbar } from './topbar';
 
 /**
- * The frame around every signed-in page: a dark sidebar (a drawer on a phone), a top bar, and the page itself. The
- * page area is `#app-main` so the drawer can make it inert while it is open.
+ * The frame around every signed-in page: the sidebar (a tab bar plus a drawer on a phone), a top bar, and the page
+ * itself. The page area is `#app-main` so the drawer can make it inert while it is open.
  */
 export function AppShell({
   email,
@@ -34,13 +35,14 @@ export function AppShell({
           <SidebarContent {...sidebar} collapsible={{ collapsed: sidebarCollapsed }} />
         </aside>
         <div id="app-main" className="min-w-0">
-          <Topbar email={email} inboxCount={sidebar.inboxCount} />
-          <main id="main" className="w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <Topbar email={email} />
+          <main id="main" className="w-full px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:py-9">
             <ResumeBanner />
             {children}
           </main>
         </div>
       </div>
+      <MobileTabs inboxCount={sidebar.inboxCount} />
       <MobileDrawer {...sidebar} />
       <CommandPalette />
     </DraftScope>

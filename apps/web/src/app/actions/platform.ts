@@ -192,7 +192,8 @@ export async function planWeekNowAction(_state: FormState, data: FormData): Prom
   );
   if (!result.ok) return result.problem.status === 401 ? expired('/app') : fromProblem(result.problem);
   revalidatePath('/app');
-  return { notice: 'Planning started. The plan arrives in your inbox in a minute or two.' };
+  revalidatePath(`/app/staff/${staffId}`);
+  return { notice: 'Planning started. The plan arrives in Review work in a minute or two.' };
 }
 
 export async function stopAutopilotAction(data: FormData): Promise<void> {
@@ -209,4 +210,19 @@ export async function decideOfferAction(data: FormData): Promise<void> {
   });
   if (!result.ok && result.problem.status === 401) expired('/app/autopilot');
   revalidatePath('/app/autopilot');
+}
+
+/** Pauses a staff member (nothing new starts; work waiting for you stays) or puts them back to work. */
+export async function setStaffStateAction(data: FormData): Promise<void> {
+  const staffId = field(data, 'staffId');
+  const state = field(data, 'state') === 'paused' ? 'paused' : 'active';
+  const back = `/app/staff/${staffId}`;
+  const result = await api(`/staff/${encodeURIComponent(staffId)}`, {
+    method: 'PATCH',
+    workspace: true,
+    body: state === 'paused' ? { state, pausedReason: 'Paused by you' } : { state },
+  });
+  if (!result.ok && result.problem.status === 401) expired(back);
+  revalidatePath(back);
+  revalidatePath('/app/staff');
 }

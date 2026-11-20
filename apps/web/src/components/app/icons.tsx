@@ -2,6 +2,14 @@ import type { ReactNode } from 'react';
 
 /** One small set of line icons, so the app needs no icon library. Decorative: the label is always next to them. */
 const PATHS = {
+  home: <path d="M4 11 12 4.5 20 11v8a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z" />,
+  staff: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 19.5a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14a6.5 6.5 0 0 1 3 5.5" />
+    </>
+  ),
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
   dashboard: (
     <>
       <rect x="3.5" y="3.5" width="7" height="7" rx="2" />

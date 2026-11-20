@@ -7,12 +7,12 @@ import { logoutAction } from '@/app/actions/auth';
 import { clearAllDrafts, sessionStore } from '@/lib/form-draft';
 import { openPalette } from './command-palette';
 import { Icon } from './icons';
-import { DRAWER_ID } from './mobile-drawer';
+import { PRODUCT_NAME } from './brand-mark';
 import { sectionOf } from './nav';
 import { ThemeToggle } from './theme-toggle';
 
-/** The strip above every page: the menu on a phone, where you are, search, the theme, and the account menu. */
-export function Topbar({ email, inboxCount }: { email: string; inboxCount: number }) {
+/** The strip above every page: where you are, search, the theme, and the account menu. */
+export function Topbar({ email }: { email: string }) {
   const pathname = usePathname();
   const section = sectionOf(pathname);
   const menu = useRef<HTMLDivElement>(null);
@@ -22,23 +22,7 @@ export function Topbar({ email, inboxCount }: { email: string; inboxCount: numbe
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-[var(--glass)] backdrop-blur-md">
       <div className="flex h-14 w-full items-center gap-2 px-4 sm:px-6 lg:px-8">
-        <button
-          type="button"
-          // Opens the drawer without script of our own.
-          popoverTarget={DRAWER_ID}
-          popoverTargetAction="show"
-          aria-label="Menu"
-          aria-controls={DRAWER_ID}
-          aria-expanded="false"
-          className="btn btn-quiet size-9 !p-0 lg:hidden"
-        >
-          <Icon name="menu" />
-        </button>
-
-        <nav aria-label="Breadcrumb" className="min-w-0 flex-1 truncate text-sm">
-          {section?.group ? <span className="hidden text-muted sm:inline">{section.group} / </span> : null}
-          <span className="font-semibold">{section?.item.label ?? 'AI Staff'}</span>
-        </nav>
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{section?.label ?? PRODUCT_NAME}</p>
 
         <button
           type="button"
@@ -52,17 +36,6 @@ export function Topbar({ email, inboxCount }: { email: string; inboxCount: numbe
         <button type="button" onClick={openPalette} aria-label="Search" className="btn btn-quiet size-9 !p-0 md:hidden">
           <Icon name="search" />
         </button>
-
-        <Link
-          href="/app/inbox"
-          aria-label={inboxCount ? `Inbox, ${inboxCount} waiting` : 'Inbox'}
-          className="btn btn-quiet relative size-9 !p-0"
-        >
-          <Icon name="inbox" />
-          {inboxCount > 0 ? (
-            <span className="absolute top-1 right-1 size-2 rounded-full bg-accent ring-2 ring-[var(--background)]" />
-          ) : null}
-        </Link>
 
         <ThemeToggle />
 

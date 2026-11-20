@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiOrRedirect } from '@/lib/api';
 import { AddLeadForm, ImportLeadsForm } from './lead-forms';
+import { SectionTabs } from '@/components/app/section-tabs';
 
 export const metadata = { title: 'Leads' };
 
@@ -34,58 +35,61 @@ export default async function LeadsPage() {
   const hired = staff.ok && staff.data.some((member) => member.roleKey === 'sales_manager');
 
   return (
-    <section className="space-y-8">
-      <div className="space-y-1">
-        <h1 className="page-title">Leads</h1>
-        <p className="text-muted">
-          People your Sales Manager will research and write to. You approve each first email.
-        </p>
-      </div>
-
-      {!hired ? (
-        <p className="card-flat px-3 py-2 text-sm">
-          You need a Sales Manager before adding leads.{' '}
-          <Link href="/app/hire" className="font-medium text-accent hover:underline">
-            Hire one
-          </Link>
-          .
-        </p>
-      ) : null}
-
-      {leads.data.length === 0 ? (
-        <div className="empty">
-          <h2 className="font-medium">No leads yet</h2>
-          <p className="mt-1 text-sm text-muted">Add one below, or import a list.</p>
+    <>
+      <SectionTabs section="sales" />
+      <section className="space-y-8">
+        <div className="space-y-1">
+          <h1 className="page-title">Leads</h1>
+          <p className="text-muted">
+            People your Sales Manager will research and write to. You approve each first email.
+          </p>
         </div>
-      ) : (
-        <ul className="card divide-y divide-line-soft">
-          {leads.data.map((lead) => (
-            <li key={lead.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
-              <span>
-                <span className="font-medium">{lead.name ?? lead.email}</span>
-                <span className="text-muted">
-                  {lead.company ? ` · ${lead.company}` : ''}
-                  {lead.name ? ` · ${lead.email}` : ''}
+
+        {!hired ? (
+          <p className="card-flat px-3 py-2 text-sm">
+            You need a Sales Manager before adding leads.{' '}
+            <Link href="/app/hire" className="font-medium text-accent hover:underline">
+              Hire one
+            </Link>
+            .
+          </p>
+        ) : null}
+
+        {leads.data.length === 0 ? (
+          <div className="empty">
+            <h2 className="font-medium">No leads yet</h2>
+            <p className="mt-1 text-sm text-muted">Add one below, or import a list.</p>
+          </div>
+        ) : (
+          <ul className="card divide-y divide-line-soft">
+            {leads.data.map((lead) => (
+              <li key={lead.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+                <span>
+                  <span className="font-medium">{lead.name ?? lead.email}</span>
+                  <span className="text-muted">
+                    {lead.company ? ` · ${lead.company}` : ''}
+                    {lead.name ? ` · ${lead.email}` : ''}
+                  </span>
                 </span>
-              </span>
-              <span className="text-muted">{STATE[lead.state] ?? lead.state}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+                <span className="text-muted">{STATE[lead.state] ?? lead.state}</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-      {hired ? (
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-3 card p-6">
-            <h2 className="font-medium">Add a lead</h2>
-            <AddLeadForm />
+        {hired ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-3 card p-6">
+              <h2 className="font-medium">Add a lead</h2>
+              <AddLeadForm />
+            </div>
+            <div className="space-y-3 card p-6">
+              <h2 className="font-medium">Import from a CSV</h2>
+              <ImportLeadsForm />
+            </div>
           </div>
-          <div className="space-y-3 card p-6">
-            <h2 className="font-medium">Import from a CSV</h2>
-            <ImportLeadsForm />
-          </div>
-        </div>
-      ) : null}
-    </section>
+        ) : null}
+      </section>
+    </>
   );
 }

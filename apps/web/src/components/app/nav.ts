@@ -8,77 +8,101 @@ export interface NavItem {
   exact?: boolean;
   /** Which count from the layout to show beside it. */
   badge?: 'inbox';
+  /** Other pages that belong to this place, so it stays highlighted on them. */
+  also?: string[];
+  /** Shown only when the workspace has hired this role. */
+  needsRole?: 'sales_manager';
 }
 
-export interface NavGroup {
-  label?: string;
-  items: NavItem[];
+/** The pages inside a place, shown as tabs at the top of each of them. */
+export interface SectionTab {
+  label: string;
+  href: string;
 }
 
-/** The one action the sidebar shows as a button above the links, rather than as a link among them. */
-export const NEW_POST: NavItem = { label: 'New post', href: '/app/compose', icon: 'compose' };
-
-/** Everything in the sidebar, grouped by the job it serves, in order. Setup pages sit last. */
-export const NAV: NavGroup[] = [
+/**
+ * The menu: six places for daily work, then three set once. Everything else lives inside one of them (see SECTIONS),
+ * so an owner never has to know a page's name to find it.
+ */
+export const PRIMARY: NavItem[] = [
+  { label: 'Home', href: '/app', icon: 'home', exact: true },
+  { label: 'Review work', href: '/app/inbox', icon: 'inbox', badge: 'inbox' },
+  { label: 'My staff', href: '/app/staff', icon: 'hire', also: ['/app/hire', '/app/autopilot', '/app/feeds'] },
   {
-    items: [
-      { label: 'Dashboard', href: '/app', icon: 'dashboard', exact: true },
-      { label: 'Inbox', href: '/app/inbox', icon: 'inbox', badge: 'inbox' },
-    ],
-  },
-  {
-    label: 'Social',
-    items: [
-      { label: 'Calendar', href: '/app/calendar', icon: 'calendar' },
-      { label: 'Recurring', href: '/app/recurring', icon: 'clock' },
-      { label: 'Results', href: '/app/results', icon: 'sparkles' },
-      { label: 'Templates and tags', href: '/app/templates', icon: 'templates' },
-      { label: 'Media library', href: '/app/media', icon: 'image' },
-      { label: 'Feeds', href: '/app/feeds', icon: 'feeds' },
-    ],
+    label: 'Content',
+    href: '/app/calendar',
+    icon: 'calendar',
+    also: ['/app/compose', '/app/recurring', '/app/results', '/app/templates', '/app/media'],
   },
   {
     label: 'Sales',
-    items: [
-      { label: 'Pipeline', href: '/app/pipeline', icon: 'pipeline' },
-      { label: 'Leads', href: '/app/leads', icon: 'leads' },
-    ],
+    href: '/app/pipeline',
+    icon: 'pipeline',
+    also: ['/app/leads', '/app/suppressions'],
+    needsRole: 'sales_manager',
   },
-  {
-    label: 'Staff',
-    items: [
-      { label: 'Hire', href: '/app/hire', icon: 'hire' },
-      { label: 'Autopilot', href: '/app/autopilot', icon: 'autopilot' },
-    ],
-  },
-  {
-    label: 'Setup',
-    items: [
-      { label: 'Company', href: '/app/company', icon: 'company' },
-      { label: 'Social accounts', href: '/app/accounts', icon: 'accounts' },
-      { label: 'Mailboxes', href: '/app/mailboxes', icon: 'mail' },
-      { label: 'Do not contact', href: '/app/suppressions', icon: 'shield' },
-      { label: 'Settings', href: '/app/settings', icon: 'settings' },
-      { label: 'Audit log', href: '/app/audit', icon: 'list' },
-    ],
-  },
+  { label: 'Activity', href: '/app/activity', icon: 'list', also: ['/app/audit'] },
 ];
 
-/** Every page the search box can jump to: the sidebar links plus New post. */
-export const ALL_ITEMS = [NEW_POST, ...NAV.flatMap((group) => group.items)];
+export const SETUP: NavItem[] = [
+  { label: 'Business info', href: '/app/company', icon: 'company' },
+  { label: 'Connections', href: '/app/accounts', icon: 'accounts', also: ['/app/mailboxes'] },
+  { label: 'Settings', href: '/app/settings', icon: 'settings' },
+];
+
+/** The tabs inside each place that holds more than one page. */
+export const SECTIONS: Record<'content' | 'sales' | 'activity' | 'connections', SectionTab[]> = {
+  content: [
+    { label: 'Calendar', href: '/app/calendar' },
+    { label: 'Recurring posts', href: '/app/recurring' },
+    { label: 'Results', href: '/app/results' },
+    { label: 'Templates and tags', href: '/app/templates' },
+    { label: 'Media', href: '/app/media' },
+  ],
+  sales: [
+    { label: 'Pipeline', href: '/app/pipeline' },
+    { label: 'Leads', href: '/app/leads' },
+    { label: 'Do not contact', href: '/app/suppressions' },
+  ],
+  activity: [
+    { label: 'What staff did', href: '/app/activity' },
+    { label: 'Who changed what', href: '/app/audit' },
+  ],
+  connections: [
+    { label: 'Social accounts', href: '/app/accounts' },
+    { label: 'Mailboxes', href: '/app/mailboxes' },
+  ],
+};
+
+/** The places a person can jump to from search: the menu, plus every tab and the two actions. */
+export const ALL_ITEMS: NavItem[] = [
+  ...PRIMARY,
+  ...SETUP,
+  { label: 'New post', href: '/app/compose', icon: 'compose' },
+  { label: 'Hire staff', href: '/app/hire', icon: 'hire' },
+  { label: 'Autopilot rules', href: '/app/autopilot', icon: 'autopilot' },
+  { label: 'Feeds', href: '/app/feeds', icon: 'feeds' },
+  ...Object.values(SECTIONS)
+    .flat()
+    .filter((tab) => ![...PRIMARY, ...SETUP].some((item) => item.href === tab.href))
+    .map((tab) => ({ label: tab.label, href: tab.href, icon: 'list' as IconName })),
+];
+
+const under = (href: string, pathname: string) => pathname === href || pathname.startsWith(`${href}/`);
 
 export function isCurrent(item: NavItem, pathname: string): boolean {
-  return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  if (item.exact) return pathname === item.href;
+  return [item.href, ...(item.also ?? [])].some((href) => under(href, pathname));
 }
 
-/** The section a path belongs to, for the top bar. New post lives under Social. */
-export function sectionOf(pathname: string): { group?: string; item: NavItem } | null {
-  if (isCurrent(NEW_POST, pathname)) return { group: 'Social', item: NEW_POST };
-  for (const group of NAV) {
-    const item = group.items.find((candidate) => isCurrent(candidate, pathname));
-    if (item) return { group: group.label, item };
-  }
-  return null;
+/** The menu items this workspace sees: Sales only once a Sales Manager is on staff. */
+export function visiblePrimary(roles: readonly string[]): NavItem[] {
+  return PRIMARY.filter((item) => !item.needsRole || roles.includes(item.needsRole));
+}
+
+/** The place a path belongs to, for the top bar. */
+export function sectionOf(pathname: string): NavItem | null {
+  return [...PRIMARY, ...SETUP].find((item) => isCurrent(item, pathname)) ?? null;
 }
 
 /** The cookie that remembers a collapsed desktop sidebar; read on the server so the page never jumps on load. */

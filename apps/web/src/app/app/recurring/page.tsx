@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { pauseScheduleAction, removeScheduleAction } from '@/app/actions/social';
 import { apiOrRedirect } from '@/lib/api';
+import { SectionTabs } from '@/components/app/section-tabs';
 
 export const metadata = { title: 'Recurring posts' };
 
@@ -46,58 +47,68 @@ export default async function RecurringPage() {
   const nameOf = new Map((accounts.ok ? accounts.data : []).map((account) => [account.id, account.name]));
 
   return (
-    <section className="max-w-3xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="page-title">Recurring posts</h1>
-          <p className="text-muted">
-            Posts that repeat. They are made four weeks ahead and appear on the Calendar, where you can cancel any one.
-            Removing a rule keeps the posts already made.
-          </p>
+    <>
+      <SectionTabs
+        section="content"
+        action={
+          <Link href="/app/compose" className="btn btn-primary btn-sm">
+            New post
+          </Link>
+        }
+      />
+      <section className="max-w-3xl space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="page-title">Recurring posts</h1>
+            <p className="text-muted">
+              Posts that repeat. They are made four weeks ahead and appear on the Calendar, where you can cancel any
+              one. Removing a rule keeps the posts already made.
+            </p>
+          </div>
+          <Link href="/app/compose" className="btn btn-primary">
+            New post
+          </Link>
         </div>
-        <Link href="/app/compose" className="btn btn-primary">
-          New post
-        </Link>
-      </div>
-      {rules.data.length === 0 ? (
-        <p className="empty text-sm text-muted">
-          Nothing repeats yet. Choose a repeat when you write a post on the New post page.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {rules.data.map((rule) => (
-            <li key={rule.id} className="card space-y-2 p-5 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium">{describe(rule)}</span>
-                <span className={rule.state === 'active' ? 'pill pill-ok' : 'pill'}>
-                  {rule.state === 'active' ? 'Repeating' : 'Paused'}
-                </span>
-              </div>
-              <p className="line-clamp-2 whitespace-pre-wrap text-muted">{rule.body}</p>
-              <p className="text-xs text-muted">
-                To {rule.accountIds.map((id) => nameOf.get(id) ?? 'a removed account').join(', ')}
-                {rule.endsOn ? ` · until ${rule.endsOn}` : ''}
-                {rule.next.length && rule.state === 'active' ? ` · next ${rule.next.join(', ')}` : ''}
-              </p>
-              <div className="flex gap-4">
-                <form action={pauseScheduleAction}>
-                  <input type="hidden" name="id" value={rule.id} />
-                  <input type="hidden" name="paused" value={rule.state === 'active' ? 'true' : 'false'} />
-                  <button type="submit" className="font-medium text-accent hover:underline">
-                    {rule.state === 'active' ? 'Pause' : 'Resume'}
-                  </button>
-                </form>
-                <form action={removeScheduleAction}>
-                  <input type="hidden" name="id" value={rule.id} />
-                  <button type="submit" className="text-danger hover:underline">
-                    Remove
-                  </button>
-                </form>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+        {rules.data.length === 0 ? (
+          <p className="empty text-sm text-muted">
+            Nothing repeats yet. Choose a repeat when you write a post on the New post page.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {rules.data.map((rule) => (
+              <li key={rule.id} className="card space-y-2 p-5 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">{describe(rule)}</span>
+                  <span className={rule.state === 'active' ? 'pill pill-ok' : 'pill'}>
+                    {rule.state === 'active' ? 'Repeating' : 'Paused'}
+                  </span>
+                </div>
+                <p className="line-clamp-2 whitespace-pre-wrap text-muted">{rule.body}</p>
+                <p className="text-xs text-muted">
+                  To {rule.accountIds.map((id) => nameOf.get(id) ?? 'a removed account').join(', ')}
+                  {rule.endsOn ? ` · until ${rule.endsOn}` : ''}
+                  {rule.next.length && rule.state === 'active' ? ` · next ${rule.next.join(', ')}` : ''}
+                </p>
+                <div className="flex gap-4">
+                  <form action={pauseScheduleAction}>
+                    <input type="hidden" name="id" value={rule.id} />
+                    <input type="hidden" name="paused" value={rule.state === 'active' ? 'true' : 'false'} />
+                    <button type="submit" className="font-medium text-accent hover:underline">
+                      {rule.state === 'active' ? 'Pause' : 'Resume'}
+                    </button>
+                  </form>
+                  <form action={removeScheduleAction}>
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" className="text-danger hover:underline">
+                      Remove
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }
