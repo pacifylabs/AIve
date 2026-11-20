@@ -70,7 +70,7 @@ function NavLink({
       <span className="side-text flex-1">{item.label}</span>
       {count > 0 ? (
         <span
-          className="side-count rounded-full bg-amber px-2 text-xs font-semibold text-white tabular-nums"
+          className="side-count rounded-full bg-[var(--action)] px-2 text-xs font-semibold text-white tabular-nums"
           aria-label={`${count} waiting`}
         >
           {count > 99 ? '99+' : count}

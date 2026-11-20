@@ -110,46 +110,40 @@ export default async function HomePage() {
       {waiting.length > 0 && first ? (
         <section
           aria-labelledby="needs-heading"
-          className="flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-[#0b1324] px-6 py-6 text-white sm:px-8 dark:bg-[#111c33]"
+          className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-accent/25 bg-accent-soft px-6 py-6 sm:px-8"
         >
           <div className="min-w-0 space-y-2">
-            <p className="font-mono text-xs tracking-wide text-[#fcd9a8]">
-              NEEDS YOU · {waiting.length} {waiting.length === 1 ? 'ITEM' : 'ITEMS'}
+            <p className="text-sm font-semibold text-accent">
+              Needs you · {waiting.length} {waiting.length === 1 ? 'item' : 'items'}
             </p>
-            <h2 id="needs-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">
+            <h2 id="needs-heading" className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               {first.staffName}&apos;s {kindLabel(first.kind).toLowerCase()} is ready: {first.title}
             </h2>
-            <p className="text-sm text-[#b7c3d6]">
+            <p className="text-sm text-text-2">
               {waiting.length > 1
                 ? `And ${waiting.length - 1} more. Nothing goes out until you approve it.`
                 : 'Nothing goes out until you approve it.'}
             </p>
           </div>
-          <Link
-            href={`/app/inbox?item=${first.id}`}
-            className="inline-flex h-11 flex-none items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#0b1324] hover:bg-[#eef2f8]"
-          >
+          <Link href={`/app/inbox?item=${first.id}`} className="btn btn-primary flex-none">
             Review now <Icon name="arrow" size={16} />
           </Link>
         </section>
       ) : members.length === 0 ? (
         <section
           aria-labelledby="first-hire-heading"
-          className="flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-[#0b1324] px-6 py-6 text-white sm:px-8 dark:bg-[#111c33]"
+          className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-accent/25 bg-accent-soft px-6 py-6 sm:px-8"
         >
           <div className="min-w-0 space-y-2">
-            <p className="font-mono text-xs tracking-wide text-[#9fc0ff]">NEXT STEP</p>
-            <h2 id="first-hire-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">
+            <p className="text-sm font-semibold text-accent">Next step</p>
+            <h2 id="first-hire-heading" className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               Hire your first staff member
             </h2>
-            <p className="text-sm text-[#b7c3d6]">
+            <p className="text-sm text-text-2">
               A few minutes: choose a role, confirm what is true about your business, and they start on probation.
             </p>
           </div>
-          <Link
-            href="/app/welcome"
-            className="inline-flex h-11 flex-none items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#0b1324] hover:bg-[#eef2f8]"
-          >
+          <Link href="/app/welcome" className="btn btn-primary flex-none">
             Continue setting up <Icon name="arrow" size={16} />
           </Link>
         </section>

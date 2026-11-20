@@ -11,15 +11,13 @@ export function ThemeToggle() {
   useEffect(() => {
     syncScheme();
     setScheme(currentScheme());
-    // Another tab, or the system, can change what is showing.
-    const system = window.matchMedia('(prefers-color-scheme: dark)');
-    const refresh = () => setScheme(currentScheme());
-    system.addEventListener('change', refresh);
-    window.addEventListener('storage', () => {
+    // Another tab can change what is showing.
+    const onStorage = () => {
       syncScheme();
-      refresh();
-    });
-    return () => system.removeEventListener('change', refresh);
+      setScheme(currentScheme());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const dark = scheme === 'dark';

@@ -23,7 +23,7 @@ export function MobileTabs({ inboxCount }: { inboxCount: number }) {
           <span className="relative">
             <Icon name={item.icon} size={22} />
             {count > 0 ? (
-              <span className="absolute -top-1.5 -right-3 min-w-5 rounded-full bg-amber px-1 text-center text-[0.625rem] leading-5 font-semibold text-white tabular-nums">
+              <span className="absolute -top-1.5 -right-3 min-w-5 rounded-full bg-[var(--action)] px-1 text-center text-[0.625rem] leading-5 font-semibold text-white tabular-nums">
                 {count > 99 ? '99+' : count}
               </span>
             ) : null}

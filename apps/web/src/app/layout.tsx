@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // The colour-scheme script changes the meta tag before first paint, so the head can differ from the server's.
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
-        <meta name="color-scheme" content="light dark" suppressHydrationWarning />
+        <meta name="color-scheme" content="light" suppressHydrationWarning />
         <script dangerouslySetInnerHTML={{ __html: schemeBootScript }} />
       </head>
       <body className="min-h-screen antialiased">{children}</body>

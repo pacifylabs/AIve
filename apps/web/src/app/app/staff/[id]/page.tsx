@@ -184,7 +184,7 @@ export default async function StaffMemberPage({
       {hired ? (
         <section aria-labelledby="hired-heading" className="card space-y-5 border-social/40 p-6">
           <div className="space-y-1">
-            <p className="font-mono text-xs tracking-wide text-social uppercase">Hired · on probation</p>
+            <p className="text-xs font-medium text-social">Hired · on probation</p>
             <h2 id="hired-heading" className="text-xl font-semibold tracking-tight">
               {member.displayName} has started work.
             </h2>
@@ -248,7 +248,7 @@ export default async function StaffMemberPage({
             key={key}
             href={key === 'overview' ? here : `${here}?tab=${key}`}
             aria-current={tab === key ? 'page' : undefined}
-            className="shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm whitespace-nowrap text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+            className="shrink-0 border-b-2 border-transparent px-4 py-3 text-sm font-medium whitespace-nowrap text-muted hover:border-line-strong hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-accent"
           >
             {label}
             {key === 'work' && waiting.length ? (
@@ -397,9 +397,7 @@ function WaitingList({ items, total, here, name }: { items: Item[]; total: numbe
                 href={`/app/inbox?item=${item.id}`}
                 className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-2"
               >
-                <span className="w-24 flex-none font-mono text-[0.6875rem] tracking-wide text-muted uppercase">
-                  {item.kind.replace(/[._]/g, ' ')}
-                </span>
+                <span className="w-24 flex-none text-xs font-medium text-muted">{item.kind.replace(/[._]/g, ' ')}</span>
                 <span className="min-w-0 flex-1 truncate text-sm">{item.title}</span>
                 <span className="flex-none text-xs text-muted">{timeAgo(item.createdAt)}</span>
               </Link>

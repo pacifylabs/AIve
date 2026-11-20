@@ -55,7 +55,7 @@ export default async function WelcomePage({
       <Frame step="start" role={null}>
         <div className="max-w-3xl space-y-8">
           <div className="space-y-3">
-            <p className="font-mono text-xs tracking-wide text-muted uppercase">Welcome{first ? `, ${first}` : ''}</p>
+            <p className="text-xs font-medium text-muted">Welcome{first ? `, ${first}` : ''}</p>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Hire AI staff who earn your trust, one approval at a time.
             </h1>
@@ -353,7 +353,7 @@ function Frame({ step, role, children }: { step: OnboardingStep; role: string | 
 function Heading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
   return (
     <div className="space-y-2">
-      <p className="font-mono text-xs tracking-wide text-muted uppercase">{eyebrow}</p>
+      <p className="text-xs font-medium text-muted">{eyebrow}</p>
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
       <p className="text-muted">{text}</p>
     </div>
@@ -363,7 +363,7 @@ function Heading({ eyebrow, title, text }: { eyebrow: string; title: string; tex
 function RoleLine({ label, tone, text }: { label: string; tone: string; text: string }) {
   return (
     <span className="block space-y-1 text-sm">
-      <span className={`block font-mono text-[0.6875rem] font-semibold tracking-wide uppercase ${tone}`}>{label}</span>
+      <span className={`block text-xs font-medium ${tone}`}>{label}</span>
       <span className="block text-text-2">{text}</span>
     </span>
   );

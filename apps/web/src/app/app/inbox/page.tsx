@@ -146,9 +146,7 @@ export default async function ReviewWorkPage({
                     <StaffAvatar name={entry.staffName} roleKey={roles.get(entry.staffId) ?? ''} size="sm" />
                     <span className="min-w-0 flex-1 space-y-0.5">
                       <span className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-[0.6875rem] tracking-wide text-muted uppercase">
-                          {kindLabel(entry.kind)}
-                        </span>
+                        <span className="text-xs font-medium text-muted">{kindLabel(entry.kind)}</span>
                         {entry.flaggedReason ? (
                           <span className="pill pill-danger">Needs you</span>
                         ) : (

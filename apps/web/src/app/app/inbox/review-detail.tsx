@@ -161,7 +161,7 @@ export function ReviewDetail({ item, timeZone }: { item: ReviewItem; timeZone: s
   return (
     <article aria-labelledby="review-title" className="space-y-6">
       <header className="space-y-2">
-        <p className="font-mono text-[0.6875rem] tracking-wide text-muted uppercase">
+        <p className="text-xs font-medium text-muted">
           {kindLabel(kind)} · from {item.staffName}
         </p>
         <h2 id="review-title" className="text-xl font-semibold tracking-tight">

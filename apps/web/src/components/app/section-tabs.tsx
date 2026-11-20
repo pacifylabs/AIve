@@ -21,7 +21,7 @@ export function SectionTabs({ section, action }: { section: keyof typeof SECTION
               key={tab.href}
               href={tab.href}
               aria-current={current ? 'page' : undefined}
-              className="shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm whitespace-nowrap text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+              className="shrink-0 border-b-2 border-transparent px-4 py-3 text-sm font-medium whitespace-nowrap text-muted hover:border-line-strong hover:text-foreground aria-[current=page]:border-accent aria-[current=page]:text-accent"
             >
               {tab.label}
             </Link>

@@ -20,7 +20,7 @@ export function Topbar({ email }: { email: string }) {
   const initial = (email.trim()[0] ?? '?').toUpperCase();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-[var(--glass)] backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-border bg-surface">
       <div className="flex h-14 w-full items-center gap-2 px-4 sm:px-6 lg:px-8">
         <p className="min-w-0 flex-1 truncate text-sm font-semibold">{section?.label ?? PRODUCT_NAME}</p>
 

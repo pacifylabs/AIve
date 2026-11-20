@@ -1,39 +1,40 @@
 @import 'tailwindcss';
 
 /*
- * The app's design tokens: the marketing site's Earthlight palette (blue accent, Geist, soft cool surfaces), written
- * with light-dark() so every colour follows the page's colour scheme. The scheme follows the system, and the toggle
- * in the top bar pins it by changing <meta name="color-scheme"> (see components/app/theme.ts). Nothing here depends
- * on script: with JavaScript off the app follows the system setting.
+ * The app's design tokens, taken from KudiBooks so the products read as one family: royal blue actions, navy ink, cool
+ * grey borders, white cards drawn with a border and no shadow, 12px corners, 44px controls. Light is the default;
+ * dark is a pinned choice from the top-bar toggle (see components/app/theme.ts). Every colour is a light-dark() pair.
  */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
   /* Surfaces and text */
-  --background: light-dark(#f5f8fc, #060b16);
-  --surface: light-dark(#ffffff, #0e1626);
-  --surface-2: light-dark(#f9fbfe, #111a2c);
-  --subtle: light-dark(#f1f5fa, #142036);
-  --sunken: light-dark(#eaf0f7, #0a111f);
-  --foreground: light-dark(#0b1324, #eaf0fa);
-  --text-2: light-dark(#334155, #b7c3d6);
-  --muted: light-dark(#556275, #97a4ba);
-  --border: light-dark(#e1e7f0, #1c2740);
-  --line-soft: light-dark(#ebf0f6, #172136);
-  --line-strong: light-dark(#cad3e0, #2a3753);
+  --background: light-dark(#ffffff, #0a101b);
+  --surface: light-dark(#ffffff, #121a29);
+  --surface-2: light-dark(#f7fafc, #0e1522);
+  --subtle: light-dark(#edf2f7, #19233a);
+  --sunken: light-dark(#e4ebf2, #0a101b);
+  --foreground: light-dark(#0a1424, #e6ebf4);
+  --text-2: light-dark(#384858, #c5cee0);
+  --muted: light-dark(#5a6a7b, #95a3bc);
+  --border: light-dark(#dae3eb, #25314b);
+  --line-soft: light-dark(#edf2f7, #1c2640);
+  --line-strong: light-dark(#c6d2dd, #354463);
 
-  /* Accent: the link and focus colour, and the fill behind --accent-foreground */
-  --accent: light-dark(#2563eb, #6ea2ff);
-  --accent-foreground: light-dark(#ffffff, #06122e);
-  --accent-soft: light-dark(#e8f0fe, #12224a);
+  /* Action: the fill behind primary buttons and the count badges (--accent is the link and focus colour). */
+  --action: light-dark(#184cf5, #3b69ff);
+  --action-hover: light-dark(#0f3bd4, #5f87ff);
+  --accent: light-dark(#184cf5, #6f93ff);
+  --accent-foreground: #ffffff;
+  --accent-soft: light-dark(#eef3ff, #111d42);
 
   /* Status */
-  --danger: light-dark(#b42318, #f97066);
-  --danger-soft: light-dark(#fef3f2, #2a1316);
-  --ok: light-dark(#0e8f8a, #3ccfc3);
-  --ok-soft: light-dark(#e2f5f3, #0d2b2c);
-  --amber: light-dark(#b86e0d, #f0b04a);
-  --amber-soft: light-dark(#fdf2e2, #2e2210);
+  --danger: light-dark(#b91c1c, #f87171);
+  --danger-soft: light-dark(#fef2f2, #2a1316);
+  --ok: light-dark(#047857, #34d399);
+  --ok-soft: light-dark(#ecfdf5, #0c2a22);
+  --amber: light-dark(#b45309, #f0b04a);
+  --amber-soft: light-dark(#fffbeb, #2e2210);
 
   /* Staff identity: each role's colour, used only on its avatar and its work, so an owner sees at a glance who made what. */
   --social: light-dark(#0e7f7a, #3ccfc3);
@@ -41,20 +42,17 @@
   --sales: light-dark(#4f46e5, #a5b4fc);
   --sales-soft: light-dark(#ecebfd, #1c1b45);
 
-  --shadow-color: light-dark(rgb(23 46 92 / 0.09), rgb(0 0 0 / 0.5));
-  --glass: light-dark(rgb(255 255 255 / 0.72), rgb(14 22 38 / 0.72));
+  --shadow-color: light-dark(rgb(15 30 60 / 0.1), rgb(0 0 0 / 0.5));
+  --glass: light-dark(rgb(255 255 255 / 0.9), rgb(18 26 41 / 0.9));
 
   accent-color: var(--accent);
-  scrollbar-color: light-dark(#c2ccda, #2a3753) transparent;
+  scrollbar-color: light-dark(#c6d2dd, #354463) transparent;
   scrollbar-width: thin;
 }
 
 /* The toggle pins a scheme through the meta tag; map it back to the property so the cascade follows it. */
 :root:has(> head > meta[name='color-scheme'][content='dark']) {
   color-scheme: dark;
-}
-:root:has(> head > meta[name='color-scheme'][content='light']) {
-  color-scheme: light;
 }
 
 @theme inline {
@@ -112,10 +110,7 @@ body {
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 1rem;
-    box-shadow:
-      0 1px 2px var(--shadow-color),
-      0 12px 28px -18px var(--shadow-color);
+    border-radius: 0.75rem;
   }
 
   .card-flat {
@@ -125,37 +120,43 @@ body {
   }
 
   .empty {
-    border: 1px dashed var(--line-strong);
-    border-radius: 1rem;
-    background: color-mix(in srgb, var(--surface) 60%, transparent);
-    padding: 2rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--surface);
+    padding: 3.5rem 1.5rem;
     text-align: center;
   }
 
   .page-title {
-    font-size: 1.625rem;
-    line-height: 2rem;
+    font-size: 1.75rem;
+    line-height: 1.25;
     font-weight: 600;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.035em;
     color: var(--foreground);
     text-wrap: balance;
   }
+  /* The line under a page title: small, calm, never wider than a comfortable measure. */
+  .page-title + p {
+    max-width: 42rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
 
   .eyebrow {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 0.8125rem;
+    font-weight: 500;
     color: var(--muted);
   }
 
   .field {
     width: 100%;
-    border-radius: 0.625rem;
+    min-height: 2.75rem;
+    border-radius: 0.75rem;
     border: 1px solid var(--line-strong);
     background: var(--surface);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
     color: var(--foreground);
     transition:
       border-color 120ms,
@@ -178,11 +179,12 @@ body {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 0.625rem;
+    min-height: 2.75rem;
+    border-radius: 0.75rem;
     border: 1px solid var(--line-strong);
     background: var(--surface);
-    padding: 0.5rem 0.875rem;
-    font-size: 0.875rem;
+    padding: 0 1.25rem;
+    font-size: 0.9375rem;
     font-weight: 500;
     color: var(--foreground);
     transition:
@@ -199,13 +201,11 @@ body {
 
   .btn-primary {
     border-color: transparent;
-    background: var(--accent);
-    color: var(--accent-foreground);
-    box-shadow: 0 1px 2px var(--shadow-color);
+    background: var(--action);
+    color: #ffffff;
   }
   .btn-primary:hover {
-    background: var(--accent);
-    opacity: 0.9;
+    background: var(--action-hover);
   }
 
   .btn-danger {
@@ -217,8 +217,9 @@ body {
     filter: brightness(1.08);
   }
   .btn-sm {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.8125rem;
+    min-height: 2.25rem;
+    padding: 0 0.875rem;
+    font-size: 0.875rem;
   }
 
   .btn-quiet {
@@ -239,7 +240,7 @@ body {
     background: var(--subtle);
     padding: 0.125rem 0.625rem;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     line-height: 1.25rem;
     color: var(--text-2);
     white-space: nowrap;
@@ -343,16 +344,17 @@ body {
  * light-dark() pair, so the theme toggle needs nothing extra here.
  */
 .sidebar {
-  --side-bg: light-dark(#ffffff, #0b1222);
-  --side-raised: light-dark(#f4f6fa, #111b30);
-  --side-line: light-dark(#e4e8ef, #1c2740);
-  --side-text: light-dark(#2a3446, #c3cedf);
-  --side-strong: light-dark(#0b1324, #f2f6fc);
-  --side-muted: light-dark(#5b6577, #97a4ba);
-  --side-faint: light-dark(#8a94a6, #6b7891);
-  --side-hover: light-dark(#f1f4f8, rgb(255 255 255 / 0.05));
-  --side-active: light-dark(#eaf0f8, #16223a);
-  --side-accent: light-dark(#2563eb, #8db6ff);
+  --side-bg: var(--surface);
+  --side-raised: var(--surface-2);
+  --side-line: var(--border);
+  --side-text: var(--text-2);
+  --side-strong: var(--foreground);
+  --side-muted: var(--muted);
+  --side-faint: var(--muted);
+  --side-hover: var(--subtle);
+  --side-active: var(--accent-soft);
+  --side-activeText: light-dark(#0f3bd4, #9db6ff);
+  --side-accent: var(--accent);
   background: var(--side-bg);
   color: var(--side-text);
   border-right: 1px solid var(--side-line);
@@ -367,10 +369,10 @@ body {
 .side-link {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  border-radius: 0.625rem;
-  padding: 0.4375rem 0.625rem;
-  font-size: 0.875rem;
+  gap: 0.75rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--side-text);
   transition: background-color 120ms;
@@ -380,8 +382,7 @@ body {
 }
 .side-link[aria-current='page'] {
   background: var(--side-active);
-  color: var(--side-strong);
-  font-weight: 600;
+  color: var(--side-activeText);
 }
 .side-link svg {
   flex: none;
@@ -412,7 +413,7 @@ body {
     right: 0.125rem;
     padding-inline: 0.3rem;
     font-size: 0.625rem;
-    background: var(--amber);
+    background: var(--action);
   }
 }
 
