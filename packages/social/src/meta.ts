@@ -177,6 +177,10 @@ export class MetaProvider implements SocialProvider {
       `${GRAPH}/${this.config.graphVersion}/me/accounts?${form({ access_token: tokens.accessToken, fields, limit: '100' })}`,
     );
     const pages = response.data ?? [];
+    const withInstagram = pages.filter((page) => page.instagram_business_account?.id);
+    if (this.network === 'facebook' ? pages.length === 0 : withInstagram.length === 0) {
+      throw new ProviderError(await this.whyNothingFound(tokens.accessToken, pages.length), this.network);
+    }
     // Meta's removal callbacks name the person by this id, not by any page, so it is kept on every account they bring.
     const person = await this.call<{ id?: string }>(
       `${GRAPH}/${this.config.graphVersion}/me?${form({ access_token: tokens.accessToken, fields: 'id' })}`,
@@ -198,23 +202,44 @@ export class MetaProvider implements SocialProvider {
       }));
     }
     // An Instagram business account is only reachable through the Page it is linked to, so the Page's token is stored.
-    return pages
-      .filter((page) => page.instagram_business_account?.id)
-      .map((page) => ({
-        externalId: page.instagram_business_account!.id,
-        name: page.instagram_business_account!.username ?? page.name,
-        username: page.instagram_business_account!.username ?? null,
-        avatarUrl: page.instagram_business_account!.profile_picture_url ?? null,
-        kind: 'business' as const,
-        accessToken: page.access_token ?? tokens.accessToken,
-        expiresInSeconds: page.access_token ? null : undefined,
-        parentExternalId: page.id,
-        metadata: {
-          pageName: page.name,
-          followers: page.instagram_business_account!.followers_count,
-          metaUserId,
-        },
-      }));
+    return withInstagram.map((page) => ({
+      externalId: page.instagram_business_account!.id,
+      name: page.instagram_business_account!.username ?? page.name,
+      username: page.instagram_business_account!.username ?? null,
+      avatarUrl: page.instagram_business_account!.profile_picture_url ?? null,
+      kind: 'business' as const,
+      accessToken: page.access_token ?? tokens.accessToken,
+      expiresInSeconds: page.access_token ? null : undefined,
+      parentExternalId: page.id,
+      metadata: {
+        pageName: page.name,
+        followers: page.instagram_business_account!.followers_count,
+        metaUserId,
+      },
+    }));
+  }
+
+  /**
+   * Meta answered with no Page (or no Instagram account) to post to. The sign-in itself worked, so the cause is what
+   * the person shared or what the login configuration allows; asking Meta which permissions it granted tells which.
+   */
+  private async whyNothingFound(accessToken: string, pageCount: number): Promise<string> {
+    let granted: string[] | null = null;
+    try {
+      const response = await this.call<{ data: { permission: string; status: string }[] }>(
+        `${GRAPH}/${this.config.graphVersion}/me/permissions?${form({ access_token: accessToken })}`,
+      );
+      granted = (response.data ?? []).filter((entry) => entry.status === 'granted').map((entry) => entry.permission);
+    } catch {
+      // The explanation below still helps without it.
+    }
+    if (granted && !granted.includes('pages_show_list')) {
+      return 'Meta did not give us permission to see your Pages. Add pages_show_list to the login configuration in your Meta app, then connect again.';
+    }
+    if (this.network === 'instagram' && pageCount > 0) {
+      return 'Your Page has no Instagram professional account linked. In Instagram switch to a professional account, link it to the Page, then connect again.';
+    }
+    return 'Meta shared no Pages from this login. On the Meta screen tick your Page, use an account with full control of it, and if it sits in a business portfolio add business_management to the login configuration.';
   }
 
   publishPost(input: PublishInput): Promise<PublishResult | PendingPublishResult> {

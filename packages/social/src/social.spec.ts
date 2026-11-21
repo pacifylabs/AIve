@@ -227,6 +227,39 @@ describe('MetaProvider', () => {
     expect(url.searchParams.get('state')).toBe('st');
   });
 
+  describe('when Meta shares nothing to post to', () => {
+    const asked = (network: 'facebook' | 'instagram', ...answers: Parameters<typeof scripted>) =>
+      new MetaProvider(network, meta, { fetcher: scripted(...answers).fetcher }).listAccounts({ accessToken: 'tok' });
+    const granted = (...names: string[]) => ({
+      data: names.map((permission) => ({ permission, status: 'granted' })),
+    });
+
+    it('blames the login configuration when pages_show_list was never granted', async () => {
+      await expect(asked('facebook', { data: [] }, granted('public_profile'))).rejects.toThrow(/pages_show_list/);
+    });
+
+    it('asks the person to tick their Page when permissions are fine but no Page came back', async () => {
+      await expect(asked('facebook', { data: [] }, granted('pages_show_list'))).rejects.toThrow(
+        /tick your Page.*business_management/,
+      );
+    });
+
+    it('says the Page has no Instagram account when Pages exist but none is linked', async () => {
+      await expect(
+        asked('instagram', { data: [{ id: 'p1', name: 'Northfield' }] }, granted('pages_show_list')),
+      ).rejects.toThrow(/no Instagram professional account linked/);
+    });
+
+    it('still explains itself when the permissions lookup fails', async () => {
+      await expect(asked('facebook', { data: [] }, new Error('offline'))).rejects.toThrow(/Meta shared no Pages/);
+    });
+
+    it('connects normally when a Page comes back', async () => {
+      const accounts = await asked('facebook', { data: [{ id: 'p1', name: 'Northfield' }] }, { id: 'u1' });
+      expect(accounts.map((account) => account.name)).toEqual(['Northfield']);
+    });
+  });
+
   it('says plainly when the app is not configured', async () => {
     const unset = new MetaProvider('facebook', { ...meta, appId: '' });
     expect(unset.isConfigured()).toBe(false);

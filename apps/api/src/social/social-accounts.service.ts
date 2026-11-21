@@ -149,7 +149,7 @@ export class SocialAccountsService {
       return back({ pending: id });
     } catch (error) {
       return back({
-        error: error instanceof ProviderError ? error.message.slice(0, 200) : 'The connection failed. Try again.',
+        error: error instanceof ProviderError ? error.message.slice(0, 320) : 'The connection failed. Try again.',
       });
     }
   }
